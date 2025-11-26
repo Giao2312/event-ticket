@@ -1,0 +1,30 @@
+doctype html
+html(lang="vi")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    title #{title || "TicketApp"}
+
+    // Bootstrap (npm)
+    link(rel="stylesheet", href="/bootstrap/css/bootstrap.min.css")
+
+    // CSS riêng của client
+    link(rel="stylesheet", href="/css/client.css")
+
+  body
+
+    // HEADER
+    include header.pug
+
+    // MAIN CONTENT
+    main.container.mt-4
+      block content
+
+    // FOOTER
+    include footer.pug
+
+    // Bootstrap JS (npm)
+    script(src="/bootstrap/js/bootstrap.bundle.min.js")
+
+    // JS riêng của client
+    script(src="/js/client.js")

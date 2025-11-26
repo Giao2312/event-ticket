@@ -1,0 +1,20 @@
+header
+  nav.navbar.navbar-expand-lg.navbar-dark.bg-dark
+    .container
+      a.navbar-brand(href="/") TicketApp
+
+      button.navbar-toggler(type="button", data-bs-toggle="collapse", data-bs-target="#navMenu")
+        span.navbar-toggler-icon
+
+      #navMenu.collapse.navbar-collapse
+        ul.navbar-nav.ms-auto
+          li.nav-item
+            a.nav-link(href="/events") Sự kiện
+          if user
+            li.nav-item
+              a.nav-link(href="/profile") #{user.fullName}
+            li.nav-item
+              a.nav-link(href="/logout") Đăng xuất
+          else
+            li.nav-item
+              a.nav-link(href="/login") Đăng nhập
