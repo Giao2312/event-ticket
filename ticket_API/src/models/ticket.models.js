@@ -1,43 +1,32 @@
 import mongoose from "mongoose";
 
-const ticketSchema = new mongoose.Schema({
-    title: {
-        type: String,
-        required: true
-    },
-    description: {
-        type: String,
-        required: true
-    },
-    date: {
-        type: Date,
-        required: true
-    },
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true
-    },
-    status: {
-        type: String,
-        enum: ["open", "in progress", "closed"],
-        default: "open"
-    },
+const TicketSchema = new mongoose.Schema({
 
-    price : {
-        type: Number,
-        required: true
+  orderId: {
+     type: mongoose.Schema.Types.ObjectId,
+      ref: "Order", required: true 
     },
-    seat_number : {
-        type: String,
-        required: true
+  ticketTypeId: {
+     type: mongoose.Schema.Types.ObjectId,
+     ref: "TicketType", required: true 
     },
-    available: {
-        type: Boolean,
-        default: true
-    }
+    UserId: {
+     type: mongoose.Schema.Types.ObjectId,
+      ref: "User", required: true 
+  },
+  qrCode: {
+     type: String,
+      required: true 
+    }, // dữ liệu QR (base64)
+  isUsed: { 
+    type: Boolean,
+     default: false },
+  usedAt: { 
+    type: Date, 
+    default: null 
+  },
+
+
 }, { timestamps: true });
 
-const Ticket = mongoose.model("Ticket", ticketSchema);
-
-export default Ticket;
+export default mongoose.model("Ticket", TicketSchema);

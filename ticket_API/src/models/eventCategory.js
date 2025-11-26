@@ -14,5 +14,5 @@ const eventCategorySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const EventCategory = mongoose.model("EventCategory", eventCategorySchema);
-
+    
 export default EventCategory;
