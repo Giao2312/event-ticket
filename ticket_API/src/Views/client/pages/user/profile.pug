@@ -1,0 +1,127 @@
+
+extends ../../layouts/default.pug
+
+block content
+  .bg-gray-50.min-h-screen.py-12
+    .container.mx-auto.px-4
+      .max-w-6xl.mx-auto
+        .grid.grid-cols-1.lg.grid-cols-4.gap-8
+          // Sidebar Menu
+          .lg.col-span-1
+            .bg-white.rounded-3xl.shadow-sm.overflow-hidden.border.border-gray-100
+              .p-8.text-center.bg-gradient-to-b.from-green-50.to-white
+                .relative.inline-block
+                  .w-24.h-24.bg-[#00b14f].text-white.rounded-full.flex.items-center.justify-center.text-4xl.font-black.mx-auto.shadow-xl.shadow-green-100 #{user.name[0]}
+                  button.absolute.bottom-0.right-0.bg-white.p-2.rounded-full.shadow-md.border.border-gray-100.text-xs 📷
+                h3.font-black.text-gray-900.mt-4.text-lg #{user.name}
+                p.text-xs.text-gray-400.mt-1 ID: 882910 | Thành viên Bạc
+              
+              nav.p-4.space-y-1
+                a(href="#info" onclick="switchTab('info')" id="btn-info" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all bg-green-50 text-[#00b14f]")
+                  span 👤
+                  | Thông tin cá nhân
+                a(href="#transactions" onclick="switchTab('transactions')" id="btn-transactions" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm text-gray-500 hover:bg-gray-50 transition-all")
+                  span 💳
+                  | Lịch sử giao dịch
+                a(href="/my-tickets" class="flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm text-gray-500 hover:bg-gray-50 transition-all")
+                  span 🎟️
+                  | Vé của tôi
+                a(href="#" class="flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm text-gray-500 hover:bg-gray-50 transition-all")
+                  span 🎁
+                  | Ví Voucher
+                hr.my-2.border-gray-100
+                a(href="/logout" class="flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm text-red-500 hover:bg-red-50 transition-all")
+                  span 🚪
+                  | Đăng xuất
+
+          // Main Content Area
+          .lg.col-span-3.space-y-6
+            // Tab: Personal Info
+            #tab-info.bg-white.rounded-[32px].shadow-sm.p-8.border.border-gray-100.animate-in.fade-in.duration-500
+              .flex.items-center.justify-between.mb-8
+                h2.text-2xl.font-black.text-gray-900 Thông tin cá nhân
+                span.text-[10px].bg-gray-100.px-3.py-1.rounded-full.font-black.text-gray-400 CẬP NHẬT LẦN CUỐI: 20/10/2023
+              
+              form(action="/profile/update" method="POST" class="space-y-8")
+                .grid.grid-cols-1.md.grid-cols-2.gap-8
+                  div
+                    label.block.text-[10px].font-black.text-gray-400.uppercase.tracking-widest.mb-2 Họ và tên
+                    input(type="text" name="name" value=user.name class="w-full p-4 bg-gray-50 border border-transparent rounded-2xl font-bold focus:bg-white focus:ring-2 focus:ring-[#00b14f] focus:border-transparent outline-none transition-all")
+                  div
+                    label.block.text-[10px].font-black.text-gray-400.uppercase.tracking-widest.mb-2 Số điện thoại
+                    input(type="text" name="phone" placeholder="0901 xxx xxx" class="w-full p-4 bg-gray-50 border border-transparent rounded-2xl font-bold focus:bg-white focus:ring-2 focus:ring-[#00b14f] outline-none transition-all")
+                  div
+                    label.block.text-[10px].font-black.text-gray-400.uppercase.tracking-widest.mb-2 Email liên kết
+                    input(type="email" name="email" value="admin@example.com" disabled class="w-full p-4 bg-gray-100 border border-transparent rounded-2xl font-bold text-gray-400 cursor-not-allowed")
+                  div
+                    label.block.text-[10px].font-black.text-gray-400.uppercase.tracking-widest.mb-2 Ngày sinh
+                    input(type="date" name="dob" class="w-full p-4 bg-gray-50 border border-transparent rounded-2xl font-bold focus:bg-white focus:ring-2 focus:ring-[#00b14f] outline-none transition-all")
+                
+                div
+                  label.block.text-[10px].font-black.text-gray-400.uppercase.tracking-widest.mb-2 Địa chỉ thường trú
+                  textarea(name="address" rows="3" class="w-full p-4 bg-gray-50 border border-transparent rounded-2xl font-bold focus:bg-white focus:ring-2 focus:ring-[#00b14f] outline-none transition-all" placeholder="Số nhà, tên đường, phường/xã...")
+
+                .pt-6.border-t.border-gray-50.flex.items-center.justify-between
+                  p.text-xs.text-gray-400 Thông tin của bạn được bảo mật theo tiêu chuẩn SSL.
+                  button(type="submit" class="bg-[#00b14f] text-white px-10 py-4 rounded-2xl font-black text-sm hover:bg-[#009643] transition-all shadow-xl shadow-green-100 active:scale-95") LƯU THAY ĐỔI
+
+            // Tab: Transaction History
+            #tab-transactions(class="hidden bg-white rounded-[32px].shadow-sm.p-8.border.border-gray-100 animate-in.slide-in-from-bottom-4.duration-500")
+              .flex.items-center.justify-between.mb-8
+                h2.text-2xl.font-black.text-gray-900 Lịch sử giao dịch
+                button.text-xs.font-bold.text-indigo-600 Xuất báo cáo (PDF)
+              
+              .overflow-x-auto
+                table.w-full
+                  thead
+                    tr.text-left.border-b.border-gray-50
+                      th.pb-4.text-[10px].font-black.text-gray-400.uppercase.tracking-widest Mã đơn hàng
+                      th.pb-4.text-[10px].font-black.text-gray-400.uppercase.tracking-widest Sự kiện
+                      th.pb-4.text-[10px].font-black.text-gray-400.uppercase.tracking-widest Tổng tiền
+                      th.pb-4.text-[10px].font-black.text-gray-400.uppercase.tracking-widest Trạng thái
+                  tbody
+                    each trans in transactions
+                      tr.border-b.border-gray-50.last:border-0.group.hover:bg-gray-50/50.transition-colors
+                        td.py-6
+                          span.font-black.text-sm.text-gray-900 ##{trans.id}
+                          div.text-[10px].text-gray-400.font-bold #{trans.date}
+                        td.py-6
+                          div.font-bold.text-sm.text-gray-700.line-clamp-1 #{trans.eventName}
+                          div.text-[10px].text-indigo-500.font-black #{trans.method}
+                        td.py-6
+                          span.font-black.text-[#00b14f] #{trans.amount.toLocaleString()}đ
+                        td.py-6
+                          if trans.status === 'PAID'
+                            span.px-3.py-1.bg-green-100.text-green-600.rounded-full.text-[10px].font-black HOÀN TẤT
+                          else if trans.status === 'CANCELLED'
+                            span.px-3.py-1.bg-red-100.text-red-600.rounded-full.text-[10px].font-black ĐÃ HỦY
+                          else
+                            span.px-3.py-1.bg-orange-100.text-orange-600.rounded-full.text-[10px].font-black CHỜ THANH TOÁN
+
+  script.
+    function switchTab(tabName) {
+      // Hide all tabs
+      document.getElementById('tab-info').classList.add('hidden');
+      document.getElementById('tab-transactions').classList.add('hidden');
+      
+      // Remove active styles from buttons
+      const buttons = document.querySelectorAll('.tab-btn');
+      buttons.forEach(btn => {
+        btn.classList.remove('bg-green-50', 'text-[#00b14f]');
+        btn.classList.add('text-gray-500');
+      });
+
+      // Show selected tab
+      document.getElementById('tab-' + tabName).classList.remove('hidden');
+      
+      // Add active styles to selected button
+      const activeBtn = document.getElementById('btn-' + tabName);
+      activeBtn.classList.add('bg-green-50', 'text-[#00b14f]');
+      activeBtn.classList.remove('text-gray-500');
+    }
+
+    // Khởi tạo tab từ URL hash nếu có
+    window.onload = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'transactions') switchTab('transactions');
+    };
