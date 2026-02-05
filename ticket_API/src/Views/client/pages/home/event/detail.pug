@@ -1,0 +1,72 @@
+
+extends ../../layouts/default.pug
+
+block content
+  .relative.h-96.w-full
+    img(src=event.image class="w-full h-full object-cover")
+    .absolute.inset-0.bg-gradient-to-t.from-black.to-transparent.opacity-70
+    .absolute.bottom-0.left-0.p-10.text-white
+      .container.mx-auto
+        span.bg-indigo-600.px-4.py-1.rounded-full.text-xs.font-black.uppercase #{event.category}
+        h1.text-5xl.font-black.mt-4 #{event.title}
+        p.mt-2.text-indigo-200.font-bold #{event.date} | #{event.location}
+
+  .container.mx-auto.px-6.py-16
+    .grid.grid-cols-1.lg.grid-cols-3.gap-12
+      .lg.col-span-2
+        h2.text-3xl.font-black.text-gray-900.mb-6 Giới thiệu sự kiện
+        p.text-gray-600.leading-relaxed.text-lg.mb-10 #{event.description}
+        
+        h2.text-3xl.font-black.text-gray-900.mb-6 Bản đồ đường đi
+        // Container cho Google Maps
+        #map.w-full.h-96.rounded-3xl.shadow-2xl.border-4.border-white
+
+      .lg.col-span-1
+        .bg-white.p-8.rounded-3xl.shadow-xl.sticky.top-28.border.border-gray-100
+          h3.text-xl.font-black.mb-6 Thông tin vé
+          .flex.justify-between.items-center.mb-8
+            span.text-gray-400.font-bold Giá chỉ từ
+            span.text-3xl.font-black.text-indigo-600 #{event.price > 0 ? event.price.toLocaleString() + 'đ' : 'Miễn phí'}
+          
+          a(href=`/booking/${event.id}` class="block w-full bg-indigo-600 text-white text-center font-black py-4 rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 uppercase tracking-widest") Đặt vé ngay
+          
+          .mt-6.pt-6.border-t.border-dashed.border-gray-200
+            .flex.items-center.gap-4.mb-4
+              .w-10.h-10.bg-indigo-50.rounded-full.flex.items-center.justify-center.text-indigo-600 📅
+              div
+                .text-xs.font-black.text-gray-400.uppercase Thời gian
+                .text-sm.font-bold #{event.date}
+            .flex.items-center.gap-4
+              .w-10.h-10.bg-indigo-50.rounded-full.flex.items-center.justify-center.text-indigo-600 📍
+              div
+                .text-xs.font-black.text-gray-400.uppercase Địa điểm
+                .text-sm.font-bold #{event.location}
+
+  // Google Maps Script
+  script.
+    function initMap() {
+      const location = { lat: !{event.coordinates.lat}, lng: !{event.coordinates.lng} };
+      const map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 15,
+        center: location,
+        styles: [
+          {
+            "featureType": "all",
+            "elementType": "labels.text.fill",
+            "stylers": [{"saturation": 36}, {"color": "#333333"}, {"luma": 40}]
+          },
+          {
+            "featureType": "water",
+            "elementType": "geometry",
+            "stylers": [{"color": "#e9e9e9"}, {"lightness": 17}]
+          }
+        ]
+      });
+      new google.maps.Marker({
+        position: location,
+        map: map,
+        title: "!{event.title}",
+        animation: google.maps.Animation.DROP
+      });
+    }
+  script(src=`https://maps.googleapis.com/maps/api/js?callback=initMap` async defer)

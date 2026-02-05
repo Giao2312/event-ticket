@@ -1,0 +1,34 @@
+
+extends ../../layouts/default.pug
+
+block content
+  // Category Banner
+  .bg-[#1a1a1a].py-16
+    .container.mx-auto.px-4.text-center
+      span.text-[#00b14f].font-black.uppercase.tracking-[0.3em].text-xs KHÁM PHÁ
+      h1.text-4xl.md.text-5xl.font-black.text-white.mt-4 #{categoryName}
+      p.text-gray-400.mt-4.max-w-2xl.mx-auto Tìm thấy #{events.length} sự kiện nổi bật trong danh mục này. Hãy chọn cho mình một trải nghiệm tuyệt vời nhất.
+
+  .container.mx-auto.px-4.py-12
+    if events.length > 0
+      .grid.grid-cols-1.sm.grid-cols-2.lg.grid-cols-4.gap-8
+        each event in events
+          .bg-white.rounded-3xl.overflow-hidden.border.border-gray-100.shadow-sm.hover:shadow-xl.transition-all.group.cursor-pointer(onclick=`window.location.href='/event/${event.id}'`)
+            .relative.h-48.overflow-hidden
+              img(src=event.image class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700")
+              .absolute.top-4.right-4.bg-white/90.backdrop-blur-sm.px-3.py-1.rounded-full.text-[10px].font-black.text-[#00b14f] #{event.category}
+            .p-6
+              .text-gray-400.text-[10px].font-black.uppercase.mb-2 #{event.date}
+              h3.text-lg.font-bold.text-gray-900.mb-2.line-clamp-2.group-hover:text-[#00b14f] transition-colors #{event.title}
+              p.text-gray-500.text-xs.mb-6.flex.items-center.gap-1
+                span 📍
+                | #{event.location}
+              .flex.items-center.justify-between.pt-4.border-t.border-dashed.border-gray-100
+                .text-[10px].text-gray-400.font-black.uppercase GIÁ TỪ
+                .text-[#00b14f].font-black.text-lg #{event.price > 0 ? event.price.toLocaleString() + 'đ' : 'Miễn phí'}
+    else
+      .text-center.py-20
+        .text-6xl.mb-6 🌵
+        h3.text-2xl.font-black.text-gray-900 Hiện tại chưa có sự kiện nào
+        p.text-gray-500.mt-2 Hãy quay lại sau hoặc khám phá các danh mục khác.
+        a(href="/" class="inline-block mt-8 bg-[#00b14f] text-white px-8 py-3 rounded-xl font-black text-sm hover:bg-[#009643]") VỀ TRANG CHỦ

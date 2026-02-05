@@ -1,3 +1,4 @@
+// models/Order.js
 import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema({
@@ -13,17 +14,17 @@ const orderSchema = new mongoose.Schema({
     required: true
   },
 
-  ticketTypeId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "TicketType",
-    required: true
-  },
-
-  quantity: {
-    type: Number,
-    required: true,
-    min: 1
-  },
+  items: [
+    {
+      ticketTypeId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "TicketType",
+        required: true
+      },
+      quantity: Number,
+      price: Number
+    }
+  ],
 
   totalAmount: {
     type: Number,
@@ -32,8 +33,8 @@ const orderSchema = new mongoose.Schema({
 
   paymentMethod: {
     type: String,
-    enum: ["VNPay", "MoMo", "ZaloPay", "Cash"],
-    required: true
+    enum: ["COD", "VNPay", "MoMo"],
+    default: "COD"
   },
 
   status: {
@@ -42,11 +43,7 @@ const orderSchema = new mongoose.Schema({
     default: "PENDING"
   },
 
-  paidAt: {
-    type: Date,
-    default: null
-  }
-
+  paidAt: Date
 }, { timestamps: true });
 
 export default mongoose.model("Order", orderSchema);
