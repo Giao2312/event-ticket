@@ -1,7 +1,7 @@
 import express from "express";
 import ticketController from "../../controllers/clients/ticket.controllers.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
-import { authorize } from "../../middlewares/role.middleware.js";
+import { roleMiddleware} from "../../middlewares/role.middleware.js";
 
 const router = express.Router();
 
@@ -9,7 +9,7 @@ const router = express.Router();
 router.post(
   "/check-in",
   authMiddleware,
-  authorize("admin"),
+  roleMiddleware("admin"),
   ticketController.checkInByQRCode
 );
 

@@ -1,59 +1,74 @@
-
-import eventModel from '../../models/event.models.js';
+// controllers/event.controller.js
+import { param, query } from 'express-validator';
+import Event from '../../models/event.models.js';
 
 const eventController = {
-  detail: async (req, res) => {
-    try {
-      const id = req.params.id;
-      const event = await eventModel.getById(id);
-      
-      if (!event) {
-        return res.status(404).send('Không tìm thấy sự kiện');
+  detail: [
+    param('id').isMongoId().withMessage('Invalid event ID'),
+    async (req, res) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+      try {
+        const event = await Event.findById(req.params.id);
+        if (!event) return res.status(404).send('Không tìm thấy sự kiện');
+
+        const available = event.availableTickets;
+
+        res.render('client/pages/event/detail', {
+          pageTitle: `${event.title} - Ticketbox`,
+          event,
+          available
+        });
+      } catch (err) {
+        logger.error(err);
+        res.status(500).send('Lỗi Server');
       }
-
-      res.render('client/pages/event/detail', {
-        pageTitle: `${event.title} - Ticketbox`,
-        event: event
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).send('Lỗi Server');
     }
-  },
+  ],
 
-  category: async (req, res) => {
-    try {
-      const slug = req.params.slug;
-      const categoryMap = {
-        'nhac-song': 'Âm nhạc',
-        'san-khau': 'Sân khấu',
-        'the-thao': 'Thể thao',
-        'hoi-thao': 'Hội thảo',
-        'trai-nghiem': 'Tham quan',
-        'khac': 'Khác',
-        've-ban-lai': 'Vé bán lại'
-      };
+  category: [
+    query('slug').optional().isString(),
+    async (req, res) => {
+      try {
+        const slug = req.params.slug;
+        const categoryMap = { /* ... */ };
+        const categoryName = categoryMap[slug] || 'Tất cả';
 
-      const categoryName = categoryMap[slug] || 'Sự kiện';
-      const events = await eventModel.getFilteredEvents({ category: categoryName });
+        const page = Number.parseInt(req.query.page) || 1;
+        const limit = 10;
+        const skip = (page - 1) * limit;
 
-      res.render('client/pages/event/category', {
-        pageTitle: `${categoryName} - Ticketbox`,
-        categoryName: categoryName,
-        events: events
-      });
-    } catch (error) {
-      res.status(500).send('Lỗi Server');
+        const events = await Event.find({ category: categoryName })
+          .skip(skip)
+          .limit(limit);
+
+        const total = await Event.countDocuments({ category: categoryName });
+
+        res.render('client/pages/event/category', {
+          pageTitle: `${categoryName} - Ticketbox`,
+          categoryName,
+          events,
+          pagination: { page, totalPages: Math.ceil(total / limit) }
+        });
+      } catch (err) {
+        logger.error(err);
+        res.status(500).send('Lỗi Server');
+      }
     }
-  },
+  ],
 
-  booking: async (req, res) => {
-    res.send('Trang đặt vé');
-  },
+    booking: [authMiddleware, async (req, res) => {
 
-  confirmBooking: async (req, res) => {
-    res.send('Xác nhận đặt vé');
-  }
+    res.render('client/pages/event/booking', { pageTitle: 'Đặt vé' });
+  }],
+
+  confirmBooking: [authMiddleware, async (req, res) => {
+   
+    res.render('client/pages/event/confirm', { pageTitle: 'Xác nhận đặt vé' });
+  }]
+
 };
+
 
 export default eventController;

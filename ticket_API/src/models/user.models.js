@@ -35,8 +35,11 @@ userSchema.index({ role: 1 }); // Để query admin/user nhanh
 
 // Hook hash password
 userSchema.pre('save', async function (next) {
+  console.log('Pre-save hook triggered for user:', this.email);
   if (!this.isModified('password')) return next();
+  console.log('Hashing password for:', this.email);
   this.password = await bcrypt.hash(this.password, 10);
+  console.log('Hashed password:', this.password);
   next();
 });
 
@@ -52,6 +55,7 @@ userSchema.methods.generateResetToken = function () {
   this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 min
   return resetToken;
 };
+
 
 const User = mongoose.model('User', userSchema);
 
