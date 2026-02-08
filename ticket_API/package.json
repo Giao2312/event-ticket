@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "main": "server.js",
   "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js",
-    "dev": "nodemon server.js"
-  },
+"scripts": {
+  "start": "node server.js",
+  "dev": "nodemon server.js",
+  "lint": "eslint . --ext .js",
+  "format": "prettier --write .",
+  "test": "echo \"No tests yet\" && exit 0"   
+},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Giao2312/event-ticket.git"
@@ -20,17 +22,19 @@
   "homepage": "https://github.com/Giao2312/event-ticket#readme",
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "bootstrap": "^5.3.8",
-    "crypto": "^1.0.1",
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2",
     "jsonwebtoken": "^9.0.3",
-    "mongodb": "^6.20.0",
     "mongoose": "^8.19.3",
     "nodemon": "^3.1.10",
-    "path": "^0.12.7",
     "pug": "^3.0.3",
     "qrcode": "^1.5.4"
   },
-  "description": ""
+
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+   
+  },
+  "description": "Event ticketing system backend with Node.js, Express, MongoDB",
+
 }
