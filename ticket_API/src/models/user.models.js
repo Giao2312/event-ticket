@@ -1,43 +1,50 @@
+// models/User.js
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-
   email: {
     type: String,
-    required: true,
+    required: [true, 'Email là bắt buộc'],
     unique: true,
-    lowercase: true
+    lowercase: true,
+    trim: true,
+    match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
   },
-
   password: {
     type: String,
-    required: true,
-    select: false
+    required: [true, 'Mật khẩu là bắt buộc'],
+    minlength: [6, 'Mật khẩu phải ít nhất 6 ký tự']
   },
-
-  phone: {
-    type: String,
-    default: ''
-  },
-
-  dob: Date,
-
-  address: {
-    type: String,
-    default: ''
-  },
-
   role: {
     type: String,
     enum: ['user', 'admin'],
     default: 'user'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
+});
 
-}, { timestamps: true });
+// Hash password trước khi lưu vào DB
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
-export default mongoose.model('User', userSchema);
+// Phương thức so sánh password khi login
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+const User = mongoose.model('User', userSchema);
+
+export default User;

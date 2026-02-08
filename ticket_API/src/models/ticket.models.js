@@ -1,47 +1,44 @@
-import mongoose from "mongoose";
+// models/Ticket.js
+import mongoose from 'mongoose';
 
-const TicketSchema = new mongoose.Schema({
-
-  order: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Order",
-    required: true
-  },
-
-  event: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Event",
-    required: true
-  },
-
+const ticketSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: 'User',
     required: true
   },
-
-  ticketType: {
+  event: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "TicketType"
+    ref: 'Event',
+    required: true
   },
-
-  qrCode: {
+  ticketType: {
     type: String,
     required: true
   },
-
-  isUsed: {
-    type: Boolean,
-    default: false
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1
   },
-
-  usedAt: Date,
-
-  checkedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
+  price: {
+    type: Number,
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'paid', 'cancelled'],
+    default: 'pending'
+  },
+  qrCode: {
+    type: String   // Lưu đường dẫn hoặc data QR sau này
+  },
+  purchasedAt: {
+    type: Date,
+    default: Date.now
   }
+});
 
-}, { timestamps: true });
+const Ticket = mongoose.model('Ticket', ticketSchema);
 
-export default mongoose.model("Ticket", TicketSchema);
+export default Ticket;

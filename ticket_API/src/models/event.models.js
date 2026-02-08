@@ -1,71 +1,46 @@
-import mongoose from "mongoose";
+// models/Event.js
+import mongoose from 'mongoose';
+
+const ticketTypeSchema = new mongoose.Schema({
+  type: { type: String, required: true }, // 'VIP', 'Normal', 'Student'
+  price: { type: Number, required: true, min: 0 },
+  quantity: { type: Number, required: true, min: 1 },
+  sold: { type: Number, default: 0 }
+});
 
 const eventSchema = new mongoose.Schema({
-  title: {
+  name: {
     type: String,
-    required: true,
+    required: [true, 'Tên sự kiện là bắt buộc'],
     trim: true
   },
-
-  slug: {
-    type: String,
-    required: true,
-    unique: true
-  },
-
   description: {
     type: String,
-    default: ""
+    trim: true
   },
-
-  category: {
-    type: String,
-    required: true,
-    index: true
+  date: {
+    type: Date,
+    required: [true, 'Ngày sự kiện là bắt buộc']
   },
-
-  image: {
-    type: String,
-    default: ""
-  },
-
   location: {
     type: String,
-    required: true
+    required: [true, 'Địa điểm là bắt buộc']
   },
-
-  startDate: {
-    type: Date,
-    required: true
-  },
-
-  endDate: {
-    type: Date,
-    required: true
-  },
-
-  price: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-
-  venue: {
+  organizer: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Venue"
+    ref: 'User',
+    required: true
   },
-
-  status: {
-    type: String,
-    enum: ["scheduled", "ongoing", "completed", "cancelled"],
-    default: "scheduled"
+  ticketTypes: [ticketTypeSchema],
+  totalTickets: {
+    type: Number,
+    default: function () {
+      return this.ticketTypes.reduce((sum, t) => sum + t.quantity, 0);
+    }
   },
+  createdAt: { type: Date, default: Date.now }
+});
 
-  isFeatured: {
-    type: Boolean,
-    default: false
-  }
+const Event = mongoose.model('Event', eventSchema);
 
-}, { timestamps: true });
-
-export default mongoose.model("Event", eventSchema);
+export default Event;
