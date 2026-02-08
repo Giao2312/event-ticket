@@ -21,28 +21,36 @@ html(lang="vi")
       block content
 
     footer(class="bg-[#1a1a1a] text-white py-16 mt-0")
-      .container.mx-auto.px-4
-        .grid.grid-cols-1.md:grid-cols-4.gap-12
-          div
-            h2.text-2xl.font-black.mb-6 ticketbox
-            p.text-gray-400.text-sm
-              | Tận hưởng những khoảnh khắc tuyệt vời nhất cùng Ticketbox.
-          div
-            h4.font-bold.mb-4 Liên kết
-            ul.text-gray-400.text-sm.space-y-2
-              li: a(href="#") Về chúng tôi
-              li: a(href="#") Điều khoản
-              li: a(href="#") Bảo mật
-          div
-            h4.font-bold.mb-4 Hỗ trợ
-            ul.text-gray-400.text-sm.space-y-2
-              li: a(href="#") Trung tâm trợ giúp
-              li: a(href="#") Quy trình mua vé
-          div
-            h4.font-bold.mb-4 Theo dõi
-            .flex.gap-4.mt-4
-              .w-10.h-10.bg-white/10.rounded-full.flex.items-center.justify-center f
-              .w-10.h-10.bg-white/10.rounded-full.flex.items-center.justify-center i
+  .container.mx-auto.px-4
+    div(class="grid grid-cols-1 md:grid-cols-4 gap-12")
+      //- Cột 1: Giới thiệu
+      div
+        h2.text-2xl.font-black.mb-6 ticketbox
+        p.text-gray-400.text-sm
+          | Tận hưởng những khoảnh khắc tuyệt vời nhất cùng Ticketbox.
+      
+      //- Cột 2: Liên kết
+      div
+        h4.font-bold.mb-4 Liên kết
+        ul.text-gray-400.text-sm.space-y-2
+          li: a(href="#" class="hover:text-white transition-colors") Về chúng tôi
+          li: a(href="#" class="hover:text-white transition-colors") Điều khoản
+          li: a(href="#" class="hover:text-white transition-colors") Bảo mật
+      
+      //- Cột 3: Hỗ trợ
+      div
+        h4.font-bold.mb-4 Hỗ trợ
+        ul.text-gray-400.text-sm.space-y-2
+          li: a(href="#" class="hover:text-white transition-colors") Trung tâm trợ giúp
+          li: a(href="#" class="hover:text-white transition-colors") Quy trình mua vé
+      
+      //- Cột 4: Theo dõi
+      div
+        h4.font-bold.mb-4 Theo dõi
+        div(class="flex gap-4 mt-4")
+          a(href="#" class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#00b14f] transition-all") f
+          a(href="#" class="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#00b14f] transition-all") i
 
-        .border-t.border-white/10.mt-12.pt-8.text-center.text-gray-500.text-xs
-          p © 2026 Ticket-pro Clone. Toàn bộ bản quyền thuộc về đồ án tốt nghiệp.
+    //- Bản quyền
+    div(class="border-t border-white/10 mt-12 pt-8 text-center text-gray-500 text-xs")
+      p © 2026 Ticket-pro Clone. Toàn bộ bản quyền thuộc về đồ án tốt nghiệp.

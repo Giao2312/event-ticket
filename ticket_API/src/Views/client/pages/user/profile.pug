@@ -67,7 +67,6 @@ block content
 
             // Tab: Transaction History
             #tab-transactions(class="hidden bg-white rounded-[32px].shadow-sm.p-8.border.border-gray-100 animate-in.slide-in-from-bottom-4.duration-500")
-              .flex.items-center.justify-between.mb-8
                 h2.text-2xl.font-black.text-gray-900 Lịch sử giao dịch
                 button.text-xs.font-bold.text-indigo-600 Xuất báo cáo (PDF)
               
@@ -85,6 +84,7 @@ block content
                         td.py-6
                           span.font-black.text-sm.text-gray-900 ##{trans.id}
                           div.text-[10px].text-gray-400.font-bold #{trans.date}
+                          | #{new Date(trans.date).toLocaleDateString('vi-VN')}
                         td.py-6
                           div.font-bold.text-sm.text-gray-700.line-clamp-1 #{trans.eventName}
                           div.text-[10px].text-indigo-500.font-black #{trans.method}

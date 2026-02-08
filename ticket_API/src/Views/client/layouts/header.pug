@@ -1,15 +1,15 @@
 header
-  // Top Header (Green Section)
+  //- Top Header (Green Section)
   div(class="bg-[#00b14f] text-white py-3")
-    .container.mx-auto.px-4.flex.items-center.justify-between
-      // Logo
+    div(class="container mx-auto px-4 flex items-center justify-between")
+      //- Logo
       a(href="/" class="flex items-center gap-1 group")
-        span(class="font-black text-3xl tracking-tighter") ticketbox
+        span(class="font-black text-3xl tracking-tighter") ticketpro
         span(class="text-xl mb-1") 🌸
 
-      // Search Bar
+      //- Search Bar - Bọc trong (class=...) vì có lg:flex
       div(class="hidden lg:flex flex-grow max-w-2xl mx-12 bg-white rounded-md overflow-hidden shadow-sm items-center")
-        .pl-4.pr-2
+        div(class="pl-4 pr-2")
           svg(class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24")
             path(
               stroke-linecap="round"
@@ -27,14 +27,14 @@ header
           class="px-6 py-3 text-gray-700 text-sm font-bold hover:bg-gray-50 transition-colors"
         ) Tìm kiếm
 
-      // Right Actions
-      .flex.items-center.gap-6
-        // Create Event
+      //- Right Actions
+      div(class="flex items-center gap-6")
+        //- Create Event - Bọc vì có xl:block
         button(
           class="hidden xl:block border border-white/80 px-6 py-2 rounded-full text-sm font-bold hover:bg-white hover:text-[#00b14f] transition-all"
         ) Tạo sự kiện
 
-        // My Tickets
+        //- My Tickets
         a(
           href="/my-tickets"
           class="flex items-center gap-2 text-sm font-bold hover:opacity-80 transition-opacity"
@@ -48,7 +48,7 @@ header
             )
           span Vé của tôi
 
-        // User Auth
+        //- User Auth
         if user
           a(href="/profile" class="flex items-center gap-2 group")
             span(class="text-sm font-bold group-hover:underline") #{user.name}
@@ -61,7 +61,7 @@ header
             class="text-sm font-bold hover:underline whitespace-nowrap"
           ) Đăng nhập | Đăng ký
 
-        // Language
+        //- Language
         div(class="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ml-2")
           span.text-2xl 🇻🇳
           svg(class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20")
@@ -69,23 +69,14 @@ header
               d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
             )
 
-  // Navigation Bar
+  //- Navigation Bar
   nav(class="bg-[#1a1a1a] text-white overflow-x-auto no-scrollbar")
-    .container.mx-auto.px-4
-      ul(
-        class="flex items-center justify-center gap-10 py-4 text-sm font-medium whitespace-nowrap"
-      )
-        li
-          a(href="/category/nhac-song" class="hover:text-[#00b14f] transition-colors") Nhạc sống
-        li
-          a(href="/category/san-khau" class="hover:text-[#00b14f] transition-colors") Sân khấu & Nghệ thuật
-        li
-          a(href="/category/the-thao" class="hover:text-[#00b14f] transition-colors") Thể thao
-        li
-          a(href="/category/hoi-thao" class="hover:text-[#00b14f] transition-colors") Hội thảo & Workshop
-        li
-          a(href="/category/trai-nghiem" class="hover:text-[#00b14f] transition-colors") Tham quan & Trải nghiệm
-        li
-          a(href="/category/khac" class="hover:text-[#00b14f] transition-colors") Khác
-        li
-          a(href="/category/ve-ban-lai" class="hover:text-[#00b14f] transition-colors") Vé bán lại
+    div(class="container mx-auto px-4")
+      ul(class="flex items-center justify-center gap-10 py-4 text-sm font-medium whitespace-nowrap")
+        li: a(href="/category/nhac-song" class="hover:text-[#00b14f] transition-colors") Nhạc sống
+        li: a(href="/category/san-khau" class="hover:text-[#00b14f] transition-colors") Sân khấu & Nghệ thuật
+        li: a(href="/category/the-thao" class="hover:text-[#00b14f] transition-colors") Thể thao
+        li: a(href="/category/hoi-thao" class="hover:text-[#00b14f] transition-colors") Hội thảo & Workshop
+        li: a(href="/category/trai-nghiem" class="hover:text-[#00b14f] transition-colors") Tham quan & Trải nghiệm
+        li: a(href="/category/khac" class="hover:text-[#00b14f] transition-colors") Khác
+        li: a(href="/category/ve-ban-lai" class="hover:text-[#00b14f] transition-colors") Vé bán lại
