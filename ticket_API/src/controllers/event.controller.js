@@ -1,6 +1,6 @@
 // controllers/event.controller.js
 import { param, query } from 'express-validator';
-import Event from '../../models/event.models.js';
+import Event from '../models/event.models.js';
 
 const eventController = {
   detail: [

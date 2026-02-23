@@ -1,8 +1,8 @@
 // controllers/ticket.controller.js
 import { body, validationResult } from 'express-validator';
-import Ticket from '../../models/ticket.models.js';
-import logger from '../../utils/logger.js';
-import {roleMiddleware} from '../../middlewares/role.middleware.js'; 
+import Ticket from '../models/ticket.models.js';
+import logger from '../utils/logger.js';
+import {roleMiddleware} from '../middlewares/role.middleware.js'; 
 
 const ticketController = {
   checkInByQRCode: [

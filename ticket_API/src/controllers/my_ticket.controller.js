@@ -1,8 +1,8 @@
-import Ticket from "../../models/ticket.models.js";
-import Order from "../../models/order.models.js";
-import TicketType from "../../models/ticketType.models.js";
-import Event from "../../models/event.models.js";
-import Venue from "../../models/venue.models.js";
+import Ticket from "../models/ticket.models.js";
+import Order from "../models/order.models.js";
+import TicketType from "../models/ticketType.models.js";
+import Event from "../models/event.models.js";
+import Venue from "../models/venue.models.js";
 
 const MyTicketsController = {
 

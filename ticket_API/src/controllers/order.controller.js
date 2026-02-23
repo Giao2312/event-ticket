@@ -1,9 +1,9 @@
 import { body, validationResult } from 'express-validator';
 import mongoose from 'mongoose';
-import Order from '../../models/order.models.js';
-import TicketType from '../../models/ticketType.models.js';
-import Ticket from '../../models/ticket.models.js';
-import logger from '../../utils/logger.js'; 
+import Order from '../models/order.models.js';
+import TicketType from '../models/ticketType.models.js';
+import Ticket from '../models/ticket.models.js';
+import logger from '../utils/logger.js'; 
 
 const OrderController = {
 

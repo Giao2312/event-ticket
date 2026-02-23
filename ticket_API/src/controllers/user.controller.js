@@ -1,8 +1,8 @@
 import { body, validationResult } from 'express-validator';
-import User from '../../models/user.model.js';
-import Order from '../../models/order.model.js';
-import logger from '../../utils/logger.js';
-import authMiddleware from '../../middlewares/auth.js';
+import User from '../models/user.model.js';
+import Order from '../models/order.model.js';
+import logger from '../utils/logger.js';
+import authMiddleware from '../middlewares/auth.js';
 
 const userController = {
   profile: [authMiddleware, async (req, res) => {
