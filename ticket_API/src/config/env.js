@@ -7,3 +7,4 @@ const env = {
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET
 
 };
+export default env;
