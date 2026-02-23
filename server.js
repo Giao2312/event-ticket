@@ -1,5 +1,5 @@
 import express from 'express';
-import connectDB from '../ticket_API/src/config/db.js';
+import connectDB from './src/config/db.js';
 import dotenv from 'dotenv';
 import router from './src/routers/index.router.js';
 import path from 'node:path';
