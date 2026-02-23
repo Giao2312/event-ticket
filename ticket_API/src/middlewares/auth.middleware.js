@@ -1,5 +1,6 @@
 import { verifyToken } from "../utils/jwt.js";
 import User from "../models/user.models.js";
+import e from "express";
 
 export const authMiddleware = async (req, res, next) => {
   try {
@@ -24,3 +25,4 @@ export const authMiddleware = async (req, res, next) => {
     return res.status(401).json({ message: "Token không hợp lệ" });
   }
 };
+export default authMiddleware;

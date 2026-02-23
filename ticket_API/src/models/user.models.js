@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import crypto from 'node:crypto'; // Để generate token reset nếu cần
+import crypto from 'node:crypto'; 
 
 const userSchema = new mongoose.Schema({
   name: { type: String, trim: true },
