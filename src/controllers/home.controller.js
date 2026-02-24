@@ -1,6 +1,6 @@
-import { query } from 'express-validator';
-import Event from '../../models/event.models.js';
-import logger from '../../utils/logger.js';
+import { query, validationResult } from 'express-validator';
+import Event from '../models/event.models.js';
+import logger from '../utils/logger.js';
 
 const homeController = {
   index: [

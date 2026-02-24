@@ -1,4 +1,3 @@
-// models/Event.js
 import mongoose from 'mongoose';
 
 const ticketTypeSchema = new mongoose.Schema({
