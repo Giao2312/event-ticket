@@ -1,4 +1,4 @@
-// models/Order.js
+
 import mongoose from 'mongoose';
 
 const orderSchema = new mongoose.Schema({
@@ -16,12 +16,12 @@ const orderSchema = new mongoose.Schema({
   paidAt: Date
 }, { timestamps: true });
 
-// Index
+
 orderSchema.index({ userId: 1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ eventId: 1 });
 
-// Virtual totalItems
+
 orderSchema.virtual('totalItems').get(function () {
   return this.items.reduce((sum, item) => sum + item.quantity, 0);
 });

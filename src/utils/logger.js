@@ -5,16 +5,16 @@ const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug', 
 
   format: format.combine(
-    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), // Thêm thời gian
-    format.errors({ stack: true }), // Hiển thị stack trace đầy đủ
+    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    format.errors({ stack: true }), 
     format.splat(),
-    format.json() // Format JSON cho production
+    format.json() 
   ),
 
-  defaultMeta: { service: 'event-ticket-system' }, // Tag để trace
+  defaultMeta: { service: 'event-ticket-system' },
 
   transports: [
-    // Log ra console (màu sắc đẹp cho dev)
+    
     new winston.transports.Console({
       format: format.combine(
         format.colorize(),
@@ -22,7 +22,7 @@ const logger = winston.createLogger({
       )
     }),
 
-    // Log error vào file riêng
+    
     new winston.transports.File({
       filename: 'logs/error.log',
       level: 'error',
@@ -32,7 +32,7 @@ const logger = winston.createLogger({
       )
     }),
 
-    // Log tất cả vào file tổng hợp
+    
     new winston.transports.File({
       filename: 'logs/combined.log',
       format: format.combine(
@@ -43,7 +43,7 @@ const logger = winston.createLogger({
   ]
 });
 
-// Nếu dev, thêm log debug chi tiết hơn
+
 if (process.env.NODE_ENV !== 'production') {
   logger.add(new winston.transports.Console({
     format: format.combine(

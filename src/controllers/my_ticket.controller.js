@@ -6,10 +6,7 @@ import Venue from "../models/venue.models.js";
 
 const MyTicketsController = {
 
-  /**
-   * GET /my-tickets
-   * Danh sách vé của user
-   */
+
   async index(req, res) {
     try {
       const userId = req.user._id;
@@ -44,10 +41,7 @@ const MyTicketsController = {
     }
   },
 
-  /**
-   * GET /my-tickets/:ticketId
-   * Chi tiết 1 vé
-   */
+
   async detail(req, res) {
     try {
       const userId = req.user._id;

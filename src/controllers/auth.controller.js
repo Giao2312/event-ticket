@@ -1,11 +1,11 @@
-// controllers/clients/auth.controller.js
+
 import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import User from '../models/user.models.js';
 import { signToken, signRefreshToken } from '../utils/jwt.js'; 
 import logger from '../utils/logger.js';
 
-// Export từng function riêng (named export)
+
 export const register = [
   body('name').trim().isLength({ min: 3 }).withMessage('Tên không hợp lệ'),
   body('email').isEmail().normalizeEmail().withMessage('Email không hợp lệ'),

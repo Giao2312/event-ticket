@@ -1,4 +1,4 @@
-// controllers/dashboard.controller.js
+
 import Order from '../models/order.models.js';
 import Event from '../models/event.models.js';
 import Ticket from '../models/ticket.models.js';
@@ -26,7 +26,7 @@ const DashboardController = {
 
   adminDashboard: [roleMiddleware('admin'), async (req, res) => {
     try {
-      // Aggregate analytics (doanh thu tổng, vé bán, sự kiện active)
+
       const totalRevenue = await Order.aggregate([{ $match: { status: 'PAID' } }, { $group: { _id: null, total: { $sum: '$totalAmount' } } }]);
       const totalTicketsSold = await Ticket.countDocuments();
       const activeEvents = await Event.find({ status: 'upcoming' }).countDocuments();

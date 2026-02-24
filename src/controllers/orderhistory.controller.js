@@ -1,9 +1,7 @@
-import Order from "../../models/order.models.js";
+import Order from "../models/order.models.js";
 
 const orderHistoryController = {
-  /**
-   * GET /profile#transactions
-   */
+
   async getOrderHistory(req, res) {
     try {
       const userId = req.user._id;

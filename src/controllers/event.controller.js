@@ -1,4 +1,4 @@
-// controllers/event.controller.js
+
 import { param, query } from 'express-validator';
 import Event from '../models/event.models.js';
 
@@ -15,10 +15,15 @@ const eventController = {
 
         const available = event.availableTickets;
 
+        const minPrice = event.ticketTypes?.length > 0 
+        ? Math.min(...event.ticketTypes.map(t => t.price)) 
+        : 0;
+
         res.render('client/pages/event/detail', {
           pageTitle: `${event.title} - Ticketbox`,
           event,
-          available
+          available,
+          minPrice: minPrice.toLocaleString('vi-VN'),
         });
       } catch (err) {
         logger.error(err);

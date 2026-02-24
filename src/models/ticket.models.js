@@ -1,6 +1,6 @@
-// models/Ticket.js
+
 import mongoose from 'mongoose';
-import QRCode from 'qrcode'; // Import npm qrcode
+import QRCode from 'qrcode'; 
 
 const ticketSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -13,16 +13,14 @@ const ticketSchema = new mongoose.Schema({
   purchasedAt: { type: Date, default: Date.now }
 });
 
-// Index
 ticketSchema.index({ qrCode: 1 }, { unique: true });
 ticketSchema.index({ event: 1, user: 1 });
 
-// Virtual isValid (kiểm tra vé còn hạn)
 ticketSchema.virtual('isValid').get(function () {
-  return this.event.date > new Date(); // Ví dụ: valid nếu event chưa kết thúc
+  return this.event.date > new Date(); 
 });
 
-// Hook generate QR trước save
+
 ticketSchema.pre('save', async function (next) {
   if (!this.qrCode) {
     const qrData = { id: this._id, user: this.user, event: this.event, type: this.ticketType };

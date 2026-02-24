@@ -5,7 +5,6 @@ import { roleMiddleware} from "../../middlewares/role.middleware.js";
 
 const router = express.Router();
 
-// Check-in vé bằng QR
 router.post(
   "/check-in",
   authMiddleware,

@@ -19,16 +19,16 @@ const eventSchema = new mongoose.Schema({
   organizer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   ticketTypes: [ticketTypeSchema],
   status: { type: String, enum: ['upcoming', 'ongoing', 'past'], default: 'upcoming' },
-  image: { type: String, default: '' }, // Thêm cho banner
+  image: { type: String, default: '' }, 
   createdAt: { type: Date, default: Date.now }
 });
 
-// Index cho query
+
 eventSchema.index({ date: 1 });
 eventSchema.index({ location: 1 });
 eventSchema.index({ organizer: 1 });
 
-// Virtual totalTickets và availableTickets
+
 eventSchema.virtual('totalTickets').get(function () {
   return this.ticketTypes.reduce((sum, t) => sum + t.quantity, 0);
 });
@@ -36,11 +36,11 @@ eventSchema.virtual('availableTickets').get(function () {
   return this.ticketTypes.reduce((sum, t) => sum + (t.quantity - t.sold), 0);
 });
 
-// Hook tự động update status trước save/query
+
 eventSchema.pre('save', function (next) {
   const now = new Date();
   if (this.date < now) this.status = 'past';
-  else if (this.date < now + 24 * 60 * 60 * 1000) this.status = 'ongoing'; // Ví dụ: trong 1 ngày
+  else if (this.date < now + 24 * 60 * 60 * 1000) this.status = 'ongoing';
   next();
 });
 

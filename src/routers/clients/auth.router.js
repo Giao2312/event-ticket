@@ -1,4 +1,4 @@
-// src/routers/clients/auth.router.js
+
 import express from "express";
 import { register, login, logout } from "../../controllers/auth.controller.js";  // ← named import
 

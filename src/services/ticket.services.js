@@ -11,10 +11,9 @@ class TicketService {
         timestamp : Date.now()
       };
 
-      // Tạo QR code từ payload
       const qrcode = await generateQR(qrplayload);
 
-      //lưu vé vào db
+   
       const ticket = await Ticket.create({
         orderId: order._id,
         ticketTypeId: ticketTypeId,
@@ -23,7 +22,7 @@ class TicketService {
       return ticket;
     }
 
-    // Lấy vé theo orderId
+
     static async getTicketsByOrderId(orderId){
       return await Ticket.find({ orderId });
     }

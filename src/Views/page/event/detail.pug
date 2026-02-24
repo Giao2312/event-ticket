@@ -1,0 +1,160 @@
+
+extends ../../layout
+
+block content
+
+  .bg-cover.bg-center.py-5.position-relative(style=`background-image: url('${event.image || 'https://via.placeholder.com/1200x500?text=' + event.name}'); min-height: 500px;`)
+    .container.text-white.text-center.py-5.position-relative.z-2
+      h1.display-4.fw-bold.mb-3= event.name
+      p.lead.mb-2
+        i.fas.fa-calendar-alt.me-2
+        | #{event.date.toLocaleString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+      p.lead.mb-4
+        i.fas.fa-map-marker-alt.me-2
+        | #{event.location}
+      if event.availableTickets > 0
+        span.badge.bg-success.fs-4.px-4.py-2.mb-3.d-inline-block Còn #{event.availableTickets} vé
+      else
+        span.badge.bg-danger.fs-4.px-4.py-2.mb-3.d-inline-block Hết vé
+      h3.text-warning.fw-bold Từ #{minPrice} VNĐ
+
+      // Countdown timer (5 phút chọn vé)
+      .bg-dark.bg-opacity-75.rounded.p-4.mt-4.d-inline-block
+        h5.mb-2 Thời gian chọn vé (10 phút)
+        #countdown.fs-3.fw-bold.text-warning 10:00
+
+  .container.mt-5
+    .row.g-5
+      // Left: Mô tả + gallery
+      .col-lg-8
+        h2 Mô tả sự kiện
+        p.lead= event.description
+
+        // Gallery ảnh (carousel nếu có nhiều ảnh)
+        if event.images && event.images.length > 0
+          .carousel.slide.shadow-lg#eventGallery(data-bs-ride="carousel")
+            .carousel-inner
+              each img, index in event.images
+                .carousel-item(class=index === 0 ? 'active' : '')
+                  img.d-block.w-100.rounded(src=img, alt=event.name + ' ảnh ' + (index + 1), loading="lazy")
+            button.carousel-control-prev(type="button" data-bs-target="#eventGallery" data-bs-slide="prev")
+              span.carousel-control-prev-icon(aria-hidden="true")
+            button.carousel-control-next(type="button" data-bs-target="#eventGallery" data-bs-slide="next")
+              span.carousel-control-next-icon(aria-hidden="true")
+
+      // Right: Form mua vé (sticky trên desktop)
+      .col-lg-4
+        .card.shadow-lg.border-0.sticky-top(style="top: 100px;")
+          .card-header.bg-primary.text-white
+            h4.mb-0 Mua vé ngay
+          .card-body
+            form#buyForm(action="/orders/create" method="post")
+              input(type="hidden" name="eventId" value=event._id)
+
+              .mb-4
+                label.form-label.fw-bold Loại vé
+                select.form-select#ticketType(name="ticketTypeId" required)
+                  option(value="") Chọn loại vé
+                  each type in event.ticketTypes
+                    option(value=type._id data-price=type.price data-available=type.quantity - type.sold)
+                      | #{type.type} - #{type.price.toLocaleString('vi-VN')} VNĐ 
+                      if type.quantity - type.sold > 0
+                        | (Còn #{type.quantity - type.sold})
+                      else
+                        | (Hết)
+
+              .mb-4
+                label.form-label.fw-bold Số lượng
+                input.form-control#quantity(type="number" name="quantity" min="1" max="10" value="1" required)
+
+              .mb-4
+                label.form-label.fw-bold Tổng tiền
+                h3#totalPrice.text-danger.fw-bold 0 VNĐ
+
+              button.btn.btn-success.btn-lg.w-100(type="submit" id="buyBtn")
+                i.fas.fa-ticket-alt.me-2
+                | Mua vé ngay
+
+              small.text-muted.d-block.mt-3
+                | Thời gian chọn vé: 5 phút. Vui lòng hoàn tất thanh toán trước khi hết giờ.
+
+ 
+  script.
+
+    let timeLeft = 600; 
+    const countdownEl = document.getElementById('countdown');
+    const buyBtn = document.getElementById('buyBtn');
+    const buyForm = document.getElementById('buyForm');
+
+    const timer = setInterval(() => {
+      timeLeft--;
+      const minutes = Math.floor(timeLeft / 60);
+      const seconds = timeLeft % 60;
+      countdownEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        countdownEl.textContent = 'Hết thời gian!';
+        buyBtn.disabled = true;
+        buyBtn.innerHTML = '<i class="fas fa-lock me-2"></i>Hết thời gian chọn vé';
+       
+        setTimeout(() => {
+          window.location.href = '/cart'; 
+        }, 3000);
+      }
+    }, 1000);
+
+    const ticketSelect = document.getElementById('ticketType');
+    const quantityInput = document.getElementById('quantity');
+    const totalPriceEl = document.getElementById('totalPrice');
+
+    function updateTotal() {
+      const selected = ticketSelect.options[ticketSelect.selectedIndex];
+      if (selected && selected.dataset.price) {
+        const price = parseFloat(selected.dataset.price);
+        const qty = parseInt(quantityInput.value) || 1;
+        const total = price * qty;
+        totalPriceEl.textContent = total.toLocaleString('vi-VN') + ' VNĐ';
+      } else {
+        totalPriceEl.textContent = '0 VNĐ';
+      }
+    }
+
+    ticketSelect.addEventListener('change', updateTotal);
+    quantityInput.addEventListener('input', updateTotal);
+    updateTotal();
+
+    
+    ticketSelect.addEventListener('change', () => {
+      const selected = ticketSelect.options[ticketSelect.selectedIndex];
+      if (selected && selected.dataset.available) {
+        const max = parseInt(selected.dataset.available);
+        quantityInput.max = Math.min(max, 10);
+        if (parseInt(quantityInput.value) > max) {
+          quantityInput.value = max;
+          updateTotal();
+        }
+      }
+    });
+
+script(src="https://cdn.jsdelivr.net/npm/sweetalert2@11")
+script.
+  buyForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData(buyForm);
+      const res = await fetch('/orders/create', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        Swal.fire('Thành công', 'Đơn hàng đã được tạo!', 'success');
+        setTimeout(() => window.location.href = '/payment/' + data.orderId, 2000);
+      } else {
+        Swal.fire('Lỗi', data.message, 'error');
+      }
+    } catch (err) {
+      Swal.fire('Lỗi', 'Có lỗi xảy ra', 'error');
+    }
+  });    

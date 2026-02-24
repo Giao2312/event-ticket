@@ -18,7 +18,7 @@ export const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: "User không tồn tại" });
     }
 
-    req.user = user; // GẮN USER
+    req.user = user;
     next();
 
   } catch (error) {

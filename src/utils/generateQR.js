@@ -8,3 +8,4 @@ export async function generateQR(data) {
       throw new Error('Không thể tạo QR code');
     }
 }
+
