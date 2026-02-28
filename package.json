@@ -31,6 +31,7 @@
     "pug": "^3.0.3",
     "qrcode": "^1.5.4",
     "sweetalert2": "^11.26.20",
+    "url": "^0.11.4",
     "winston": "^3.14.2"
   },
   "devDependencies": {

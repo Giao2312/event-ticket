@@ -1,34 +1,70 @@
 import express from 'express';
-import connectDB from './src/config/db.js';
 import dotenv from 'dotenv';
-import router from './src/routers/index.router.js';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import connectDB from './src/config/db.js';
+import router from './src/routers/index.router.js'; 
+
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-connectDB();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => {
-    res.send('Welcome to the Ticket API');
-});
+
+app.use(express.json());         
+app.use(express.urlencoded({ extended: true })); 
+
+
+app.use('/bootstrap', express.static(path.join(__dirname, 'node_modules/bootstrap/dist')));
+app.use('/static', express.static(path.join(__dirname, 'public'))); 
+
+
+app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'src/views'));
+
+
+app.use('/', router);
 
 app.get('/test', (req, res) => {
-  res.render('client/pages/home/index', {
+  res.render('clients/page/home/index', {
     pageTitle: 'Test Pug',
-    events: []
+    events: [] 
   });
 });
 
-app.set('view engine', 'pug');
-app.set('views', path.join(process.cwd(), 'src/views'));
 
-app.use('/static', express.static('public'));
-
-app.use(express.json());
-app.use('/', router);
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.use((req, res, next) => {
+  res.status(404).render('clients/page/error/404', { 
+    pageTitle: 'Không tìm thấy trang',
+    message: 'Trang bạn yêu cầu không tồn tại.'
+  });
 });
+
+
+app.use((err, req, res, next) => {
+  console.error('Server error:', err.stack);
+  res.status(500).render('clients/page/error/500', { 
+    pageTitle: 'Lỗi máy chủ',
+    message: 'Có lỗi xảy ra từ phía server. Vui lòng thử lại sau.'
+  });
+});
+
+
+const startServer = async () => {
+  try {
+    await connectDB();
+    console.log('✅ Connected to MongoDB');
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server is running on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
+};
+
+startServer();

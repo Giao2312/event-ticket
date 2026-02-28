@@ -1,0 +1,28 @@
+extends ../../../layout
+
+block content
+  h1.text-center.mb-5 Chào mừng đến với TicketEvent
+  p.text-center.lead Mua vé sự kiện trực tuyến nhanh chóng, an toàn và tiện lợi!
+
+  // Banner
+  .bg-primary.text-white.text-center.py-5.mb-5
+    h2 Khám phá hàng trăm sự kiện hấp dẫn
+    p Đặt vé ngay hôm nay để không bỏ lỡ!
+
+  // Danh sách sự kiện nổi bật
+  h3 Sự kiện nổi bật
+  .row
+    each event in events
+      .col-md-4.mb-4
+        .card.card-event.shadow-sm
+          if event.image
+            img.card-img-top(src=event.image, alt=event.name)
+          .card-body
+            h5.card-title= event.name
+            p.card-text= event.description.substring(0, 100) + '...'
+            p.text-muted= event.date.toLocaleDateString('vi-VN') + ' - ' + event.location
+            .d-flex.justify-content-between.align-items-center
+              h5.text-danger= event.displayPrice
+              a.btn.btn-buy.text-white(href=`/events/${event._id}`) Xem chi tiết
+
+              

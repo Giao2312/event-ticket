@@ -1,0 +1,7 @@
+extends ../../../layout
+block content
+  .text-center.py-5
+    h1.display-1.text-danger 500
+    h2 Không tìm thấy trang
+    p #{message || 'Trang bạn yêu cầu không tồn tại.'}
+    a.btn.btn-primary(href="/") Về trang chủ

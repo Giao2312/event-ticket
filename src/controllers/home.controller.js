@@ -24,10 +24,21 @@ const homeController = {
           .limit(limit);
 
         const total = await Event.countDocuments({ category, date: { $gte: startDate, $lte: endDate } });
+        const eventsWithPrice = events.map(event => {
+        const firstTicket = event.ticketTypes?.[0] || null;
+        const displayPrice = firstTicket 
+          ? firstTicket.price.toLocaleString('vi-VN') + ' VNĐ'
+          : 'Liên hệ giá';
 
-        res.render('client/pages/home/index', {
+        return {
+          ...event.toObject(), // chuyển sang plain object
+          displayPrice
+        };
+      });
+      
+        res.render('client/page/home/index', {
           pageTitle: 'TicketEvent Pro - Trang chủ',
-          events,
+          events: eventsWithPrice,
           filters: { category: category || 'Tất cả', startDate: startDate || '', endDate: endDate || '' },
           categories: ['Tất cả', 'Âm nhạc', 'Hội thảo', 'Thể thao', 'Sân khấu', 'Triển lãm'],
           pagination: { page, totalPages: Math.ceil(total / limit) }

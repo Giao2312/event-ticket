@@ -1,6 +1,8 @@
 
-import { param, query } from 'express-validator';
+import { param, query, validationResult } from 'express-validator';
 import Event from '../models/event.models.js';
+import logger from '../utils/logger.js';
+import authMiddleware from '../middlewares/auth.middleware.js';
 
 const eventController = {
   detail: [
