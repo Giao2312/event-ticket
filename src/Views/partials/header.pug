@@ -1,69 +1,48 @@
+header.sticky-top.z-50.border-bottom.bg-dark.bg-opacity-80.backdrop-blur-xl
+  div.container.d-flex.align-items-center.justify-content-between.h-16
 
-header 
-  div(class="bg-[#00b14f] text-white py-3")
-    div(class="container mx-auto px-4 flex items-center justify-between")
-      // Logo - thêm icon SVG để đẹp hơn
-      a(href="/" class="flex items-center gap-2 group")
-        svg(class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24")
-          path(d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5")
-        span(class="font-black text-3xl tracking-tighter") ticketpro
-        span(class="text-xl mb-1") 🌸
+    nav.d-none.d-md-flex.align-items-center.gap-6 
+      a(href="/" class="d-flex.align-items-center.gap-2.fw-bold.text-xl.text-white.text-decoration-none")
+        div.d-flex.align-items-center.justify-content-center.rounded-circle.bg-gradient-hero.w-9.h-9
+          i.fas.fa-ticket-alt.text-white.fs-5
+      a(href="/" class="d-flex.align-items-center.gap-2.fw-bold.text-xl.text-white.text-decoration-none") EventVé
 
-      // Search Bar - cải thiện responsive (hiện icon search trên mobile)
-      div(class="flex-grow max-w-2xl mx-8 hidden lg:flex bg-white rounded-md overflow-hidden shadow-sm items-center")
-        div(class="pl-4 pr-2")
-          svg(class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24")
-            path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z")
-        input(type="text" placeholder="Bạn tìm gì hôm nay?" class="flex-grow bg-transparent text-gray-800 py-3 outline-none text-sm font-medium")
-        div(class="h-6 w-[1px] bg-gray-200 mx-2")
-        button(class="px-6 py-3 text-gray-700 text-sm font-bold hover:bg-gray-50 transition-colors") Tìm kiếm
 
-      // Mobile search icon
-      button(class="lg:hidden text-white focus:outline-none")
-        i(class="fas fa-search text-xl")
+    nav.d-none.d-md-flex.align-items-center.gap-4
+      a(href="/events" class="text-sm.fw-medium.text-white.text-opacity-75.hover-text-white.transition") Sự kiện
+      a(href="/events?category=am-nhac" class="text-sm.fw-medium.text-white.text-opacity-75.hover-text-white.transition") Âm nhạc
+      a(href="/events?category=the-thao" class="text-sm.fw-medium.text-white.text-opacity-75.hover-text-white.transition") Thể thao
+      a(href="/events?category=workshop" class="text-sm.fw-medium.text-white.text-opacity-75.hover-text-white.transition") Workshop
+      a(href="/events?category=other" class="text-sm.fw-medium.text-white.text-opacity-75.hover-text-white.transition") Khác
 
-      // Right Actions - giữ nguyên + thêm cart icon
-      div(class="flex items-center gap-6")
-        // Cart icon (giỏ vé tạm)
-        a(href="/cart" class="relative text-white hover:opacity-80 transition-opacity")
-          i(class="fas fa-shopping-cart text-xl")
-          if cartCount > 0
-            span(class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5") #{cartCount}
 
-        // Create Event button
-        button(class="hidden xl:block border border-white/80 px-6 py-2 rounded-full text-sm font-bold hover:bg-white hover:text-[#00b14f] transition-all")
-          | Tạo sự kiện
+    div(class="hidden md:flex items-center gap-3")
+      if user
+        a(href="/profile" class="d-flex align-items-center gap-2 text-white text-decoration-none")
+          div(class="w-8 h-8 bg-white bg-opacity-20 rounded-circle d-flex align-items-center justify-content-center fw-bold text-white shadow-sm")
+            | #{user.name[0].toUpperCase()}
+          span(class="text-sm fw-medium") #{user.name}
+      else
+        button.btn.btn-outline-light.btn-sm.px-4.py-2.me-2(type="button" onclick="location.href='/login'")
+          | Đăng nhập
+        button.btn.btn-outline-light.btn-sm.px-4.py-2.me-2(type="button" onclick="location.href='/register'")
+          | Đăng ký
 
-        // My Tickets
-        a(href="/my-tickets" class="flex items-center gap-2 text-sm font-bold hover:opacity-80 transition-opacity")
-          svg(class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24")
-            path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z")
-          span Vé của tôi
+    button.btn.btn-link.text-white.d-md-none.fs-4(type="button" data-bs-toggle="collapse" data-bs-target="#mobileMenu")
+      i.fas.fa-bars
 
-        // User Auth
+  // Mobile menu (collapse)
+  div#mobileMenu.collapse.d-md-none.bg-dark.border-top.border-white.border-opacity-10
+    div.container.py-3
+      nav.d-flex.flex-column.gap-3
+        a(href="/events" class="text-white.text-decoration-none.fw-medium") Sự kiện
+        a(href="/events?category=am-nhac" class="text-white.text-decoration-none.fw-medium") Âm nhạc
+        a(href="/events?category=the-thao" class="text-white.text-decoration-none.fw-medium") Thể thao
+        a(href="/events?category=workshop" class="text-white.text-decoration-none.fw-medium") Workshop
+        a(href="/events?category=other" class="text-white.text-decoration-none.fw-medium") Khác
         if user
-          a(href="/profile" class="flex items-center gap-2 group")
-            span(class="text-sm font-bold group-hover:underline") #{user.name}
-            div(class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center font-black text-xs")
-              | #{user.name[0]}
+          a(href="/profile" class="text-white.text-decoration-none.fw-medium") Hồ sơ
+          a(href="/logout" class="text-white.text-decoration-none.fw-medium") Đăng xuất
         else
-          a(href="/login" class="text-sm font-bold hover:underline whitespace-nowrap")
-            | Đăng nhập | Đăng ký
-
-        // Language (giữ nguyên)
-        div(class="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ml-2")
-          span.text-2xl 🇻🇳
-          svg(class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20")
-            path(d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z")
-
-  // Navigation Bar (giữ nguyên, nhưng có thể lấy danh mục từ DB sau)
-  nav(class="bg-[#1a1a1a] text-white overflow-x-auto no-scrollbar")
-    div(class="container mx-auto px-4")
-      ul(class="flex items-center justify-center gap-10 py-4 text-sm font-medium whitespace-nowrap")
-        li: a(href="/category/nhac-song" class="hover:text-[#00b14f] transition-colors") Nhạc sống
-        li: a(href="/category/san-khau" class="hover:text-[#00b14f] transition-colors") Sân khấu & Nghệ thuật
-        li: a(href="/category/the-thao" class="hover:text-[#00b14f] transition-colors") Thể thao
-        li: a(href="/category/hoi-thao" class="hover:text-[#00b14f] transition-colors") Hội thảo & Workshop
-        li: a(href="/category/trai-nghiem" class="hover:text-[#00b14f] transition-colors") Tham quan & Trải nghiệm
-        li: a(href="/category/khac" class="hover:text-[#00b14f] transition-colors") Khác
-        li: a(href="/category/ve-ban-lai" class="hover:text-[#00b14f] transition-colors") Vé bán lại
+          a(href="/login" class="btn.btn-outline-light.btn-sm.w-100.mb-2") Đăng nhập
+          a(href="/register" class="btn.btn-primary.btn-sm.bg-gradient-hero.w-100") Đăng ký

@@ -24,6 +24,7 @@ const homeController = {
           .limit(limit);
 
         const total = await Event.countDocuments({ category, date: { $gte: startDate, $lte: endDate } });
+      
         const eventsWithPrice = events.map(event => {
         const firstTicket = event.ticketTypes?.[0] || null;
         const displayPrice = firstTicket 
@@ -31,12 +32,12 @@ const homeController = {
           : 'Liên hệ giá';
 
         return {
-          ...event.toObject(), // chuyển sang plain object
+          ...event.toObject(),
           displayPrice
         };
       });
       
-        res.render('client/page/home/index', {
+        res.render('clients/page/home/index', {
           pageTitle: 'TicketEvent Pro - Trang chủ',
           events: eventsWithPrice,
           filters: { category: category || 'Tất cả', startDate: startDate || '', endDate: endDate || '' },

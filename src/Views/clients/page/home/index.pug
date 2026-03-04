@@ -1,28 +1,110 @@
 extends ../../../layout
+block hero
+  section.min-vh-100.d-flex.align-items-center.position-relative.overflow-hidden(style="background: linear-gradient(to bottom right, #4c1d95, #4338ca, #be185d); color: white;")
+    div.position-absolute.top-0.start-0.end-0.bottom-0.bg-black.opacity-40.z-0
 
+    div.container.position-relative.z-10.py-5.py-md-5
+      div.mx-auto.text-center(style="max-width: 900px;")
+        h1.display-3.fw-bold.mb-4
+          | Khám phá &
+          br
+          span(style="background: linear-gradient(to right, #ec4899, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent;") Đặt vé sự kiện
+
+        p.lead.mb-5.opacity-75
+          | Nền tảng bán vé sự kiện hàng đầu. Tìm kiếm, đặt vé và tận hưởng những trải nghiệm tuyệt vời.
+
+        div.mx-auto.mt-5.d-flex.align-items-center.gap-3.rounded-pill.border.border-white.border-opacity-25.bg-white.bg-opacity-10.p-2.backdrop-blur(style="max-width: 500px;")
+          i.fas.fa-search.ms-4.text-white.opacity-75.fs-4
+          input.form-control.bg-transparent.border-0.text-white.placeholder-white.placeholder-opacity-50.outline-0.flex-grow-1.fs-5(
+            type="text"
+            placeholder="Tìm sự kiện, nghệ sĩ, địa điểm..."
+          )
+          button.btn.rounded-pill.px-5.py-3.fw-bold.shadow-lg.text-white(style="background: linear-gradient(to right, #ec4899, #a855f7);")
+            | Tìm kiếm
 block content
-  h1.text-center.mb-5 Chào mừng đến với TicketEvent
-  p.text-center.lead Mua vé sự kiện trực tuyến nhanh chóng, an toàn và tiện lợi!
+  section.border-bottom.bg-dark.py-5
+    div.container
+      div.row.g-4.text-center.text-white
+        div.col-6.col-md-3
+          div.d-flex.align-items-center.justify-content-center.gap-3
+            div.d-flex.align-items-center.justify-content-center.rounded-circle.bg-primary.bg-opacity-10.w-12.h-12
+              i.fas.fa-ticket-alt.text-primary.fs-4
+            div
+              h3.fw-bold.mb-0 500+
+              p.text-muted.small Sự kiện
+        div.col-6.col-md-3
+          div.d-flex.align-items-center.justify-content-center.gap-3
+            div.d-flex.align-items-center.justify-content-center.rounded-circle.bg-primary.bg-opacity-10.w-12.h-12
+              i.fas.fa-bolt.text-primary.fs-4
+            div
+              h3.fw-bold.mb-0 100K+
+              p.text-muted.small Vé đã bán
+        div.col-6.col-md-3
+          div.d-flex.align-items-center.justify-content-center.gap-3
+            div.d-flex.align-items-center.justify-content-center.rounded-circle.bg-primary.bg-opacity-10.w-12.h-12
+              i.fas.fa-users.text-primary.fs-4
+            div
+              h3.fw-bold.mb-0 200+
+              p.text-muted.small Nhà tổ chức
+        div.col-6.col-md-3
+          div.d-flex.align-items-center.justify-content-center.gap-3
+            div.d-flex.align-items-center.justify-content-center.rounded-circle.bg-primary.bg-opacity-10.w-12.h-12
+              i.fas.fa-shield-alt.text-primary.fs-4
+            div
+              h3.fw-bold.mb-0 100%
+              p.text-muted.small Bảo mật
 
-  // Banner
-  .bg-primary.text-white.text-center.py-5.mb-5
-    h2 Khám phá hàng trăm sự kiện hấp dẫn
-    p Đặt vé ngay hôm nay để không bỏ lỡ!
 
-  // Danh sách sự kiện nổi bật
-  h3 Sự kiện nổi bật
-  .row
-    each event in events
-      .col-md-4.mb-4
-        .card.card-event.shadow-sm
-          if event.image
-            img.card-img-top(src=event.image, alt=event.name)
-          .card-body
-            h5.card-title= event.name
-            p.card-text= event.description.substring(0, 100) + '...'
-            p.text-muted= event.date.toLocaleDateString('vi-VN') + ' - ' + event.location
-            .d-flex.justify-content-between.align-items-center
-              h5.text-danger= event.displayPrice
-              a.btn.btn-buy.text-white(href=`/events/${event._id}`) Xem chi tiết
+  section.py-5.bg-dark
+    div.container
+      div.d-flex.justify-content-between.align-items-center.mb-4
+        h2.text-white.fw-bold Sự kiện nổi bật
+        a(href="/events" class="text-primary.fw-medium.text-decoration-none.hover-underline") Xem tất cả →
 
-              
+      div.row.g-4
+        each event in events.slice(0, 4)
+          div.col-md-6.col-lg-3
+            div.card.bg-dark.text-white.border-0.shadow-lg.overflow-hidden
+              img.card-img-top(src=event.image || 'https://placehold.co/400x250' alt=event.name style="height: 200px; object-fit: cover;")
+              div.card-body
+                span.badge.bg-primary.me-2 Nổi bật
+                h5.card-title.mt-2= event.name
+                p.card-text.small.text-white-50
+                  if event.description
+                    | #{event.description.substring(0, 80)}...
+                  else
+                    | Chưa có mô tả cho sự kiện này.
+                div.d-flex.justify-content-between.align-items-center.mt-3
+                  span.fw-bold.text-primary Từ #{event.minPrice || '500.000'}đ
+                  a.btn.btn-sm.btn-outline-light(href=`/events/${event._id}`) Xem chi tiết
+
+
+  section.py-5.bg-black
+    div.container
+      div.d-flex.justify-content-between.align-items-center.mb-4
+        h2.text-white.fw-bold Sắp diễn ra
+        a(href="/events/upcoming" class="text-primary.fw-medium.text-decoration-none.hover-underline") Xem tất cả →
+
+      div.row.g-4
+          each event in (upcomingEvents || []).slice(0, 4)
+            div.col-md-6.col-lg-3
+            div.card.bg-dark.text-white.border-0.shadow-lg.overflow-hidden
+              img.card-img-top(src=event.image || 'https://placehold.co/400x250' alt=event.name style="height: 200px; object-fit: cover;")
+              div.card-body
+                span.badge.bg-secondary.me-2 Sắp diễn ra
+                h5.card-title.mt-2= event.name
+                p.card-text.small.text-white-50= event.date.toLocaleDateString('vi-VN') + ' • ' + event.time
+                p.card-text.small.text-white-50= event.location
+                div.d-flex.justify-content-between.align-items-center.mt-3
+                  span.fw-bold.text-primary Từ #{event.minPrice || '300.000'}đ
+                  a.btn.btn-sm.btn-outline-light(href=`/events/${event._id}`) Xem chi tiết
+
+
+  section.py-5.bg-gradient-to-br.from-purple-900.to-pink-900.text-white
+    div.container.text-center
+      h2.fw-bold.mb-4 Bạn là nhà tổ chức?
+      p.lead.opacity-75.mb-5
+        | Tạo sự kiện, quản lý vé và theo dõi doanh thu dễ dàng trên nền tảng của chúng tôi.
+      a.btn.btn-lg.btn-light.px-5.py-3.fw-bold.rounded-pill.shadow-lg(href="/become-organizer")
+        | Bắt đầu ngay →
+        

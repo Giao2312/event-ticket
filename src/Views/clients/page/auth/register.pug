@@ -1,0 +1,97 @@
+extends ../../../layout
+
+block content
+  section.py-5.bg-light.min-vh-100.d-flex.align-items-center
+    div.container
+      div.row.justify-content-center
+        div.col-md-6.col-lg-5
+          div.card.shadow-lg.border-0.rounded-xl.overflow-hidden
+            div.card-body.p-5.text-center
+            div.auth-form.mx-auto(style="max-width: 400px;")
+              div.mx-auto.mb-4.d-flex.align-items-center.justify-content-center.rounded-circle.bg-gradient-hero.w-14.h-14
+                i.fas.fa-ticket-alt.text-white.fs-3
+
+              h1.fw-bold.mb-2 Chào mừng đến EventVé
+              p.text-muted.mb-5 Đăng nhập hoặc tạo tài khoản mới
+
+              ul.nav.nav-pills.nav-fill.mb-5(role="tablist")
+                li.nav-item(role="presentation")
+                  button.nav-link.active.w-100.py-3.fw-medium.rounded-pill(
+                    id="login-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#login"
+                    type="button"
+                    role="tab"
+                  ) Đăng nhập
+                li.nav-item(role="presentation")
+                  button.nav-link.w-100.py-3.fw-medium.rounded-pill(
+                    id="register-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#register"
+                    type="button"
+                    role="tab"
+                  ) Đăng ký
+
+              // Tab content
+              div.tab-content.mt-4
+                // Tab Đăng nhập
+                div#login.tab-pane.fade.show.active(role="tabpanel")
+                  form(action="/auth/login" method="POST" class="space-y-4")
+                    div
+                      label.form-label.fw-medium(for="login-email") Email
+                      input#login-email.form-control.form-control-lg.rounded-pill(
+                        type="email"
+                        name="email"
+                        placeholder="email@example.com"
+                        required
+                      )
+                    div
+                      label.form-label.fw-medium(for="login-password") Mật khẩu
+                      input#login-password.form-control.form-control-lg.rounded-pill(
+                        type="password"
+                        name="password"
+                        placeholder="••••••••"
+                        required
+                      )
+                    button.btn.btn-primary.btn-lg.w-100.rounded-pill.fw-bold.shadow-lg.mt-4(
+                      type="submit"
+                      style="background: linear-gradient(to right, #8b5cf6, #ec4899); border: none;"
+                    ) Đăng nhập
+                    p.text-muted.mt-4.mb-0 Bạn chưa có tài khoản? 
+                      a(href="#register-tab" data-bs-toggle="pill" class="text-primary fw-medium") Đăng ký ngay!
+                
+                div#register.tab-pane.fade(role="tabpanel")
+                  form(action="/auth/register" method="POST" class="space-y-4")
+                    div
+                      label.form-label.fw-medium(for="reg-name") Họ tên
+                      input#reg-name.form-control.form-control-lg.rounded-pill(
+                        type="text"
+                        name="full_name"
+                        placeholder="Nguyễn Văn A"
+                        required
+                      )
+                    div
+                      label.form-label.fw-medium(for="reg-email") Email
+                      input#reg-email.form-control.form-control-lg.rounded-pill(
+                        type="email"
+                        name="email"
+                        placeholder="email@example.com"
+                        required
+                      )
+                    div
+                      label.form-label.fw-medium(for="reg-password") Mật khẩu
+                      input#reg-password.form-control.form-control-lg.rounded-pill(
+                        type="password"
+                        name="password"
+                        placeholder="••••••••"
+                        required
+                      )
+                    button.btn.btn-primary.btn-lg.w-100.rounded-pill.fw-bold.shadow-lg.mt-4(
+                      type="submit"
+                      style="background: linear-gradient(to right, #8b5cf6, #ec4899); border: none;"
+                    ) Đăng ký
+
+                    p.text-muted.mt-4.mb-0 Bạn đã có tài khoản? 
+                      a(href="#login-tab" data-bs-toggle="pill" class="text-primary fw-medium") Đăng nhập ngay!
+
+            

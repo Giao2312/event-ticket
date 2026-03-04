@@ -11,7 +11,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT ;
+app.use(express.json());
+app.use('/', router);
 
 
 app.use(express.json());         
@@ -19,23 +21,23 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.use('/bootstrap', express.static(path.join(__dirname, 'node_modules/bootstrap/dist')));
-app.use('/static', express.static(path.join(__dirname, 'public'))); 
-
+app.use('/static', express.static(path.join(__dirname, 'public')));
 
 app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, 'src/views'));
 
-
-app.use('/', router);
-
 app.get('/test', (req, res) => {
-  res.render('clients/page/home/index', {
+  res.render('clients/page/event/index', {
     pageTitle: 'Test Pug',
     events: [] 
   });
 });
-
-
+app.get('/a', (req, res) => {
+  res.render('clients/page/auth/register', {
+    pageTitle: 'Trang chủ',
+    events: [] 
+  });
+});
 app.use((req, res, next) => {
   res.status(404).render('clients/page/error/404', { 
     pageTitle: 'Không tìm thấy trang',
@@ -52,7 +54,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-
 const startServer = async () => {
   try {
     await connectDB();
@@ -66,5 +67,6 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
 
 startServer();

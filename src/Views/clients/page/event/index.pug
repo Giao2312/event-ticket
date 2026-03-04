@@ -1,0 +1,42 @@
+extends ../../../layout
+
+block content
+  section.py-5.bg-light
+    div.container
+      h1.text-center.fw-bold.mb-5 Khám phá sự kiện
+
+      div.d-flex.justify-content-center.flex-wrap.gap-3.mb-5
+        a.btn.btn-outline-primary.rounded-pill.px-4.py-2(href="/events") Tất cả
+        a.btn.btn-outline-primary.rounded-pill.px-4.py-2(href="/events?category=am-nhac") Âm nhạc
+        a.btn.btn-outline-primary.rounded-pill.px-4.py-2(href="/events?category=the-thao") Thể thao
+        a.btn.btn-outline-primary.rounded-pill.px-4.py-2(href="/events?category=workshop") Workshop
+        a.btn.btn-outline-primary.rounded-pill.px-4.py-2(href="/events?category=khac") Khác
+
+
+      div.mx-auto.mb-5(style="max-width: 500px;")
+        div.input-group
+          input.form-control.rounded-pill.ps-4(type="text" placeholder="Tìm sự kiện, nghệ sĩ, địa điểm...")
+          button.btn.btn-primary.rounded-pill.px-5(type="submit")
+            i.fas.fa-search.me-2
+            | Tìm kiếm
+
+      if events && events.length > 0
+        div.row.g-4
+          each event in events
+            div.col-md-6.col-lg-4
+              div.card.shadow-lg.border-0.overflow-hidden
+                img.card-img-top(src=event.image || 'https://placehold.co/400x250' alt=event.name style="height: 220px; object-fit: cover;")
+                div.card-body
+                  span.badge.bg-primary.me-2= event.category || 'Nổi bật'
+                  h5.card-title.mt-2= event.name
+                  p.card-text.small.text-muted
+                    i.fas.fa-calendar-alt.me-1
+                    | #{event.date.toLocaleDateString('vi-VN')} • #{event.time || 'Chưa có giờ'}
+                  p.card-text.small.text-muted
+                    i.fas.fa-map-marker-alt.me-1
+                    | #{event.location}
+                  div.d-flex.justify-content-between.align-items-center.mt-3
+                    h5.text-primary.fw-bold Từ #{event.minPrice || 'Liên hệ'}đ
+                    a.btn.btn-outline-primary.btn-sm(href=`/events/${event._id}`) Xem chi tiết
+      else
+        div.alert.alert-info.text-center Không tìm thấy sự kiện nào phù hợp
