@@ -21,7 +21,7 @@ const userController = {
 
       const total = await Order.countDocuments({ userId });
 
-      res.render('client/pages/user/profile', {
+      res.render('clients/page/user/profile', {
         pageTitle: 'Quản lý tài khoản - Ticketbox',
         user,
         transactions,
@@ -29,7 +29,7 @@ const userController = {
       });
     } catch (err) {
       logger.error(err);
-      res.status(500).render('client/pages/error/500');
+      res.status(500).render('clients/page/error/500');
     }
   }],
 
@@ -40,7 +40,7 @@ const userController = {
 
     async (req, res) => {
       const errors = validationResult(req);
-      if (!errors.isEmpty()) return res.status(400).render('client/pages/user/profile', { errors: errors.array() });
+      if (!errors.isEmpty()) return res.status(400).render('clients/page/user/profile', { errors: errors.array() });
 
       try {
         const userId = req.user.id;

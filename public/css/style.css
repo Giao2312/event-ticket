@@ -435,6 +435,313 @@ section.py-5.bg-gradient-to-br.from-purple-900.to-pink-900 {
   font-weight: 700;
   box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
+/* Chi tiết sự kiện */
+.card.shadow-lg {
+  border-radius: 16px;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.card.shadow-lg:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+#bookingForm .form-select,
+#bookingForm .form-control {
+  border-radius: 12px;
+}
+
+#buyBtn {
+  background: linear-gradient(to right, #ec4899, #a855f7);
+  border: none;
+  font-weight: 700;
+  transition: all 0.3s;
+}
+#buyBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(236,72,153,0.4);
+}
+
+#countdownModal .modal-content {
+  border-radius: 16px;
+  background: linear-gradient(to bottom, #1e1e2f, #2a1b4e);
+  color: white;
+}
+
+/* Trang auth */
+.auth-card {
+  max-width: 450px;
+  margin: 0 auto;
+}
+
+.auth-card .btn-lg {
+  font-size: 1.1rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 12px;
+}
+
+.auth-card input.form-control-lg {
+  border-radius: 12px;
+  padding: 0.8rem 1.5rem;
+}
+
+.auth-card .text-muted {
+  font-size: 0.95rem;
+}
+/* === Phần Avatar & Dropdown === */
+
+/* Container avatar */
+.w-8.h-8 {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.w-8.h-8:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.5); /* Hiệu ứng glow hồng tím */
+}
+
+/* Tên user bên cạnh avatar */
+.text-sm.fw-medium {
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Dropdown toggle (avatar + tên) */
+.dropdown > a {
+  padding: 0.4rem 0.8rem;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown > a:hover {
+  background-color: rgba(139, 92, 246, 0.15); /* Tím nhạt hover */
+}
+
+/* Dropdown menu */
+.dropdown-menu {
+  background-color: #1f2937 !important; /* Màu tối chuyên nghiệp */
+  border: 1px solid rgba(139, 92, 246, 0.3) !important; /* Viền tím nhẹ */
+  border-radius: 0.75rem !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(139, 92, 246, 0.2) !important;
+  padding: 0.5rem 0 !important;
+  min-width: 180px !important;
+  z-index: 1050 !important; 
+    position: absolute !important;
+  top: 100% !important;
+  right: 0 !important;
+  left: auto !important;
+  margin-top: 0.5rem !important;
+}
+
+/* Item trong dropdown */
+.dropdown-item {
+  color: rgba(255, 255, 255, 0.9) !important;
+  padding: 0.65rem 1.25rem !important;
+  font-size: 0.95rem !important;
+  transition: all 0.15s ease !important;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: rgba(139, 92, 246, 0.25) !important; /* Tím đậm hơn khi hover */
+  color: white !important;
+  transform: translateX(4px); /* Hiệu ứng dịch sang phải nhẹ */
+}
+
+/* Icon trong item */
+.dropdown-item i {
+  width: 1.25rem;
+  text-align: center;
+  margin-right: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dropdown-item.text-danger:hover {
+  background-color: rgba(239, 68, 68, 0.2) !important; /* Đỏ nhạt cho Đăng xuất */
+}
+
+/* Đường kẻ phân cách */
+.dropdown-divider {
+  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+  margin: 0.35rem 0 !important;
+}
+
+/* Animation fade in cho dropdown */
+@keyframes dropdownFade {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-menu.show {
+  animation: dropdownFade 0.18s ease-out forwards;
+}
+
+/* Đảm bảo dropdown không bị cắt bởi header overflow */
+header {
+  overflow: visible !important; 
+  z-index: 1000 !important;
+}
+.dropdown {
+  position: relative;
+}
+/* Profile page */
+.btn-gradient-purple-pink {
+  background: linear-gradient(to right, #a855f7, #ec4899);
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.btn-gradient-purple-pink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(168, 85, 247, 0.4);
+}
+
+.card-header {
+  background: linear-gradient(135deg, #4c1d95, #be185d);
+  border-bottom: none;
+}
+
+.form-control {
+  background-color: rgba(31, 41, 55, 0.8);
+  border-color: rgba(168, 85, 247, 0.3);
+  color: white;
+}
+
+.form-control:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 0.25rem rgba(168, 85, 247, 0.25);
+}
+
+.text-purple-400 { color: #a855f7; }
+.text-purple-300 { color: #c084fc; }
+/* My Tickets page */
+.card-gradient {
+  background: linear-gradient(135deg, #1f2937, #111827);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-gradient:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 30px rgba(168, 85, 247, 0.15);
+}
+
+/* Tùy chỉnh chung cho trang chi tiết */
+:root {
+  --primary-color: #0d6efd;
+  --secondary-bg: #f8f9fa;
+  --text-muted: #6c757d;
+  --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Hiệu ứng cho ảnh Hero */
+#eventImage {
+  transition: transform 0.3s ease;
+  width: 100%;
+  max-height: 450px;
+  object-fit: cover;
+}
+
+#eventImage:hover {
+  transform: scale(1.02);
+}
+
+/* Sidebar đặt vé - Sticky mượt mà */
+.sticky-top {
+  z-index: 10;
+}
+
+.card {
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.card-body {
+  padding: 2rem !important;
+}
+
+/* Tùy chỉnh Input số lượng */
+.input-group-lg .form-control {
+  font-weight: bold;
+  border-left: none;
+  border-right: none;
+  background-color: #fff !important;
+}
+
+.input-group-lg .btn-outline-secondary {
+  border-color: #dee2e6;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  transition: all 0.2s;
+}
+
+.input-group-lg .btn-outline-secondary:hover {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+/* Tổng tiền nổi bật */
+#totalPrice {
+  letter-spacing: -0.5px;
+  font-weight: 800;
+}
+
+/* Nút đặt vé - Hiệu ứng Gradient */
+#buyBtn {
+  background: linear-gradient(45deg, #0d6efd, #004dc7);
+  border: none;
+  padding: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s shadow;
+}
+
+#buyBtn:hover {
+  box-shadow: 0 5px 15px rgba(13, 110, 253, 0.4);
+  filter: brightness(1.1);
+}
+
+/* Badge chuyên nghiệp */
+.badge {
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-weight: 500;
+}
+
+
+.form-check-input:checked + label {
+    border-color: #0d6efd !important; 
+    background-color: #f8fbff;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  }
+  
+.form-check-label {
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+/* Responsive cho Mobile */
+@media (max-width: 991.98px) {
+  .sticky-top {
+    position: relative !important;
+    top: 0 !important;
+  }
+  
+  .display-4 {
+    font-size: 2.5rem;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 @media (max-width: 991px) {
   .btn-outline-light.btn-sm,

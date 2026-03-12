@@ -1,0 +1,102 @@
+extends ../../../layout
+
+block content
+  section.py-5.bg-light.min-vh-100.d-flex.align-items-center
+    div.container
+      div.row.justify-content-center
+        div.col-md-6.col-lg-5
+          div.card.shadow-lg.border-0
+            div.card-body.p-5
+              h2.text-center.fw-bold.mb-4 Đăng nhập
+              p.text-center.text-muted.mb-5 Chào mừng trở lại với EventVé
+
+              // Hiển thị lỗi từ server hoặc client
+              div#loginErrors.alert.alert-danger(role="alert" style="display: none;")
+                ul.mb-0#loginErrorList
+
+              form#loginForm
+                div.mb-4
+                  label.form-label.fw-medium Email
+                  input.form-control.form-control-lg(type="email" placeholder="email@example.com" required name="email" value=(oldInput && oldInput.email) || '')
+                div.mb-4.position-relative
+                  label.form-label.fw-medium Mật khẩu
+                  input.form-control.form-control-lg#password(type="password" placeholder="••••••••" required name="password")
+                  span.position-absolute.top-50.translate-middle-y.end-0.pe-3.cursor-pointer#togglePassword
+                    i.fas.fa-eye-slash.fs-5.text-muted
+
+                button.btn.btn-lg.w-100#loginBtn(style="background: linear-gradient(to right, #8b5cf6, #ec4899); color: white; border: none;") Đăng nhập
+
+                div.text-center.mt-4
+                  a.text-primary.fw-medium(href="/register") Quên mật khẩu? | Đăng ký ngay
+
+              div.text-center.mt-5.text-muted.small
+                | Bằng cách đăng nhập, bạn đồng ý với Điều khoản dịch vụ và Chính sách bảo mật
+
+block scripts
+  script.
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const errorDiv = document.getElementById('loginErrors');
+    const errorList = document.getElementById('loginErrorList');
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+
+    if (togglePassword && passwordInput) {
+      togglePassword.addEventListener('click', () => {
+        const type = passwordInput.type === 'password' ? 'text' : 'password';
+        passwordInput.type = type;
+        togglePassword.innerHTML = type === 'password' 
+          ? '<i class="fas fa-eye-slash fs-5 text-muted"></i>' 
+          : '<i class="fas fa-eye fs-5 text-muted"></i>';
+      });
+    }
+
+    // Submit form đăng nhập
+    document.getElementById('loginBtn').addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      const errorDiv = document.getElementById('loginErrors');
+      const errorList = document.getElementById('loginErrorList');
+      errorList.innerHTML = '';
+      errorDiv.classList.add('d-none');
+
+      const form = document.getElementById('loginForm');
+      const email = form.email.value.trim();
+      const password = form.password.value.trim();
+
+      if (!email || !password) {
+        errorList.innerHTML = '<li>Vui lòng điền đầy đủ thông tin</li>';
+        errorDiv.classList.remove('d-none');
+        return;
+      }
+
+      // Đảm bảo phần này nằm trong script của Pug
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          // 1. Lưu vào Cookie để Server (Pug) đọc được
+          document.cookie = `token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
+          // 2. Lưu vào LocalStorage cho các script client khác
+          localStorage.setItem('token', data.token);
+          
+          alert('Đăng nhập thành công!');
+          window.location.href = '/';
+        } else {
+          // Xử lý khi đăng nhập thất bại (hiển thị lỗi lên UI)
+          errorList.innerHTML = `<li>${data.message || 'Lỗi đăng nhập'}</li>`;
+          errorDiv.classList.remove('d-none');
+        }
+      } catch (err) { // <--- Đảm bảo catch nằm ngay sau dấu } của try
+        console.error('Login error:', err);
+        errorList.innerHTML = '<li>Đã có lỗi xảy ra. Vui lòng thử lại sau.</li>';
+        errorDiv.classList.remove('d-none');
+      }
+
+    });

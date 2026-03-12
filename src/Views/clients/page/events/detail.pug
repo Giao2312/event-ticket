@@ -1,0 +1,172 @@
+extends ../../../layout
+
+block content
+  - 
+    // Bộ lọc đường dẫn ảnh ngay trong Pug để hiển thị lần đầu
+    const getImageUrl = (path) => {
+      if (!path || path.length < 2) return '/events/images/placeholder.jpg';
+      if (path.includes('/events/')) return path;
+      if (path.startsWith('images/')) return '/events/' + path;
+      return path;
+    };
+
+  section.position-relative.py-5.bg-light
+    div.container
+      div.row.align-items-center
+        div.col-lg-6
+          span.badge.bg-primary.mb-3= event.category || 'Sự kiện'
+          h1.fw-bold.display-4.mb-4= event.name
+          div.d-flex.flex-wrap.gap-3.mb-4
+            span.text-muted 
+              i.fas.fa-calendar-alt.me-2
+              = new Date(event.date).toLocaleDateString('vi-VN')
+            span.text-muted 
+              i.fas.fa-map-marker-alt.me-2
+              = event.location || event.venue || 'Chưa xác định'
+        div.col-lg-6
+          img.img-fluid.rounded-4.shadow-lg#eventImage(
+            src=getImageUrl(event.image), 
+            onerror="this.src='/events/images/placeholder.jpg'"
+          )
+
+  section.py-5
+    div.container
+      div.row.g-5
+        div.col-lg-7
+          h4.fw-bold.mb-3 Giới thiệu sự kiện
+          p.text-muted.lh-lg= event.description
+          
+          hr.my-5
+          h4.fw-bold.mb-3 Ban tổ chức
+          div.d-flex.align-items-center.p-3.border.rounded-3
+            img.rounded-circle.me-3(
+              src="/events/images/default-avatar.jpg", 
+              width="50", height="50", 
+              style="object-fit: cover;",
+              onerror="this.src='/events/images/placeholder.jpg'"
+            )
+            div
+              h6.mb-0= event.organizerName || "Ban tổ chức"
+              small.text-muted Đơn vị xác thực
+
+        div.col-lg-5
+          div.card.shadow-sm.border-0.rounded-4.sticky-top(style="top: 100px;")
+            div.card-body.p-4
+              h5.fw-bold.mb-4 Thông tin đặt vé
+              form#bookingForm
+                div.mb-3
+                  label.form-label Loại vé
+                    select.form-select.form-select-lg#ticketType(name="ticketTypeId")
+                      each type in ticketTypes || []
+                        option(
+                          value=type._id, 
+                          data-price=type.price, 
+                          data-available=(type.quantity - type.sold - type.holded)
+                        )
+                          | #{type.type} - #{type.price.toLocaleString('vi-VN')} VNĐ
+                
+                div.mb-3
+                  label.form-label Số lượng
+                  div.input-group.input-group-lg
+                    button.btn.btn-outline-secondary#btnMinus(type="button") -
+                    input.form-control.text-center#quantity(
+                      type="number" value="1" min="1" readonly 
+                      style="color: #000 !important; background-color: #fff !important;")
+                    button.btn.btn-outline-secondary#btnPlus(type="button") +
+                
+                div.d-flex.justify-content-between.align-items-center.bg-light.p-3.rounded-3.mb-4
+                  span.fw-bold Tổng cộng
+                  h4#totalPrice.text-primary.mb-0 0đ
+                
+                button.btn.btn-lg.btn-primary.w-100.rounded-3#buyBtn(type="button") Đặt vé ngay
+
+block scripts
+  script.
+    // Đảm bảo script chạy sau khi DOM load xong để tránh lỗi ReferenceError
+    document.addEventListener('DOMContentLoaded', () => {
+      const ticketSelect = document.getElementById('ticketType');
+      const qtyInput = document.getElementById('quantity');
+      const totalEl = document.getElementById('totalPrice');
+      const btnPlus = document.getElementById('btnPlus');
+      const btnMinus = document.getElementById('btnMinus');
+      const buyBtn = document.getElementById('buyBtn');
+
+      const updatePrice = () => {
+        const option = ticketSelect.options[ticketSelect.selectedIndex];
+        if (!option) return;
+        
+        const price = parseInt(option.dataset.price) || 0;
+        const qty = parseInt(qtyInput.value) || 1;
+        totalEl.textContent = (price * qty).toLocaleString('vi-VN') + 'đ';
+      };
+
+      // Xử lý nút tăng/giảm số lượng qua Event Listener
+      btnPlus.addEventListener('click', () => {
+        const option = ticketSelect.options[ticketSelect.selectedIndex];
+        const max = parseInt(option.dataset.available) || 99;
+        let current = parseInt(qtyInput.value);
+        if (current < max) {
+          qtyInput.value = current + 1;
+          updatePrice();
+        }
+      });
+
+      btnMinus.addEventListener('click', () => {
+        let current = parseInt(qtyInput.value);
+        if (current > 1) {
+          qtyInput.value = current - 1;
+          updatePrice();
+        }
+      });
+
+      ticketSelect.addEventListener('change', () => {
+        qtyInput.value = 1;
+        updatePrice();
+      });
+
+      // Xử lý đặt vé
+      buyBtn.addEventListener('click', async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        alert('Vui lòng đăng nhập để tiếp tục');
+        return window.location.href = '/auth/login';
+    }
+
+    const payload = {
+        items: [{
+            ticketTypeId: ticketSelect.value, // ID của loại vé đã chọn
+            quantity: parseInt(qtyInput.value)
+        }],
+        paymentMethod: 'VNPay' // Mặc định hoặc lấy từ một radio button
+    };
+
+    try {
+        buyBtn.disabled = true;
+        buyBtn.textContent = 'Đang giữ chỗ...';
+
+        const res = await fetch('/api/orders/create', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            // Sau khi tạo đơn hàng thành công, chuyển đến trang thanh toán riêng
+            window.location.href = `/checkout/${data.orderId}`;
+        } else {
+            alert(data.message || 'Lỗi đặt vé');
+            buyBtn.disabled = false;
+        }
+    } catch (err) {
+        console.error(err);
+        buyBtn.disabled = false;
+    }
+    });
+
+      // Khởi tạo giá tiền ban đầu
+      updatePrice();
+    });

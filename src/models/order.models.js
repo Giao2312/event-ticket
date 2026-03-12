@@ -15,16 +15,24 @@ const orderSchema = new mongoose.Schema({
     enum: ['PENDING', 'PAID', 'CANCELLED', 'EXPIRED'],
     default: 'PENDING'
   },
-  paymentMethod: { type: String, enum: ['COD', 'VNPay', 'MoMo'], default: 'VNPay' },
-  paymentId: String,
-  holdUntil: { type: Date, default: () => new Date(Date.now() + 10 * 60 * 1000) }, 
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'credit_card', 'momo', 'vnpay', 'paypal'], // Thêm 'momo' vào đây
+    required: true
+  },
+  paypalOrderId: { type: String },
+  holdUntil: { type: Date, default: () => new Date(Date.now() + 15 * 60 * 1000) }, 
   tickets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Ticket' }], 
   createdAt: { type: Date, default: Date.now },
   paidAt: Date
 });
 
 
-orderSchema.index({ holdUntil: 1 }, { expireAfterSeconds: 0 });
+
+orderSchema.index({ holdUntil: 1 }, { 
+  expireAfterSeconds: 0, 
+  partialFilterExpression: { status: { $ne: 'PAID' } } 
+});
 
 orderSchema.virtual('totalItems').get(function () {
   return this.items.reduce((sum, item) => sum + item.quantity, 0);

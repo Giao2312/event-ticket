@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "seed": "node seed.js",
     "lint": "eslint . --ext .js",
     "format": "prettier --write .",
     "test": "echo \"No tests yet\" && exit 0"
@@ -22,14 +23,23 @@
   },
   "homepage": "https://github.com/Giao2312/event-ticket#readme",
   "dependencies": {
+    "@paypal/checkout-server-sdk": "^1.0.3",
+    "axios": "^1.13.6",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.9.0",
+    "cookie-parser": "^1.4.7",
+    "crypto": "^1.0.1",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-validator": "^7.3.1",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.7.0",
+    "multer": "^2.1.1",
+    "multer-storage-cloudinary": "^2.2.1",
+    "node-cron": "^4.2.1",
     "pug": "^3.0.3",
     "qrcode": "^1.5.4",
+    "vnpay": "^2.4.4",
     "winston": "^3.14.2"
   },
   "devDependencies": {
