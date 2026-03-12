@@ -13,14 +13,14 @@ const DashboardController = {
       const orders = await Order.find({ userId }).populate('eventId', 'title date').limit(5);
       const tickets = await Ticket.find({ userId }).populate('event', 'name date').limit(5);
 
-      res.render('client/pages/dashboard/user', {
+      res.render('clients/page/dashboard/user', {
         pageTitle: 'Dashboard Người dùng',
         orders,
         tickets
       });
     } catch (err) {
       logger.error(err);
-      res.status(500).render('client/pages/error/500');
+      res.status(500).render('clients/page/error/500');
     }
   },
 
@@ -31,7 +31,7 @@ const DashboardController = {
       const totalTicketsSold = await Ticket.countDocuments();
       const activeEvents = await Event.find({ status: 'upcoming' }).countDocuments();
 
-      res.render('admin/pages/dashboard/index', {
+      res.render('admin/page/dashboard/index', {
         pageTitle: 'Dashboard Admin',
         totalRevenue: totalRevenue[0]?.total || 0,
         totalTicketsSold,
@@ -39,7 +39,7 @@ const DashboardController = {
       });
     } catch (err) {
       logger.error(err);
-      res.status(500).render('admin/pages/error/500');
+      res.status(500).render('admin/page/error/500');
     }
   }]
 };

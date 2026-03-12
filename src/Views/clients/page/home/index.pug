@@ -1,4 +1,5 @@
 extends ../../../layout
+
 block hero
   section.min-vh-100.d-flex.align-items-center.position-relative.overflow-hidden(style="background: linear-gradient(to bottom right, #4c1d95, #4338ca, #be185d); color: white;")
     div.position-absolute.top-0.start-0.end-0.bottom-0.bg-black.opacity-40.z-0
@@ -21,6 +22,7 @@ block hero
           )
           button.btn.rounded-pill.px-5.py-3.fw-bold.shadow-lg.text-white(style="background: linear-gradient(to right, #ec4899, #a855f7);")
             | Tìm kiếm
+        
 block content
   section.border-bottom.bg-dark.py-5
     div.container
@@ -54,30 +56,15 @@ block content
               h3.fw-bold.mb-0 100%
               p.text-muted.small Bảo mật
 
-
   section.py-5.bg-dark
     div.container
       div.d-flex.justify-content-between.align-items-center.mb-4
         h2.text-white.fw-bold Sự kiện nổi bật
         a(href="/events" class="text-primary.fw-medium.text-decoration-none.hover-underline") Xem tất cả →
 
-      div.row.g-4
-        each event in events.slice(0, 4)
-          div.col-md-6.col-lg-3
-            div.card.bg-dark.text-white.border-0.shadow-lg.overflow-hidden
-              img.card-img-top(src=event.image || 'https://placehold.co/400x250' alt=event.name style="height: 200px; object-fit: cover;")
-              div.card-body
-                span.badge.bg-primary.me-2 Nổi bật
-                h5.card-title.mt-2= event.name
-                p.card-text.small.text-white-50
-                  if event.description
-                    | #{event.description.substring(0, 80)}...
-                  else
-                    | Chưa có mô tả cho sự kiện này.
-                div.d-flex.justify-content-between.align-items-center.mt-3
-                  span.fw-bold.text-primary Từ #{event.minPrice || '500.000'}đ
-                  a.btn.btn-sm.btn-outline-light(href=`/events/${event._id}`) Xem chi tiết
-
+      div.row.g-4#featuredEvents
+        // Placeholder ban đầu (sẽ bị xóa bởi JS)
+        p.text-center.text-white Đang tải sự kiện...
 
   section.py-5.bg-black
     div.container
@@ -85,20 +72,8 @@ block content
         h2.text-white.fw-bold Sắp diễn ra
         a(href="/events/upcoming" class="text-primary.fw-medium.text-decoration-none.hover-underline") Xem tất cả →
 
-      div.row.g-4
-          each event in (upcomingEvents || []).slice(0, 4)
-            div.col-md-6.col-lg-3
-            div.card.bg-dark.text-white.border-0.shadow-lg.overflow-hidden
-              img.card-img-top(src=event.image || 'https://placehold.co/400x250' alt=event.name style="height: 200px; object-fit: cover;")
-              div.card-body
-                span.badge.bg-secondary.me-2 Sắp diễn ra
-                h5.card-title.mt-2= event.name
-                p.card-text.small.text-white-50= event.date.toLocaleDateString('vi-VN') + ' • ' + event.time
-                p.card-text.small.text-white-50= event.location
-                div.d-flex.justify-content-between.align-items-center.mt-3
-                  span.fw-bold.text-primary Từ #{event.minPrice || '300.000'}đ
-                  a.btn.btn-sm.btn-outline-light(href=`/events/${event._id}`) Xem chi tiết
-
+      div.row.g-4#upcomingEvents
+        p.text-center.text-white Đang tải sự kiện sắp diễn ra...
 
   section.py-5.bg-gradient-to-br.from-purple-900.to-pink-900.text-white
     div.container.text-center
@@ -107,4 +82,97 @@ block content
         | Tạo sự kiện, quản lý vé và theo dõi doanh thu dễ dàng trên nền tảng của chúng tôi.
       a.btn.btn-lg.btn-light.px-5.py-3.fw-bold.rounded-pill.shadow-lg(href="/become-organizer")
         | Bắt đầu ngay →
+
+block scripts
+  script.
+
+    const originalFetch = window.fetch;
+    window.fetch = async (url, options = {}) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        options.headers = {
+          ...options.headers,
+          Authorization: `Bearer ${token}`
+        };
+      }
+      return originalFetch(url, options);
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const featuredContainer = document.getElementById('featuredEvents');
+      const upcomingContainer = document.getElementById('upcomingEvents');
+
+      // Hàm xử lý ảnh tập trung (Helper)
+      const getImageUrl = (imagePath) => {
+        if (!imagePath) return '/events/images/placeholder.jpg';
+        if (imagePath.includes('/events/')) return imagePath;
+        if (imagePath.startsWith('images/')) return '/events/' + imagePath;
+        return '/events/images/placeholder.jpg';
+      };
+
+      try {
+        const res = await fetch('/api/events/list'); 
+        if (!res.ok) throw new Error('Không thể tải sự kiện');
+        
+        const events = await res.json(); 
+        if (!Array.isArray(events)) throw new Error('Dữ liệu không hợp lệ');
+
+        const featuredEvents = events.filter(e => e.featured).slice(0, 4);
+        const now = new Date();
+        const upcomingEvents = events
+          .filter(e => new Date(e.date) > now)
+          .sort((a, b) => new Date(a.date) - new Date(b.date))
+          .slice(0, 4);
+
+        // Render Featured
+        if (featuredContainer) {
+          // Truyền đúng image vào hàm renderCard
+          featuredContainer.innerHTML = featuredEvents.map(e => renderCard(e, 'Nổi bật', 'bg-primary', e.image)).join('');
+        }
+
+        // Render Upcoming
+        if (upcomingContainer) {
+          upcomingContainer.innerHTML = upcomingEvents.map(event => {
+            const imageSrc = getImageUrl(event.image);
+            let dateStr = event.date ? new Date(event.date).toLocaleDateString('vi-VN') : 'Chưa xác định';
+            
+            return `
+              <div class="col-md-6 col-lg-3">
+                <div class="card bg-dark text-white border-0 shadow-lg overflow-hidden">
+                  <img src="${imageSrc}" onerror="this.onerror=null; this.src='/events/images/placeholder.jpg';" class="card-img-top" style="height: 200px; object-fit: cover;">
+                  <div class="card-body">
+                    <span class="badge bg-secondary me-2">Sắp diễn ra</span>
+                    <h5 class="card-title mt-2">${event.name}</h5>
+                    <p class="card-text small text-white-50">${dateStr} • ${event.time || 'Chưa có giờ'}</p>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                      <span class="fw-bold text-primary">Từ ${event.minPrice?.toLocaleString('vi-VN') || '0'}đ</span>
+                      <a href="/events/${event._id}" class="btn btn-sm btn-outline-light">Xem chi tiết</a>
+                    </div>
+                  </div>
+                </div>
+              </div>`;
+          }).join('');
+        }
+
+      } catch (err) {
+        console.error('Lỗi:', err);
+      }
+    });
+
+
+      const renderCard = (event, badgeText, badgeClass, imagePath ) => {
+        const imageSrc = getImageUrl(imagePath);
+        return `
+          <div class="col-md-6 col-lg-3">
+            <div class="card bg-dark text-white border-0 shadow-lg h-100">
+              <img src="${imageSrc}"  onerror="this.onerror=null; this.src='/events/images/placeholder.jpg';" class="card-img-top" style="height: 200px; object-fit: cover;">
+              <div class="card-body">
+                <span class="badge ${badgeClass} mb-2">${badgeText}</span>
+                <h5 class="card-title">${event.name}</h5>
+                <a href="/events/${event._id}" class="btn btn-sm btn-outline-light">Chi tiết</a>
+              </div>
+            </div>
+          </div>`;
+      };
+              
         

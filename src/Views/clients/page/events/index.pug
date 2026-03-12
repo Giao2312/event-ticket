@@ -1,0 +1,64 @@
+extends ../../../layout
+
+block content
+  section.py-5.bg-light.min-vh-100
+    div.container
+      h1.text-center.fw-bold.mb-5 Khám phá sự kiện
+      
+      //- Thanh tìm kiếm & Lọc
+      div.row.justify-content-center.mb-5
+        div.col-md-8
+          div.input-group.shadow-sm
+            input.form-control.form-control-lg.border-0.ps-4#searchInput(type="text" placeholder="Tìm tên sự kiện, địa điểm...")
+            button.btn.btn-primary.px-4(type="button") 
+              i.fas.fa-search
+      
+      div.d-flex.justify-content-center.flex-wrap.gap-2.mb-5
+        a.btn.btn-outline-secondary.rounded-pill(href="/events") Tất cả
+        each cat in ['Âm nhạc', 'Thể thao', 'Workshop', 'Khác']
+          a.btn.btn-outline-primary.rounded-pill(href=`/events?category=${cat.toLowerCase()}`)= cat
+
+      //- Lưới sự kiện
+      div.row.g-4#eventsGrid
+        if events && events.length > 0
+          each event in events
+            //- Tính giá minPrice ngay tại đây nếu chưa có trong dữ liệu
+            - const price = event.minPrice ? event.minPrice.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
+            - const date = event.date ? new Date(event.date).toLocaleDateString('vi-VN') : 'Chưa xác định'
+            - const img = (event.image && event.image.length > 5) ? event.image : 'https://placehold.co/400x250'
+          
+          div.col-md-6.col-lg-4.event-card
+            div.card.h-100.border-0.shadow-sm.overflow-hidden.hover-shadow
+              img.card-img-top(src=img alt=(event.name || 'Sự kiện') style="height: 220px; object-fit: cover;")
+              div.card-body.d-flex.flex-column
+                span.badge.bg-primary.mb-2.align-self-start= event.category || 'Nổi bật'
+                h5.card-title.fw-bold= event.name || 'Tên sự kiện'
+                p.text-muted.small.mb-1
+                  i.fas.fa-calendar-alt.me-2
+                  | #{date} • #{event.time || 'Giờ TBC'}
+                p.text-muted.small.mb-3
+                  i.fas.fa-map-marker-alt.me-2
+                  | #{event.location || 'Địa điểm TBC'}
+                
+                div.mt-auto.d-flex.justify-content-between.align-items-center
+                  span.text-primary.fw-bold= price
+                  a.btn.btn-sm.btn-outline-primary(href=`/events/${event._id}`) Chi tiết
+        else
+          div.col-12.text-center.py-5
+            p.text-muted Hiện chưa có sự kiện nào được đăng tải.
+
+                
+
+block scripts
+  script.
+    // Logic tìm kiếm thời gian thực
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+      const filter = this.value.toLowerCase();
+      const cards = document.querySelectorAll('.event-card');
+      
+      cards.forEach(card => {
+        const title = card.querySelector('.card-title').innerText.toLowerCase();
+        card.style.display = title.includes(filter) ? "" : "none";
+      });
+    });
+    

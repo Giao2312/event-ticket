@@ -17,7 +17,6 @@ const eventSchema = new mongoose.Schema({
   date: { type: Date, required: [true, 'Ngày sự kiện là bắt buộc'] },
   location: { type: String, required: [true, 'Địa điểm là bắt buộc'] },
   organizer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  ticketTypes: [ticketTypeSchema],
   status: { type: String, enum: ['upcoming', 'ongoing', 'past'], default: 'upcoming' },
   image: { type: String, default: '' }, 
   createdAt: { type: Date, default: Date.now }

@@ -5,93 +5,126 @@ block content
     div.container
       div.row.justify-content-center
         div.col-md-6.col-lg-5
-          div.card.shadow-lg.border-0.rounded-xl.overflow-hidden
-            div.card-body.p-5.text-center
-            div.auth-form.mx-auto(style="max-width: 400px;")
-              div.mx-auto.mb-4.d-flex.align-items-center.justify-content-center.rounded-circle.bg-gradient-hero.w-14.h-14
-                i.fas.fa-ticket-alt.text-white.fs-3
+          div.card.shadow-lg.border-0
+            div.card-body.p-5
+              h2.text-center.fw-bold.mb-4 Đăng ký
+              p.text-center.text-muted.mb-5 Tạo tài khoản để bắt đầu đặt vé
 
-              h1.fw-bold.mb-2 Chào mừng đến EventVé
-              p.text-muted.mb-5 Đăng nhập hoặc tạo tài khoản mới
+              // Hiển thị lỗi từ server
+              div#registerErrors.alert.alert-danger.d-none(role="alert")
+                ul.mb-0#registerErrorList
 
-              ul.nav.nav-pills.nav-fill.mb-5(role="tablist")
-                li.nav-item(role="presentation")
-                  button.nav-link.active.w-100.py-3.fw-medium.rounded-pill(
-                    id="login-tab"
-                    data-bs-toggle="pill"
-                    data-bs-target="#login"
-                    type="button"
-                    role="tab"
-                  ) Đăng nhập
-                li.nav-item(role="presentation")
-                  button.nav-link.w-100.py-3.fw-medium.rounded-pill(
-                    id="register-tab"
-                    data-bs-toggle="pill"
-                    data-bs-target="#register"
-                    type="button"
-                    role="tab"
-                  ) Đăng ký
+              form#registerForm
+                div.mb-4
+                  label.form-label.fw-medium Họ và tên
+                  input.form-control.form-control-lg(type="text" placeholder="Nguyễn Văn A" required name="name")
+                div.mb-4
+                  label.form-label.fw-medium Email
+                  input.form-control.form-control-lg(type="email" placeholder="email@example.com" required name="email")
+                div.mb-4.position-relative
+                  label.form-label.fw-medium Mật khẩu
+                  input.form-control.form-control-lg#password(type="password" placeholder="••••••••" required name="password")
+                  span.position-absolute.top-50.translate-middle-y.end-0.pe-3.cursor-pointer#togglePassword
+                    i.fas.fa-eye-slash.fs-5.text-muted
+                div.mb-5.position-relative
+                  label.form-label.fw-medium Xác nhận mật khẩu
+                  input.form-control.form-control-lg#confirmPassword(type="password" placeholder="••••••••" required name="confirmPassword")
+                  span.position-absolute.top-50.translate-middle-y.end-0.pe-3.cursor-pointer#toggleConfirmPassword
+                    i.fas.fa-eye-slash.fs-5.text-muted
+                button.btn.btn-lg.w-100#registerBtn(style="background: linear-gradient(to right, #8b5cf6, #ec4899); color: white; border: none;") Đăng ký
+                div.text-center.mt-4
+                  a.text-primary.fw-medium(href="/login") Đã có tài khoản? Đăng nhập
 
-              // Tab content
-              div.tab-content.mt-4
-                // Tab Đăng nhập
-                div#login.tab-pane.fade.show.active(role="tabpanel")
-                  form(action="/auth/login" method="POST" class="space-y-4")
-                    div
-                      label.form-label.fw-medium(for="login-email") Email
-                      input#login-email.form-control.form-control-lg.rounded-pill(
-                        type="email"
-                        name="email"
-                        placeholder="email@example.com"
-                        required
-                      )
-                    div
-                      label.form-label.fw-medium(for="login-password") Mật khẩu
-                      input#login-password.form-control.form-control-lg.rounded-pill(
-                        type="password"
-                        name="password"
-                        placeholder="••••••••"
-                        required
-                      )
-                    button.btn.btn-primary.btn-lg.w-100.rounded-pill.fw-bold.shadow-lg.mt-4(
-                      type="submit"
-                      style="background: linear-gradient(to right, #8b5cf6, #ec4899); border: none;"
-                    ) Đăng nhập
-                    p.text-muted.mt-4.mb-0 Bạn chưa có tài khoản? 
-                      a(href="#register-tab" data-bs-toggle="pill" class="text-primary fw-medium") Đăng ký ngay!
-                
-                div#register.tab-pane.fade(role="tabpanel")
-                  form(action="/auth/register" method="POST" class="space-y-4")
-                    div
-                      label.form-label.fw-medium(for="reg-name") Họ tên
-                      input#reg-name.form-control.form-control-lg.rounded-pill(
-                        type="text"
-                        name="full_name"
-                        placeholder="Nguyễn Văn A"
-                        required
-                      )
-                    div
-                      label.form-label.fw-medium(for="reg-email") Email
-                      input#reg-email.form-control.form-control-lg.rounded-pill(
-                        type="email"
-                        name="email"
-                        placeholder="email@example.com"
-                        required
-                      )
-                    div
-                      label.form-label.fw-medium(for="reg-password") Mật khẩu
-                      input#reg-password.form-control.form-control-lg.rounded-pill(
-                        type="password"
-                        name="password"
-                        placeholder="••••••••"
-                        required
-                      )
-                    button.btn.btn-primary.btn-lg.w-100.rounded-pill.fw-bold.shadow-lg.mt-4(
-                      type="submit"
-                      style="background: linear-gradient(to right, #8b5cf6, #ec4899); border: none;"
-                    ) Đăng ký
+block scripts
+  script.
+    const registerForm = document.getElementById('registerForm');
+    const registerBtn = document.getElementById('registerBtn');
+    const errorDiv = document.getElementById('registerErrors');
+    const errorList = document.getElementById('registerErrorList');
+    const togglePassword = document.getElementById('togglePassword');
+    const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+  
 
-                    p.text-muted.mt-4.mb-0 Bạn đã có tài khoản? 
-                      a(href="#login-tab" data-bs-toggle="pill" class="text-primary fw-medium") Đăng nhập ngay!
+    if (togglePassword && passwordInput) {
+      togglePassword.addEventListener('click', () => {
+        const type = passwordInput.type === 'password' ? 'text' : 'password';
+        passwordInput.type = type;
+        togglePassword.innerHTML = type === 'password' 
+          ? '<i class="fas fa-eye-slash fs-5 text-muted"></i>' 
+          : '<i class="fas fa-eye fs-5 text-muted"></i>';
+      });
+    }
+    if (toggleConfirmPassword && confirmPasswordInput) {
+      toggleConfirmPassword.addEventListener('click', () => {
+        const type = onfirmPasswordInput.type === 'password' ? 'text' : 'password';
+        confirmPasswordInput.type = type;
+        togglePassword.innerHTML = type === 'password' 
+          ? '<i class="fas fa-eye-slash fs-5 text-muted"></i>' 
+          : '<i class="fas fa-eye fs-5 text-muted"></i>';
+    });
+    }
+    registerBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
 
-            
+      // Xóa lỗi cũ
+      errorList.innerHTML = '';
+      errorDiv.classList.add('d-none');
+
+      const formData = new FormData(registerForm);
+      const data = {
+        name: formData.get('name').trim(),
+        email: formData.get('email').trim(),
+        password: formData.get('password').trim(),
+        confirmPassword: formData.get('confirmPassword').trim()
+      };
+
+      // Kiểm tra client-side trước
+      if (!data.name || !data.email || !data.password || !data.confirmPassword) {
+        errorList.innerHTML = '<li>Vui lòng điền đầy đủ thông tin</li>';
+        errorDiv.classList.remove('d-none');
+        return;
+      }
+
+      if (data.password !== data.confirmPassword) {
+        errorList.innerHTML = '<li>Mật khẩu xác nhận không khớp</li>';
+        errorDiv.classList.remove('d-none');
+        return;
+      }
+
+      try {
+        const res = await fetch('/register', {  
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        // ... phía trên giữ nguyên
+        const result = await res.json();
+
+        if (res.ok) {
+          // Xóa token cũ nếu có (để dọn dẹp môi trường)
+          localStorage.removeItem('token');
+          
+          alert('Đăng kí thành công!');
+          window.location.href = '/login'; 
+        } else {
+          // Hiển thị lỗi từ server
+          if (result.errors) {
+            result.errors.forEach(err => {
+              const li = document.createElement('li');
+              li.textContent = err.msg;
+              errorList.appendChild(li);
+            });
+          } else {
+            errorList.innerHTML = `<li>${result.message || 'Đăng ký thất bại'}</li>`;
+          }
+          errorDiv.classList.remove('d-none');
+        }
+      }catch (err) {
+          console.error('Lỗi khi gửi request:', err);
+          errorList.innerHTML = '<li>Có lỗi kết nối server, vui lòng thử lại sau.</li>';
+          errorDiv.classList.remove('d-none');
+        }
+    });

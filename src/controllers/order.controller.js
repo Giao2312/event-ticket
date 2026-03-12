@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import Order from '../models/order.models.js';
 import TicketType from '../models/ticketType.models.js';
 import Ticket from '../models/ticket.models.js';
+import paypalService from '../services/paypal.services.js';
 import QRCode from 'qrcode';
 import logger from '../utils/logger.js';
 
@@ -11,7 +12,7 @@ const OrderController = {
     body('items').isArray({ min: 1 }).withMessage('Items phải là array ít nhất 1'),
     body('items.*.ticketTypeId').isMongoId().withMessage('Invalid ticketTypeId'),
     body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity >=1'),
-    body('paymentMethod').isIn(['COD', 'VNPay', 'MoMo']).withMessage('Invalid payment method'),
+    body('paymentMethod').isIn(['COD', 'VNPay', 'MoMo', 'PayPal']).withMessage('Invalid payment method'),
 
     async (req, res) => {
       const errors = validationResult(req);
@@ -23,25 +24,34 @@ const OrderController = {
       try {
         const userId = req.user.id;
         const { items, paymentMethod } = req.body;
+
         let totalAmount = 0;
         const orderItems = [];
+        let eventIdFromItems = null;
+ 
 
         for (const item of items) {
           const ticketType = await TicketType.findById(item.ticketTypeId).session(session);
-          if (!ticketType) throw new Error(`Loại vé ${item.ticketTypeId} không tồn tại`);
+          
+          if (!ticketType) {
+            throw new Error(`Loại vé ${item.ticketTypeId} không tồn tại`);
+          }
 
-          if (item.quantity > ticketType.available) {
-            throw new Error(`Vé "${ticketType.type}" chỉ còn ${ticketType.available} vé`);
+          eventIdFromItems = ticketType.eventId;
+
+          const actualAvailable = ticketType.quantity - ticketType.sold - ticketType.holded;
+          if (item.quantity > actualAvailable) {
+            throw new Error(`Vé "${ticketType.type}" chỉ còn ${actualAvailable} vé khả dụng`);
           }
 
           totalAmount += ticketType.price * item.quantity;
           orderItems.push({
-            ticketTypeId: ticketType._id,
-            quantity: item.quantity,
-            price: ticketType.price
+          ticketTypeId: ticketType._id,
+          quantity: item.quantity,
+          price: ticketType.price
           });
 
-          // Hold vé (tăng holded, giảm available)
+
           ticketType.available -= item.quantity;
           ticketType.holded = (ticketType.holded || 0) + item.quantity;
           await ticketType.save({ session });
@@ -49,10 +59,11 @@ const OrderController = {
 
         const order = new Order({
           userId,
+          eventId: eventIdFromItems,
           items: orderItems,
           totalAmount,
           paymentMethod,
-          holdUntil: new Date(Date.now() + 10 * 60 * 1000) // 10 phút
+          holdUntil: new Date(Date.now() + 15 * 60 * 1000) // 15 phút
         });
 
         await order.save({ session });
@@ -78,51 +89,58 @@ const OrderController = {
 
   payOrder: async (req, res) => {
     const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
-      const orderId = req.params.id;
-      const order = await Order.findById(orderId).session(session);
-
-      if (!order) throw new Error('Không tìm thấy đơn hàng');
-      if (order.status !== 'PENDING') throw new Error('Đơn hàng không hợp lệ để thanh toán');
-
-      order.status = 'PAID';
-      order.paidAt = new Date();
-      await order.save({ session });
-
     
-      for (const item of order.items) {
-        for (let i = 0; i < item.quantity; i++) {
-          const qrData = `Ticket:${order._id}-${item.ticketTypeId}-${i}`;
-          const qrCode = await QRCode.toDataURL(qrData);
-
-          const ticket = new Ticket({
-            orderId: order._id,
-            ticketTypeId: item.ticketTypeId,
-            userId: order.userId,
-            qrCode,
-            code: qrData 
-          });
-
-          await ticket.save({ session });
-          order.tickets.push(ticket._id);
+    try {
+      await session.withTransaction(async () => {
+        const order = await Order.findById(req.params.id).session(session);
+        if (!order || order.status !== 'PENDING') {
+          throw new Error('Đơn hàng không hợp lệ hoặc đã thanh toán');
         }
-      }
 
-      await order.save({ session });
+        // Tối ưu: Tạo mảng tickets trước khi lưu
+        const ticketsToCreate = [];
+        for (const item of order.items) {
+          for (let i = 0; i < item.quantity; i++) {
+            const qrData = `Ticket:${order._id}-${item.ticketTypeId}-${Date.now()}-${i}`;
+            ticketsToCreate.push({
+              orderId: order._id,
+              ticketTypeId: item.ticketTypeId,
+              userId: order.userId,
+              qrCode: await QRCode.toDataURL(qrData),
+              code: qrData
+            });
+          }
+        }
 
-      await session.commitTransaction();
+        // Dùng insertMany để tiết kiệm thời gian ghi vào DB
+        const createdTickets = await Ticket.insertMany(ticketsToCreate, { session });
+        
+        // Cập nhật đơn hàng
+        order.status = 'PAID';
+        order.paidAt = new Date();
+        order.tickets = createdTickets.map(t => t._id);
+        
+        await order.save({ session });
+      });
 
-      res.json({ success: true, message: 'Thanh toán thành công', orderId: order._id });
+      res.json({ success: true, message: 'Thanh toán thành công' });
     } catch (err) {
-      await session.abortTransaction();
       logger.error('Lỗi thanh toán:', err);
       res.status(400).json({ success: false, message: err.message });
     } finally {
       session.endSession();
     }
   },
+
+  checkOrderStatus: async (req, res) => {
+    try {
+      const order = await Order.findById(req.params.id).select('status');
+      res.json({ success: true, status: order ? order.status : 'NOT_FOUND' });
+    } catch (err) {
+      res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+  },
+
 
   cancelOrder: async (req, res) => {
     const session = await mongoose.startSession();
@@ -172,7 +190,7 @@ const OrderController = {
 
       const total = await Order.countDocuments({ userId: req.user.id });
 
-      res.render('client/pages/user/orders', {
+      res.render('clients/page/user/orders', {
         pageTitle: 'Đơn hàng của tôi',
         orders,
         pagination: { page, totalPages: Math.ceil(total / limit) }
@@ -197,9 +215,79 @@ const OrderController = {
       });
     } catch (err) {
       logger.error(err);
-      res.status(500).render('admin/pages/error/500');
+      res.status(500).render('admin/page/error/500');
+    }
+  },
+
+  renderCheckoutPage: async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const userId = req.user.id;
+
+      const order = await Order.findOne({ 
+        _id: orderId, 
+        userId: userId,
+        status: 'PENDING' 
+      })
+      .populate('eventId', 'name date venue location image') 
+      .populate('items.ticketTypeId', 'type price'); 
+
+      if (!order) {
+        return res.status(404).render('clients/page/error/404', {
+          message: 'Đơn hàng không tồn tại hoặc đã hết hạn giữ vé.'
+        });
+      }
+
+      const now = new Date();
+      const timeLeft = Math.max(0, Math.floor((order.holdUntil - now) / 1000));
+
+      if (timeLeft === 0) {
+        order.status = 'EXPIRED';
+        await order.save();
+        return res.status(404).render('clients/page/error/404', {
+          message: 'Thời gian giữ vé đã hết. Vui lòng đặt lại vé!'
+        });
+      }
+      
+      res.render('clients/page/order/checkout', {
+        pageTitle: 'Thanh toán đơn hàng',
+        order,
+        timeLeft, 
+        layout: 'clients/layout/default'
+      });
+    } catch (err) {
+      console.error('Lỗi render checkout:', err);
+      res.status(500).render('clients/page/error/500');
+    }
+  },
+  
+
+  paypalCreate: async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order || order.status !== 'PENDING') throw new Error('Đơn hàng không hợp lệ');
+
+    const paypalOrder = await paypalService.createOrder(order.totalAmount);
+    res.json({ success: true, paymentUrl: paypalOrder.links[1].href }); 
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+},
+
+  paypalCapture: async (req, res) => {
+    try {
+      const { token } = req.query; 
+      const captureData = await paypalService.capturePayment(token);
+      
+      if (captureData.status === 'COMPLETED') {
+          await Order.findByIdAndUpdate(req.params.id, { status: 'PAID' });
+          res.redirect('/orders/success');
+      }
+    } catch (err) {
+      res.redirect('/orders/fail');
     }
   }
-};
+  };
+
 
 export default OrderController;

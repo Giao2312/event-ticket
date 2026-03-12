@@ -30,7 +30,7 @@ const MyTicketsController = {
         })
         .sort({ createdAt: -1 });
 
-      return res.render("client/pages/user/my-tickets", {
+      return res.render("clients/page/user/my-tickets", {
         pageTitle: "Vé của tôi",
         tickets
       });
@@ -61,10 +61,10 @@ const MyTicketsController = {
         .populate("orderId");
 
       if (!ticket) {
-        return res.status(404).render("errors/404");
+        return res.status(404).render("clients/page/error/404");
       }
 
-      res.render("client/pages/user/ticket-detail", {
+      res.render("clients/page/user/ticket-detail", {
         pageTitle: "Chi tiết vé",
         ticket
       });

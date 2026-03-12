@@ -1,0 +1,110 @@
+extends ../../../layout
+
+block content
+  section.py-5.bg-dark.min-vh-100
+    div.container
+      div.row.justify-content-center
+        div.col-lg-8
+          div.card.shadow-xl.border-0.overflow-hidden.bg-gradient-to-br.from-gray-900.to-black.text-white
+            // Header profile (avatar + tên)
+            div.card-header.bg-gradient-to-r.from-purple-900.to-pink-900.text-center.py-5
+              div(class="mx-auto w-32 h-32 rounded-full overflow-hidden border-4 border-purple-500 shadow-2xl transform hover:scale-105 transition-all duration-300") 
+                img.w-full.h-full.object-cover(src=user.avatar || '/events/images/default-avatar.jpg' alt=user.name)
+              h2.mt-4.fw-bold.display-5 #{user.name || 'Người dùng'}
+              p.text-muted.fs-5 #{user.email}
+              small.text-purple-300 Đã tham gia từ #{new Date(user.createdAt).toLocaleDateString('vi-VN')}
+
+            // Body profile
+            div.card-body.p-5
+              // Thông tin cơ bản
+              div.row.g-4.mb-5
+                div.col-md-6
+                  div.d-flex.align-items-center.gap-3
+                    i.fas.fa-envelope.fs-4.text-purple-400
+                    div
+                      p.mb-0.fw-medium Email
+                      p.mb-0.text-white-75 #{user.email || 'Chưa cập nhật'}
+                div.col-md-6
+                  div.d-flex.align-items-center.gap-3
+                    i.fas.fa-phone.fs-4.text-purple-400
+                    div
+                      p.mb-0.fw-medium Số điện thoại
+                      p.mb-0.text-white-75 #{user.phone || 'Chưa cập nhật'}
+                div.col-md-6
+                  div.d-flex.align-items-center.gap-3
+                    i.fas.fa-calendar-alt.fs-4.text-purple-400
+                    div
+                      p.mb-0.fw-medium Ngày sinh
+                      p.mb-0.text-white-75 #{user.dob ? new Date(user.dob).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}
+                div.col-md-6
+                  div.d-flex.align-items-center.gap-3
+                    i.fas.fa-map-marker-alt.fs-4.text-purple-400
+                    div
+                      p.mb-0.fw-medium Địa chỉ
+                      p.mb-0.text-white-75 #{user.address || 'Chưa cập nhật'}
+
+              // Form chỉnh sửa thông tin
+              h4.fw-bold.mb-4.mt-5 Chỉnh sửa thông tin
+              form#profileForm.needs-validation(novalidate)
+                div.row.g-4
+                  div.col-md-6
+                    label.form-label.fw-medium Họ và tên
+                    input.form-control.bg-dark.border-purple-600.text-white(type="text" name="name" value=user.name placeholder="Họ và tên" required)
+                  div.col-md-6
+                    label.form-label.fw-medium Số điện thoại
+                    input.form-control.bg-dark.border-purple-600.text-white(type="tel" name="phone" value=user.phone placeholder="Số điện thoại")
+                  div.col-md-6
+                    label.form-label.fw-medium Ngày sinh
+                    input.form-control.bg-dark.border-purple-600.text-white(type="date" name="dob" value=user.dob ? user.dob.toISOString().split('T')[0] : '')
+                  div.col-md-12
+                    label.form-label.fw-medium Địa chỉ
+                    input.form-control.bg-dark.border-purple-600.text-white(type="text" name="address" value=user.address placeholder="Địa chỉ chi tiết")
+                  div.col-md-12
+                    label.form-label.fw-medium Chọn ảnh đại diện mới
+                    input.form-control.bg-dark.border-purple-600.text-white(type="file" name="avatarFile" accept="image/*")
+                    input(type="hidden" name="avatar" value=user.avatar)
+
+                div.mt-5.text-center
+                  button.btn.btn-lg.btn-gradient-purple-pink.px-5.py-3.fw-bold(type="submit")
+                    i.fas.fa-save.me-2
+                    | Cập nhật thông tin
+
+              // Link đổi mật khẩu
+              div.mt-5.text-center
+                a.text-purple-400.hover-text-purple-300.fw-medium(href="/change-password")
+                  i.fas.fa-key.me-2
+                  | Đổi mật khẩu
+
+              // Link nhanh Vé của tôi
+              div.mt-4.text-center
+                a.btn.btn-outline-light.btn-lg.px-5(href="/my-tickets")
+                  i.fas.fa-ticket-alt.me-2
+                  | Xem vé của tôi
+
+block scripts
+  script.
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData);
+
+      try {
+        const res = await fetch('/profile/update', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (res.ok) {
+          alert('Cập nhật thông tin thành công!');
+          window.location.reload();
+        } else {
+          alert(result.message || 'Cập nhật thất bại');
+        }
+      } catch (err) {
+        alert('Có lỗi kết nối server');
+      }
+    });

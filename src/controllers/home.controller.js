@@ -10,8 +10,11 @@ const homeController = {
 
     async (req, res) => {
       const errors = validationResult(req);
-      if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
+      if (!errors.isEmpty()) 
+        return res.status(400).json({
+            success: false,
+            message: 'Yêu cầu không hợp lệ'
+          });
       try {
         const { category, startDate, endDate } = req.query;
 

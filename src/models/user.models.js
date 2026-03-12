@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'admin'],
+    enum: ['user','Organizer' ,'admin'],
     default: 'user'
   },
   phone: { type: String, default: '' }, 
@@ -43,20 +43,22 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-
-userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
-};
-
-
 userSchema.methods.generateResetToken = function () {
   const resetToken = crypto.randomBytes(20).toString('hex');
   this.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
   this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 min
   return resetToken;
 };
-
-
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  console.log('[COMPARE] Candidate password (nhập vào):', candidatePassword);
+  console.log('[COMPARE] Stored hash (trong DB):', this.password);
+  const match = await bcrypt.compare(candidatePassword, this.password);
+  console.log('[COMPARE] Kết quả so sánh:', match);
+  if (!match) {
+    console.log('[COMPARE] Lý do có thể: mật khẩu nhập không khớp với lúc đăng ký');
+  }
+  return match;
+};
 const User = mongoose.model('User', userSchema);
 
 export default User;
