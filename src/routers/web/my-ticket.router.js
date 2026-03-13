@@ -1,8 +1,16 @@
 import express from 'express';
 import Ticket from '../../models/ticket.models.js'; // Giả sử bạn có model Ticket
-import authMiddleware from '../../middlewares/auth.middleware.js';
+import { authMiddleware } from '../../middlewares/auth.middleware.js';
 
+const app = express();
 const router = express.Router();
+app.get('/my-tickets', authMiddleware, (req, res) => {
+  if (!req.user) return res.redirect('/login');   
+  res.render('clients/page/my-tickets/index', {
+    pageTitle: 'Vé của tôi - EventVé',
+    user: req.user || null
+  });
+});
 
 // Trang Vé của tôi
 router.get('/', authMiddleware, async (req, res) => {

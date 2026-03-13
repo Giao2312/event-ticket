@@ -17,8 +17,9 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['cash', 'credit_card', 'momo', 'vnpay', 'paypal'], // Thêm 'momo' vào đây
-    required: true
+    enum: ['cash', 'credit_card', 'momo', 'vnpay', 'paypal'], 
+    required: true,
+    set: (v) => v ? v.toLowerCase() : v
   },
   paypalOrderId: { type: String },
   holdUntil: { type: Date, default: () => new Date(Date.now() + 15 * 60 * 1000) }, 

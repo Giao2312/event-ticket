@@ -1,64 +1,72 @@
 extends ../../../layout
 
 block content
-  section.py-5.bg-light.min-vh-100
+  section.events-page.py-5.bg-white
     div.container
-      h1.text-center.fw-bold.mb-5 Khám phá sự kiện
-      
-      //- Thanh tìm kiếm & Lọc
-      div.row.justify-content-center.mb-5
-        div.col-md-8
-          div.input-group.shadow-sm
-            input.form-control.form-control-lg.border-0.ps-4#searchInput(type="text" placeholder="Tìm tên sự kiện, địa điểm...")
-            button.btn.btn-primary.px-4(type="button") 
-              i.fas.fa-search
-      
-      div.d-flex.justify-content-center.flex-wrap.gap-2.mb-5
-        a.btn.btn-outline-secondary.rounded-pill(href="/events") Tất cả
-        each cat in ['Âm nhạc', 'Thể thao', 'Workshop', 'Khác']
-          a.btn.btn-outline-primary.rounded-pill(href=`/events?category=${cat.toLowerCase()}`)= cat
+      //- Tiêu đề
+      div.mb-5.text-center
+        h1.fw-bold.text-dark Khám phá sự kiện
+          p.text-muted    Tìm kiếm và khám phá các sự kiện phù hợp với bạn
 
-      //- Lưới sự kiện
+      //- Thanh lọc và Tìm kiếm
+      div.row.align-items-center.g-3.mb-5
+        div.col-lg-9
+          div.d-flex.flex-wrap.gap-2.justify-content-center.justify-content-lg-start
+            a.btn.btn-outline-primary.rounded-pill.px-4(href="/events" class=(!activeCategory ? 'active' : '')) Tất cả
+            each cat in categories
+              a.btn.btn-outline-primary.rounded-pill.px-4(href=`/events?category=${cat.name.toLowerCase()}` class=(activeCategory === cat.name.toLowerCase() ? 'active' : ''))
+                | #{cat.name}
+        
+        div.col-lg-3
+          div.position-relative
+            i.fas.fa-search.position-absolute.top-50.start-0.ms-3.translate-middle-y.text-muted
+            input.form-control.rounded-pill.ps-5#searchInput(type="text" placeholder="Tìm kiếm sự kiện...")
+
+      //- Lưới sự kiện (4 cột trên màn hình lg)
       div.row.g-4#eventsGrid
         if events && events.length > 0
           each event in events
-            //- Tính giá minPrice ngay tại đây nếu chưa có trong dữ liệu
-            - const price = event.minPrice ? event.minPrice.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
-            - const date = event.date ? new Date(event.date).toLocaleDateString('vi-VN') : 'Chưa xác định'
-            - const img = (event.image && event.image.length > 5) ? event.image : 'https://placehold.co/400x250'
-          
-          div.col-md-6.col-lg-4.event-card
-            div.card.h-100.border-0.shadow-sm.overflow-hidden.hover-shadow
-              img.card-img-top(src=img alt=(event.name || 'Sự kiện') style="height: 220px; object-fit: cover;")
-              div.card-body.d-flex.flex-column
-                span.badge.bg-primary.mb-2.align-self-start= event.category || 'Nổi bật'
-                h5.card-title.fw-bold= event.name || 'Tên sự kiện'
-                p.text-muted.small.mb-1
-                  i.fas.fa-calendar-alt.me-2
-                  | #{date} • #{event.time || 'Giờ TBC'}
-                p.text-muted.small.mb-3
-                  i.fas.fa-map-marker-alt.me-2
-                  | #{event.location || 'Địa điểm TBC'}
-                
-                div.mt-auto.d-flex.justify-content-between.align-items-center
-                  span.text-primary.fw-bold= price
-                  a.btn.btn-sm.btn-outline-primary(href=`/events/${event._id}`) Chi tiết
+            div.col-12.col-md-6.col-lg-3.event-item
+              a.text-decoration-none(href=`/events/${event._id}`)
+                div.card.h-100.border-0.shadow-sm.overflow-hidden
+                  //- Ảnh card
+                  div.card-img-box
+                    img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name)
+                  //- Nội dung
+                  div.card-body.d-flex.flex-column
+                    span.badge.bg-primary.mb-2.align-self-start= event.category || 'Nổi bật'
+                    h5.card-title.fw-bold.event-name= event.name
+                    p.text-muted.small.mb-1
+                      i.fas.fa-calendar-alt.me-2
+                      | #{new Date(event.date).toLocaleDateString('vi-VN')}
+                    div.mt-auto.d-flex.justify-content-between.align-items-center.pt-3
+                      span.text-primary.fw-bold.price-text= event.minPrice ? event.minPrice.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
+                      span.btn.btn-sm.btn-outline-primary Chi tiết
         else
           div.col-12.text-center.py-5
-            p.text-muted Hiện chưa có sự kiện nào được đăng tải.
+            p.text-muted Không tìm thấy sự kiện nào.
 
-                
 
-block scripts
+
+block append scripts
   script.
-    // Logic tìm kiếm thời gian thực
-    document.getElementById('searchInput').addEventListener('keyup', function() {
-      const filter = this.value.toLowerCase();
-      const cards = document.querySelectorAll('.event-card');
-      
-      cards.forEach(card => {
-        const title = card.querySelector('.card-title').innerText.toLowerCase();
-        card.style.display = title.includes(filter) ? "" : "none";
+    // Hover animation cho card (tùy chọn, đẹp hơn)
+    document.querySelectorAll('.event-item').forEach(item => {
+      item.addEventListener('mouseenter', () => {
+        item.querySelector('.card').style.transform = 'translateY(-8px)';
+        item.querySelector('.card').style.boxShadow = '0 20px 30px rgba(168, 85, 247, 0.2)';
+      });
+      item.addEventListener('mouseleave', () => {
+        item.querySelector('.card').style.transform = 'translateY(0)';
+        item.querySelector('.card').style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
       });
     });
-    
+
+    // Tìm kiếm realtime (lọc card theo tên)
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+      const filter = this.value.toLowerCase();
+      document.querySelectorAll('.event-item').forEach(item => {
+        const title = item.querySelector('.card-title')?.innerText.toLowerCase() || '';
+        item.style.display = title.includes(filter) ? '' : 'none';
+      });
+    });

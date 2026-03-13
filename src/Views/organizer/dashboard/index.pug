@@ -1,0 +1,8 @@
+extends ../../layout
+
+block content
+  section.py-5
+    div.container
+      h1.fw-bold Dashboard Nhà tổ chức
+      p Chào mừng #{user.name}!
+      pre #{JSON.stringify(stats, null, 2)}  <!-- Debug dữ liệu -->

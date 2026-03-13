@@ -3,8 +3,10 @@ import express from 'express';
 import User from '../../models/user.models.js';
 import { storage } from '../../config/cloudinary.js';
 import orderHistoryController from "../../controllers/orderhistory.controller.js";
-import authMiddleware from '../../middlewares/auth.middleware.js';
+import { authMiddleware } from '../../middlewares/auth.middleware.js';
 import multer from 'multer';  
+const app = express();
+
 
 const router = express.Router();
     router.get(
@@ -14,6 +16,9 @@ const router = express.Router();
     );
 
 const upload = multer({ storage: storage });
+
+
+
 
 router.put('/update', authMiddleware, upload.single('avatarFile'), async (req, res) => {
   try {
@@ -42,6 +47,15 @@ router.put('/update', authMiddleware, upload.single('avatarFile'), async (req, r
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi server' });
   }
+});
+
+app.get('/profile', authMiddleware, (req, res) => {
+  if (!req.user) return res.redirect('/login');
+
+  res.render('clients/page/profile/index', {
+    pageTitle: 'Hồ sơ người dùng',
+    user: req.user || null  
+  });
 });
 
 export default router;

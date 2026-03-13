@@ -1,0 +1,111 @@
+extends ../../layout
+
+block content
+  section.py-5.bg-light.min-vh-100
+    div.container-fluid
+      div.row
+        //- Sidebar (giống dashboard)
+        aside.col-auto.col-md-3.col-xl-2.px-sm-2.px-0.bg-white.border-end.shadow-sm
+          div.d-flex.flex-column.align-items-center.align-items-sm-start.px-3.pt-2.text-dark.min-vh-100
+            a.d-flex.align-items-center.pb-3.mb-md-0.me-md-auto.text-dark.text-decoration-none
+              span.fs-5.fw-bold EventVé Organizer
+            hr
+            ul.nav.nav-pills.flex-column.mb-sm-auto.mb-0.align-items-center.align-items-sm-start
+              li.nav-item
+                a.nav-link.px-0.align-middle(href="/dashboard/organizer")
+                  i.fas.fa-home.fs-4.me-2
+                  span.ms-1 Tổng quan
+              li.nav-item
+                a.nav-link.px-0.align-middle.active(href="/organizer/events")
+                  i.fas.fa-calendar-alt.fs-4.me-2
+                  span.ms-1 Sự kiện
+              li.nav-item
+                a.nav-link.px-0.align-middle(href="/organizer/orders")
+                  i.fas.fa-shopping-cart.fs-4.me-2
+                  span.ms-1 Đơn hàng
+              li.nav-item.mt-auto
+                a.nav-link.px-0.align-middle.text-danger(href="/logout")
+                  i.fas.fa-sign-out-alt.fs-4.me-2
+                  span.ms-1 Đăng xuất
+
+        //- Nội dung chính
+        main.col.py-5.px-4
+          div.d-flex.justify-content-between.align-items-center.mb-4
+            h2.fw-bold Quản lý sự kiện
+            a.btn.btn-gradient.px-5.py-3.rounded-pill.shadow-sm(href="/organizer/events/create")
+              i.fas.fa-plus.me-2
+              | Tạo sự kiện
+
+          //- Tìm kiếm + Filter
+          div.row.align-items-center.g-4.mb-5
+            div.col-md-8
+              div.input-group
+                span.input-group-text
+                  i.fas.fa-search
+                input.form-control#searchEvent(type="text" placeholder="Tìm kiếm sự kiện...")
+            div.col-md-4
+              select.form-select#filterStatus
+                option(value="all") Tất cả trạng thái
+                option(value="upcoming") Sắp diễn ra
+                option(value="ongoing") Đang diễn ra
+                option(value="ended") Đã kết thúc
+
+          //- Bảng sự kiện
+          div.card.border-0.shadow-sm.overflow-hidden
+            div.table-responsive
+              table.table.table-hover.align-middle.mb-0
+                thead.bg-light
+                  tr
+                    th Ảnh
+                    th Tên sự kiện
+                    th Ngày diễn ra
+                    th Trạng thái
+                    th Vé đã bán
+                    th Hành động
+
+                tbody
+                  if events && events.length > 0
+                    each event in events
+                      tr
+                        td
+                          img.rounded(src=event.image || '/images/placeholder.jpg' alt=event.name width="80" height="50" style="object-fit: cover;")
+                        td.fw-medium= event.name
+                        td.text-muted.small= new Date(event.date).toLocaleDateString('vi-VN') + ' • ' + (event.time || 'TBC')
+                        td
+                          span.badge(class=event.status === 'upcoming' ? 'bg-success' : event.status === 'ongoing' ? 'bg-warning' : 'bg-secondary')
+                            = event.status === 'upcoming' ? 'Sắp diễn ra' : event.status === 'ongoing' ? 'Đang diễn ra' : 'Đã kết thúc'
+                        td.text-center
+                          span.fw-bold= event.ticketsSold || '0' 
+                          small.text-muted / #{event.totalTickets || '∞'}
+                        td
+                          div.btn-group.btn-group-sm
+                            a.btn.btn-outline-primary(href=`/organizer/event/${event._id}`) Quản lý
+                            a.btn.btn-outline-warning(href=`/organizer/event/${event._id}/edit`) Chỉnh sửa
+                            button.btn.btn-outline-danger(type="button" onclick=`deleteEvent('${event._id}')`) Xóa
+
+                  else
+                    tr
+                      td(colspan="6").text-center.py-5
+                        i.fas.fa-calendar-alt.fs-1.text-muted.mb-3.d-block
+                        h5.text-muted Chưa có sự kiện nào
+                        p.text-muted Hãy tạo sự kiện đầu tiên để bắt đầu bán vé!
+                        a.btn.btn-gradient.mt-3(href="/organizer/events/create") + Tạo sự kiện ngay
+
+block append scripts
+  script.
+    // Tìm kiếm realtime
+    document.getElementById('searchEvent')?.addEventListener('keyup', function() {
+      const filter = this.value.toLowerCase();
+      document.querySelectorAll('tbody tr').forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+      });
+    });
+
+    // Xác nhận xóa sự kiện (tùy chọn)
+    function deleteEvent(id) {
+      if (confirm('Bạn có chắc chắn muốn xóa sự kiện này?')) {
+        // Gọi API xóa (sau này thêm fetch)
+        alert('Đã xóa sự kiện ID: ' + id);
+      }
+    }

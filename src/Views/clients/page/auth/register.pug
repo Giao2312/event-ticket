@@ -35,96 +35,96 @@ block content
                 div.text-center.mt-4
                   a.text-primary.fw-medium(href="/login") Đã có tài khoản? Đăng nhập
 
-block scripts
-  script.
-    const registerForm = document.getElementById('registerForm');
-    const registerBtn = document.getElementById('registerBtn');
-    const errorDiv = document.getElementById('registerErrors');
-    const errorList = document.getElementById('registerErrorList');
-    const togglePassword = document.getElementById('togglePassword');
-    const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
-    const passwordInput = document.getElementById('password');
-    const confirmPasswordInput = document.getElementById('confirmPassword');
-  
+  block append scripts
+    script.
+      const registerForm = document.getElementById('registerForm');
+      const registerBtn = document.getElementById('registerBtn');
+      const errorDiv = document.getElementById('registerErrors');
+      const errorList = document.getElementById('registerErrorList');
+      const togglePassword = document.getElementById('togglePassword');
+      const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+      const passwordInput = document.getElementById('password');
+      const confirmPasswordInput = document.getElementById('confirmPassword');
+    
 
-    if (togglePassword && passwordInput) {
-      togglePassword.addEventListener('click', () => {
-        const type = passwordInput.type === 'password' ? 'text' : 'password';
-        passwordInput.type = type;
-        togglePassword.innerHTML = type === 'password' 
-          ? '<i class="fas fa-eye-slash fs-5 text-muted"></i>' 
-          : '<i class="fas fa-eye fs-5 text-muted"></i>';
-      });
-    }
-    if (toggleConfirmPassword && confirmPasswordInput) {
-      toggleConfirmPassword.addEventListener('click', () => {
-        const type = onfirmPasswordInput.type === 'password' ? 'text' : 'password';
-        confirmPasswordInput.type = type;
-        togglePassword.innerHTML = type === 'password' 
-          ? '<i class="fas fa-eye-slash fs-5 text-muted"></i>' 
-          : '<i class="fas fa-eye fs-5 text-muted"></i>';
-    });
-    }
-    registerBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-
-      // Xóa lỗi cũ
-      errorList.innerHTML = '';
-      errorDiv.classList.add('d-none');
-
-      const formData = new FormData(registerForm);
-      const data = {
-        name: formData.get('name').trim(),
-        email: formData.get('email').trim(),
-        password: formData.get('password').trim(),
-        confirmPassword: formData.get('confirmPassword').trim()
-      };
-
-      // Kiểm tra client-side trước
-      if (!data.name || !data.email || !data.password || !data.confirmPassword) {
-        errorList.innerHTML = '<li>Vui lòng điền đầy đủ thông tin</li>';
-        errorDiv.classList.remove('d-none');
-        return;
-      }
-
-      if (data.password !== data.confirmPassword) {
-        errorList.innerHTML = '<li>Mật khẩu xác nhận không khớp</li>';
-        errorDiv.classList.remove('d-none');
-        return;
-      }
-
-      try {
-        const res = await fetch('/register', {  
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
+      if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', () => {
+          const type = passwordInput.type === 'password' ? 'text' : 'password';
+          passwordInput.type = type;
+          togglePassword.innerHTML = type === 'password' 
+            ? '<i class="fas fa-eye-slash fs-5 text-muted"></i>' 
+            : '<i class="fas fa-eye fs-5 text-muted"></i>';
         });
+      }
+      if (toggleConfirmPassword && confirmPasswordInput) {
+        toggleConfirmPassword.addEventListener('click', () => {
+          const type = onfirmPasswordInput.type === 'password' ? 'text' : 'password';
+          confirmPasswordInput.type = type;
+          togglePassword.innerHTML = type === 'password' 
+            ? '<i class="fas fa-eye-slash fs-5 text-muted"></i>' 
+            : '<i class="fas fa-eye fs-5 text-muted"></i>';
+      });
+      }
+      registerBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
 
-        // ... phía trên giữ nguyên
-        const result = await res.json();
+        // Xóa lỗi cũ
+        errorList.innerHTML = '';
+        errorDiv.classList.add('d-none');
 
-        if (res.ok) {
-          // Xóa token cũ nếu có (để dọn dẹp môi trường)
-          localStorage.removeItem('token');
-          
-          alert('Đăng kí thành công!');
-          window.location.href = '/login'; 
-        } else {
-          // Hiển thị lỗi từ server
-          if (result.errors) {
-            result.errors.forEach(err => {
-              const li = document.createElement('li');
-              li.textContent = err.msg;
-              errorList.appendChild(li);
-            });
+        const formData = new FormData(registerForm);
+        const data = {
+          name: formData.get('name').trim(),
+          email: formData.get('email').trim(),
+          password: formData.get('password').trim(),
+          confirmPassword: formData.get('confirmPassword').trim()
+        };
+
+        // Kiểm tra client-side trước
+        if (!data.name || !data.email || !data.password || !data.confirmPassword) {
+          errorList.innerHTML = '<li>Vui lòng điền đầy đủ thông tin</li>';
+          errorDiv.classList.remove('d-none');
+          return;
+        }
+
+        if (data.password !== data.confirmPassword) {
+          errorList.innerHTML = '<li>Mật khẩu xác nhận không khớp</li>';
+          errorDiv.classList.remove('d-none');
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/auth/register', {  
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+
+          // ... phía trên giữ nguyên
+          const result = await res.json();
+
+          if (res.ok) {
+            // Xóa token cũ nếu có (để dọn dẹp môi trường)
+            localStorage.removeItem('token');
+            
+            alert('Đăng kí thành công!');
+            window.location.href = '/login'; 
           } else {
-            errorList.innerHTML = `<li>${result.message || 'Đăng ký thất bại'}</li>`;
+            // Hiển thị lỗi từ server
+            if (result.errors) {
+              result.errors.forEach(err => {
+                const li = document.createElement('li');
+                li.textContent = err.msg;
+                errorList.appendChild(li);
+              });
+            } else {
+              errorList.innerHTML = `<li>${result.message || 'Đăng ký thất bại'}</li>`;
+            }
+            errorDiv.classList.remove('d-none');
           }
-          errorDiv.classList.remove('d-none');
-        }
-      }catch (err) {
-          console.error('Lỗi khi gửi request:', err);
-          errorList.innerHTML = '<li>Có lỗi kết nối server, vui lòng thử lại sau.</li>';
-          errorDiv.classList.remove('d-none');
-        }
-    });
+        }catch (err) {
+            console.error('Lỗi khi gửi request:', err);
+            errorList.innerHTML = '<li>Có lỗi kết nối server, vui lòng thử lại sau.</li>';
+            errorDiv.classList.remove('d-none');
+          }
+      });

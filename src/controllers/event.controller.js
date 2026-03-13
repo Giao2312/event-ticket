@@ -1,8 +1,7 @@
 import { param, query, validationResult } from 'express-validator';
 import Event from '../models/event.models.js';
 import TicketType from '../models/ticketType.models.js';
-import logger from '../utils/logger.js';
-import authMiddleware from '../middlewares/auth.middleware.js';
+import {authMiddleware} from '../middlewares/auth.middleware.js';
 import { verifyToken } from '../utils/jwt.js'; 
 
 const eventController = {
@@ -62,37 +61,78 @@ const eventController = {
 
 
 getAllWeb: async (req, res) => {
-    try {
-        const events = await Event.aggregate([
-            {
-                $lookup: {
-                    from: 'tickettypes',
-                    localField: '_id',
-                    foreignField: 'eventId',
-                    as: 'tickets'
-                }
-            },
-            {
-                $addFields: {
-                    minPrice: { $min: "$tickets.price" }
-                }
-            },
-            { $sort: { date: 1 } },
-            // Đảm bảo chỉ lấy document có name
-            { $match: { name: { $exists: true, $ne: null } } }
-        ]);
+  try {
+    const categoryQuery = req.query.category;
+    const searchQuery = req.query.search;
 
-        // "Phẫu thuật" lần cuối: lọc sạch các phần tử lạ
-        const cleanEvents = (events || []).filter(e => e && e.name);
+    // Xử lý active category cho filter button
+    const activeCategory = categoryQuery ? categoryQuery.toLowerCase() : 'tất cả';
 
-        res.render('clients/page/events/index', { 
-            pageTitle: 'Danh sách sự kiện',
-            events: cleanEvents 
-        });
-    } catch (err) {
-        logger.error('Lỗi render trang sự kiện:', err);
-        res.status(500).render('clients/page/error/500');
+    // Xây dựng query lọc
+    let matchStage = {};
+
+    // Lọc category (nếu không phải 'tất cả')
+    if (categoryQuery && categoryQuery !== 'tất cả') {
+      matchStage.category = new RegExp(`^${categoryQuery}$`, 'i');
     }
+
+    // Lọc search (tên, mô tả, địa điểm)
+    if (searchQuery) {
+      matchStage.$or = [
+        { name: new RegExp(searchQuery, 'i') },
+        { description: new RegExp(searchQuery, 'i') },
+        { location: new RegExp(searchQuery, 'i') }
+      ];
+    }
+
+    const events = await Event.aggregate([
+      {
+        $lookup: {
+          from: 'tickettypes',
+          localField: '_id',
+          foreignField: 'eventId',
+          as: 'tickets'
+        }
+      },
+      {
+        $addFields: {
+          minPrice: { $min: "$tickets.price" },
+          displayPrice: {
+            $cond: {
+              if: { $gt: [{ $size: "$tickets" }, 0] },
+              then: { $concat: [{ $toString: { $min: "$tickets.price" } }, "đ"] },
+              else: "Liên hệ"
+            }
+          }
+        }
+      },
+      { $match: matchStage },  // ← Đưa $match lên đây để lọc trước sort
+      { $sort: { date: 1 } },
+      { $limit: 20 }  // Giới hạn để load nhanh
+    ]);
+
+    // Truyền dữ liệu cho Pug
+    res.render('clients/page/events/index', { 
+      pageTitle: 'Danh sách sự kiện',
+      events,
+      categories: [
+        { name: 'Âm nhạc', icon: 'fa-music' },
+        { name: 'Ẩm thực', icon: 'fa-utensils' },
+        { name: 'Công nghệ', icon: 'fa-robot' },
+        { name: 'Giải trí', icon: 'fa-grin-stars' },
+        { name: 'Kinh doanh', icon: 'fa-briefcase' },
+        { name: 'Nghệ thuật', icon: 'fa-palette' },
+        { name: 'Thể thao', icon: 'fa-running' },
+        { name: 'Workshop', icon: 'fa-graduation-cap' }
+      ],
+      activeCategory,
+      searchQuery: searchQuery || '',
+      user: req.user || null
+    });
+  } catch (err) {
+    logger.error('Lỗi render trang sự kiện:', err);
+    res.status(500).render('clients/page/error/500');
+  }
 },
 
   // --- PHẦN DÀNH CHO API (TRẢ VỀ JSON) ---
@@ -215,8 +255,45 @@ getAllWeb: async (req, res) => {
     }
   ],
 
+ getDashboardEvents :[ async (req, res) => {
+  try {
+    const events = await Event.find({}).sort({ date: 1 });
+
+    // Thêm logic tính toán trạng thái cho từng event
+    const now = new Date();
+    const processedEvents = events.map(event => {
+      let status = 'upcoming';
+      const eventDate = new Date(event.date);
+      
+      // Logic đơn giản: 
+      // Nếu ngày sự kiện đã qua -> 'ended'
+      // Nếu ngày sự kiện là hôm nay hoặc tương lai -> 'upcoming'
+      // Bạn có thể mở rộng logic này (ví dụ: dùng trường duration)
+      if (eventDate < now) {
+        status = 'ended';
+      } else {
+        status = 'upcoming';
+      }
+
+      return {
+        ...event.toObject(),
+        status: status
+      };
+    });
+
+    res.render('admin/dashboard/events', { 
+      pageTitle: 'Quản lý sự kiện',
+      events: processedEvents 
+    });
+  } catch (err) {
+    logger.error('Lỗi lấy danh sách sự kiện:', err);
+    res.status(500).send('Lỗi Server');
+  }
+}
+ ]
 
 };
+
 
 
 export default eventController;

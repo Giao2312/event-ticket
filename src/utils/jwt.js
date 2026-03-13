@@ -12,6 +12,14 @@ export const signRefreshToken = (payload) => {
     expiresIn: '30d'
   });
 };
+
+
 export const verifyToken = (token) => {
-  return jwt.verify(token, process.env.JWT_SECRET);
+  try {
+    // Trả về decoded object nếu thành công
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch (err) {
+    // Nếu token lỗi hoặc hết hạn, trả về null để controller xử lý
+    return null;
+  }
 };

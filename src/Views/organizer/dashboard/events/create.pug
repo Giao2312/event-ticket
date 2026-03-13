@@ -1,0 +1,169 @@
+extends ../../layout
+
+block content
+  section.create-event.py-5.bg-light.min-vh-100
+    div.container
+      //- Header
+      div.d-flex.justify-content-between.align-items-center.mb-5
+        div
+          h1.fw-bold.text-dark.mb-1 Tạo sự kiện mới
+          p.text-muted.small Điền đầy đủ thông tin để sự kiện của bạn thu hút người tham gia
+
+        a.btn.btn-outline-secondary.px-4.py-2.rounded-pill(href="/organizer/events")
+          i.fas.fa-arrow-left.me-2
+          | Quay lại danh sách
+
+      //- Form chính
+      form#eventForm.needs-validation(novalidate)
+        div.row.g-4
+          //- Cột trái (Thông tin cơ bản + Thời gian & Địa điểm)
+          div.col-lg-8
+            //- Thông tin cơ bản
+            div.card.border-0.shadow-sm.rounded-4.mb-4
+              div.card-body.p-4
+                h5.fw-bold.mb-4
+                  i.fas.fa-info-circle.me-2.text-purple-600
+                  | Thông tin cơ bản
+                div.mb-4
+                  label.form-label.fw-medium Tên sự kiện *
+                  input.form-control.form-control-lg(type="text" name="name" placeholder="Ví dụ: Đại nhạc hội Sai Gon 2026" required)
+                  div.invalid-feedback Vui lòng nhập tên sự kiện
+
+                div.mb-4
+                  label.form-label.fw-medium Mô tả sự kiện *
+                  textarea.form-control.form-control-lg(rows="6" name="description" placeholder="Mô tả chi tiết về sự kiện, nghệ sĩ, chương trình..." required)
+                  div.invalid-feedback Vui lòng nhập mô tả
+
+                div.mb-4
+                  label.form-label.fw-medium Danh mục sự kiện
+                  select.form-select.form-select-lg(name="category")
+                    option(value="") Chọn danh mục
+                    option(value="am-nhac") Âm nhạc
+                    option(value="the-thao") Thể thao
+                    option(value="workshop") Workshop
+                    option(value="nghe-thuat") Nghệ thuật
+                    option(value="cong-nghe") Công nghệ
+                    option(value="giai-tri") Giải trí
+                    option(value="kinh-doanh") Kinh doanh
+                    option(value="am-thuc") Ẩm thực
+
+                div.mb-4
+                  label.form-label.fw-medium Ảnh đại diện sự kiện *
+                  input.form-control(type="file" name="image" accept="image/*" required)
+                  small.text-muted.mt-2 Chọn ảnh đẹp, kích thước khuyến nghị 1200x600px
+
+            //- Thời gian & Địa điểm
+            div.card.border-0.shadow-sm.rounded-4.mb-4
+              div.card-body.p-4
+                h5.fw-bold.mb-4
+                  i.fas.fa-calendar-alt.me-2.text-purple-600
+                  | Thời gian & Địa điểm
+                div.row.g-3
+                  div.col-md-6
+                    label.form-label.fw-medium Ngày bắt đầu *
+                    input.form-control.form-control-lg(type="date" name="dateStart" required)
+                  div.col-md-6
+                    label.form-label.fw-medium Ngày kết thúc *
+                    input.form-control.form-control-lg(type="date" name="dateEnd" required)
+
+                div.row.g-3.mt-3
+                  div.col-md-6
+                    label.form-label.fw-medium Giờ bắt đầu
+                    input.form-control.form-control-lg(type="time" name="timeStart")
+                  div.col-md-6
+                    label.form-label.fw-medium Giờ kết thúc
+                    input.form-control.form-control-lg(type="time" name="timeEnd")
+
+                div.mt-3
+                  label.form-label.fw-medium Địa điểm *
+                  input.form-control.form-control-lg(type="text" name="location" placeholder="Ví dụ: Nhà hát Hòa Bình, TP. Hồ Chí Minh" required)
+
+                div.mt-3
+                  label.form-label.fw-medium Link Google Maps (tùy chọn)
+                  input.form-control(type="url" name="mapLink" placeholder="https://maps.google.com/...")
+
+          //- Cột phải (Loại vé + Cài đặt)
+          div.col-lg-4
+            //- Loại vé & Giá
+            div.card.border-0.shadow-sm.rounded-4.mb-4
+              div.card-body.p-4
+                h5.fw-bold.mb-4
+                  i.fas.fa-ticket-alt.me-2.text-purple-600
+                  | Loại vé & Giá
+                div#ticketTypes
+                  div.ticket-type.mb-4
+                    div.row.g-3
+                      div.col-12
+                        label.form-label.fw-medium Tên loại vé *
+                        input.form-control(type="text" name="tickets[0][type]" placeholder="VIP" required)
+                      div.col-6
+                        label.form-label.fw-medium Giá vé *
+                        input.form-control(type="number" name="tickets[0][price]" placeholder="500000" min="0" required)
+                      div.col-6
+                        label.form-label.fw-medium Số lượng *
+                        input.form-control(type="number" name="tickets[0][quantity]" placeholder="100" min="1" required)
+
+                button.btn.btn-outline-primary.w-100.mt-3(type="button" onclick="addTicketType()")
+                  i.fas.fa-plus.me-2
+                  | Thêm loại vé mới
+
+            //- Cài đặt khác
+            div.card.border-0.shadow-sm.rounded-4.mb-4
+              div.card-body.p-4
+                h5.fw-bold.mb-4
+                  i.fas.fa-cog.me-2.text-purple-600
+                  | Cài đặt khác
+                div.form-check.mb-3
+                  input.form-check-input(type="checkbox" name="isPublic" id="isPublic" checked)
+                  label.form-check-label(for="isPublic") Sự kiện công khai (ai cũng thấy)
+
+                div.form-check.mb-3
+                  input.form-check-input(type="checkbox" name="requireApproval" id="requireApproval")
+                  label.form-check-label(for="requireApproval") Yêu cầu duyệt đăng ký tham gia
+
+                div.mb-3
+                  label.form-label.fw-medium Thời gian mở bán vé
+                  input.form-control(type="datetime-local" name="saleStart")
+
+            //- Nút tạo sự kiện
+            button.btn.btn-gradient.btn-lg.w-100.py-3.fw-bold.shadow-lg(type="submit")
+              i.fas.fa-save.me-2
+              | Tạo sự kiện ngay
+
+block append scripts
+  script.
+    // Thêm loại vé động
+    let ticketCount = 1;
+
+    function addTicketType() {
+      ticketCount++;
+      const html = `
+        <div class="ticket-type mb-4 border-top pt-4">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-medium">Tên loại vé *</label>
+              <input class="form-control" type="text" name="tickets[${ticketCount}][type]" placeholder="VIP / Thường / ..." required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-medium">Giá vé *</label>
+              <input class="form-control" type="number" name="tickets[${ticketCount}][price]" placeholder="500000" min="0" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-medium">Số lượng *</label>
+              <input class="form-control" type="number" name="tickets[${ticketCount}][quantity]" placeholder="100" min="1" required>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('ticketTypes').insertAdjacentHTML('beforeend', html);
+    }
+
+    // Form validation Bootstrap
+    const form = document.getElementById('eventForm');
+    form.addEventListener('submit', e => {
+      if (!form.checkValidity()) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      form.classList.add('was-validated');
+    });

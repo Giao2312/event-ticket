@@ -1,0 +1,72 @@
+extends ../../layout
+
+block content
+  section.py-5.bg-light
+    div.container
+      div.d-flex.justify-content-between.align-items-center.mb-4
+        h2.fw-bold Quản lý sự kiện
+        a.btn.btn-gradient.px-5.py-3.rounded-pill.shadow-sm(href="/create-event")
+          i.fas.fa-plus.me-2
+          | Tạo sự kiện
+
+      //- Search + Filter
+      div.row.mb-5
+        div.col-md-8
+          div.input-group
+            span.input-group-text
+              i.fas.fa-search
+            input.form-control#searchEvent(type="text" placeholder="Tìm kiếm sự kiện...")
+        div.col-md-4
+          select.form-select#filterStatus
+            option(value="") Tất cả trạng thái
+            option(value="upcoming") Sắp diễn ra
+            option(value="ongoing") Đang diễn ra
+            option(value="ended") Đã kết thúc
+
+      //- Danh sách sự kiện
+      div#eventList.row.g-4
+        if events && events.length > 0
+          each event in events
+            div.col-12.col-md-6.col-lg-4(data-status=event.status)
+              div.card.border-0.shadow-sm.h-100
+                img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 160px; object-fit: cover;")
+                div.card-body
+                  h5.card-title.fw-bold.mb-2= event.name
+                  p.text-muted.small.mb-3
+                    i.fas.fa-calendar-alt.me-1
+                    | #{new Date(event.date).toLocaleDateString('vi-VN')}
+                  div.d-flex.justify-content-between
+                    span.badge(class=event.status === 'upcoming' ? 'bg-success' : event.status === 'ongoing' ? 'bg-warning' : 'bg-secondary')
+                      = event.status === 'upcoming' ? 'Sắp diễn ra' : event.status === 'ongoing' ? 'Đang diễn ra' : 'Đã kết thúc'
+                    a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${event._id}`) Quản lý
+        else
+          div.col-12.text-center.py-5
+            i.fas.fa-calendar-alt.fs-1.text-muted.mb-3
+            h5.text-dark Không tìm thấy sự kiện nào
+            p.text-muted Hãy tạo sự kiện đầu tiên ngay!
+            a.btn.btn-gradient.px-5.py-3.mt-3(href="/create-event") + Tạo sự kiện đầu tiên
+
+
+block append scripts
+  script.
+    const searchInput = document.getElementById('searchEvent');
+    const statusFilter = document.getElementById('filterStatus');
+    const cards = document.querySelectorAll('#eventList > div');
+
+    function filterEvents() {
+      const searchTerm = searchInput.value.toLowerCase();
+      const statusTerm = statusFilter.value;
+
+      cards.forEach(card => {
+        const title = card.querySelector('.card-title').innerText.toLowerCase();
+        const status = card.getAttribute('data-status');
+
+        const matchesSearch = title.includes(searchTerm);
+        const matchesStatus = statusTerm === "" || status === statusTerm;
+
+        card.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+      });
+    }
+
+    searchInput.addEventListener('keyup', filterEvents);
+    statusFilter.addEventListener('change', filterEvents);

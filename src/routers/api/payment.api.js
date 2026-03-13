@@ -1,7 +1,7 @@
 import express from 'express';
 import PaymentController from '../../controllers/payment.controller.js';
-import { verifyToken, isAdmin } from '../../middlewares/auth.middleware.js';
-
+import {isAdmin , verifyToken}  from '../../middlewares/auth.middleware.js';
+ 
 const router = express.Router();
 
 /**
@@ -9,7 +9,7 @@ const router = express.Router();
  * @desc    Khởi tạo thanh toán (MoMo hoặc PayPal)
  * @access  Private (Người dùng đã đăng nhập)
  */
-router.post('/create', verifyToken, PaymentController.createPayment);
+router.post('/create',  PaymentController.createPayment);
 
 /**
  * @route   GET /api/payment/momo-return

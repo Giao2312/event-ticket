@@ -14,16 +14,18 @@ block hero
         p.lead.mb-5.opacity-75
           | Nền tảng bán vé sự kiện hàng đầu. Tìm kiếm, đặt vé và tận hưởng những trải nghiệm tuyệt vời.
 
-        div.mx-auto.mt-5.d-flex.align-items-center.gap-3.rounded-pill.border.border-white.border-opacity-25.bg-white.bg-opacity-10.p-2.backdrop-blur(style="max-width: 500px;")
+        form.mx-auto.mt-5.d-flex.align-items-center.gap-3.rounded-pill.border.border-white.border-opacity-25.bg-white.bg-opacity-10.p-2.backdrop-blur(style="max-width: 500px;" action="/events" method="GET")
           i.fas.fa-search.ms-4.text-white.opacity-75.fs-4
           input.form-control.bg-transparent.border-0.text-white.placeholder-white.placeholder-opacity-50.outline-0.flex-grow-1.fs-5(
             type="text"
+            name="search"
             placeholder="Tìm sự kiện, nghệ sĩ, địa điểm..."
           )
-          button.btn.rounded-pill.px-5.py-3.fw-bold.shadow-lg.text-white(style="background: linear-gradient(to right, #ec4899, #a855f7);")
+          button.btn.rounded-pill.px-5.py-3.fw-bold.shadow-lg.text-white(type="submit" style="background: linear-gradient(to right, #ec4899, #a855f7);")
             | Tìm kiếm
-        
+
 block content
+  //- Stats Section
   section.border-bottom.bg-dark.py-5
     div.container
       div.row.g-4.text-center.text-white
@@ -56,25 +58,62 @@ block content
               h3.fw-bold.mb-0 100%
               p.text-muted.small Bảo mật
 
+
   section.py-5.bg-dark
     div.container
       div.d-flex.justify-content-between.align-items-center.mb-4
         h2.text-white.fw-bold Sự kiện nổi bật
-        a(href="/events" class="text-primary.fw-medium.text-decoration-none.hover-underline") Xem tất cả →
+        a(href="/events" class="text-primary fw-medium text-decoration-none hover-underline") Xem tất cả →
 
-      div.row.g-4#featuredEvents
-        // Placeholder ban đầu (sẽ bị xóa bởi JS)
-        p.text-center.text-white Đang tải sự kiện...
+      div.row.g-4
+        if featuredEvents && featuredEvents.length > 0
+          each event in featuredEvents
+            div.col-md-6.col-lg-3
+              a.text-decoration-none(href=`/events/${event._id}`)
+                div.card.bg-dark.text-white.border-0.shadow-lg.overflow-hidden.h-100.hover-translate-y
+                  img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 200px; object-fit: cover;")
+                  div.card-body.d-flex.flex-column.p-4
+                    span.badge.bg-primary.mb-2.align-self-start Nổi bật
+                    h5.card-title.fw-bold.mb-3= event.name
+                    p.card-text.small.text-white-50.flex-grow-1= event.description ? event.description.substring(0, 80) + '...' : 'Chưa có mô tả.'
+                    div.mt-auto.d-flex.justify-content-between.align-items-center
+                      span.fw-bold.text-primary= event.displayPrice || 'Liên hệ'
+                      span.btn.btn-sm.btn-outline-light Chi tiết
+        else
+          div.col-12.text-center
+            p.text-white-50 Hiện chưa có sự kiện nổi bật.
 
+  //- Upcoming Events Section
   section.py-5.bg-black
     div.container
       div.d-flex.justify-content-between.align-items-center.mb-4
         h2.text-white.fw-bold Sắp diễn ra
-        a(href="/events/upcoming" class="text-primary.fw-medium.text-decoration-none.hover-underline") Xem tất cả →
+        a(href="/events" class="text-primary fw-medium text-decoration-none hover-underline") Xem tất cả →
 
-      div.row.g-4#upcomingEvents
-        p.text-center.text-white Đang tải sự kiện sắp diễn ra...
+      div.row.g-4
+        if upcomingEvents && upcomingEvents.length > 0
+          each event in upcomingEvents
+            div.col-md-6.col-lg-3
+              a.text-decoration-none(href=`/events/${event._id}`)
+                div.card.bg-dark.text-white.border-0.shadow-lg.overflow-hidden.h-100
+                  img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 200px; object-fit: cover;")
+                  div.card-body.p-4
+                    span.badge.bg-secondary.mb-2.align-self-start Sắp diễn ra
+                    h5.card-title.fw-bold.mb-3= event.name
+                    p.card-text.small.text-white-50.mb-2
+                      i.fas.fa-calendar-alt.me-1
+                      | #{new Date(event.date).toLocaleDateString('vi-VN')} • #{event.time || 'TBC'}
+                    p.card-text.small.text-white-50.mb-3
+                      i.fas.fa-map-marker-alt.me-1
+                      | #{event.location || 'TBC'}
+                    div.d-flex.justify-content-between.align-items-center
+                      span.fw-bold.text-primary= event.displayPrice || 'Liên hệ'
+                      span.btn.btn-sm.btn-outline-light Chi tiết
+        else
+          div.col-12.text-center
+            p.text-white-50 Không có sự kiện nào sắp diễn ra.
 
+  //- Organizer CTA
   section.py-5.bg-gradient-to-br.from-purple-900.to-pink-900.text-white
     div.container.text-center
       h2.fw-bold.mb-4 Bạn là nhà tổ chức?
@@ -83,96 +122,11 @@ block content
       a.btn.btn-lg.btn-light.px-5.py-3.fw-bold.rounded-pill.shadow-lg(href="/become-organizer")
         | Bắt đầu ngay →
 
-block scripts
+block append scripts
   script.
-
-    const originalFetch = window.fetch;
-    window.fetch = async (url, options = {}) => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        options.headers = {
-          ...options.headers,
-          Authorization: `Bearer ${token}`
-        };
-      }
-      return originalFetch(url, options);
-    };
-
-    document.addEventListener('DOMContentLoaded', async () => {
-      const featuredContainer = document.getElementById('featuredEvents');
-      const upcomingContainer = document.getElementById('upcomingEvents');
-
-      // Hàm xử lý ảnh tập trung (Helper)
-      const getImageUrl = (imagePath) => {
-        if (!imagePath) return '/events/images/placeholder.jpg';
-        if (imagePath.includes('/events/')) return imagePath;
-        if (imagePath.startsWith('images/')) return '/events/' + imagePath;
-        return '/events/images/placeholder.jpg';
-      };
-
-      try {
-        const res = await fetch('/api/events/list'); 
-        if (!res.ok) throw new Error('Không thể tải sự kiện');
-        
-        const events = await res.json(); 
-        if (!Array.isArray(events)) throw new Error('Dữ liệu không hợp lệ');
-
-        const featuredEvents = events.filter(e => e.featured).slice(0, 4);
-        const now = new Date();
-        const upcomingEvents = events
-          .filter(e => new Date(e.date) > now)
-          .sort((a, b) => new Date(a.date) - new Date(b.date))
-          .slice(0, 4);
-
-        // Render Featured
-        if (featuredContainer) {
-          // Truyền đúng image vào hàm renderCard
-          featuredContainer.innerHTML = featuredEvents.map(e => renderCard(e, 'Nổi bật', 'bg-primary', e.image)).join('');
-        }
-
-        // Render Upcoming
-        if (upcomingContainer) {
-          upcomingContainer.innerHTML = upcomingEvents.map(event => {
-            const imageSrc = getImageUrl(event.image);
-            let dateStr = event.date ? new Date(event.date).toLocaleDateString('vi-VN') : 'Chưa xác định';
-            
-            return `
-              <div class="col-md-6 col-lg-3">
-                <div class="card bg-dark text-white border-0 shadow-lg overflow-hidden">
-                  <img src="${imageSrc}" onerror="this.onerror=null; this.src='/events/images/placeholder.jpg';" class="card-img-top" style="height: 200px; object-fit: cover;">
-                  <div class="card-body">
-                    <span class="badge bg-secondary me-2">Sắp diễn ra</span>
-                    <h5 class="card-title mt-2">${event.name}</h5>
-                    <p class="card-text small text-white-50">${dateStr} • ${event.time || 'Chưa có giờ'}</p>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                      <span class="fw-bold text-primary">Từ ${event.minPrice?.toLocaleString('vi-VN') || '0'}đ</span>
-                      <a href="/events/${event._id}" class="btn btn-sm btn-outline-light">Xem chi tiết</a>
-                    </div>
-                  </div>
-                </div>
-              </div>`;
-          }).join('');
-        }
-
-      } catch (err) {
-        console.error('Lỗi:', err);
-      }
+    // Hover animation cho card (tùy chọn)
+    document.querySelectorAll('.hover-translate-y').forEach(card => {
+      card.addEventListener('mouseenter', () => card.style.transform = 'translateY(-8px)');
+      card.addEventListener('mouseleave', () => card.style.transform = 'translateY(0)');
     });
-
-
-      const renderCard = (event, badgeText, badgeClass, imagePath ) => {
-        const imageSrc = getImageUrl(imagePath);
-        return `
-          <div class="col-md-6 col-lg-3">
-            <div class="card bg-dark text-white border-0 shadow-lg h-100">
-              <img src="${imageSrc}"  onerror="this.onerror=null; this.src='/events/images/placeholder.jpg';" class="card-img-top" style="height: 200px; object-fit: cover;">
-              <div class="card-body">
-                <span class="badge ${badgeClass} mb-2">${badgeText}</span>
-                <h5 class="card-title">${event.name}</h5>
-                <a href="/events/${event._id}" class="btn btn-sm btn-outline-light">Chi tiết</a>
-              </div>
-            </div>
-          </div>`;
-      };
-              
-        
+    

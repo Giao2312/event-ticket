@@ -1,0 +1,126 @@
+extends ../../layout
+
+block content
+  section.dashboard.py-5.bg-light.min-vh-100
+    div.container-fluid
+      //- Header
+      div.d-flex.justify-content-between.align-items-center.mb-5
+        div
+          h1.fw-bold.text-dark.mb-1 Quản lý đơn hàng
+          p.text-muted.small Theo dõi và xử lý tất cả đơn hàng của sự kiện
+
+        a.btn.btn-gradient.px-5.py-3.rounded-pill.shadow-sm(href="/organizer/create-event")
+          i.fas.fa-plus.me-2
+          | Tạo sự kiện
+
+      //- Thống kê nhanh (4 card)
+      div.row.g-4.mb-5
+        div.col-6.col-md-3
+          div.card.border-0.shadow-sm.h-100
+            div.card-body.text-center
+              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#f3e8ff;")
+                i.fas.fa-shopping-cart.fs-3.text-purple-600
+              h3.fw-bold.mb-0 #{stats.totalOrders || 0}
+              p.text-muted.small Tổng đơn hàng
+
+        div.col-6.col-md-3
+          div.card.border-0.shadow-sm.h-100
+            div.card-body.text-center
+              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#e0f2fe;")
+                i.fas.fa-check-circle.fs-3.text-blue-600
+              h3.fw-bold.mb-0 #{stats.paidOrders || 0}
+              p.text-muted.small Đã thanh toán
+
+        div.col-6.col-md-3
+          div.card.border-0.shadow-sm.h-100
+            div.card-body.text-center
+              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#fef3c7;")
+                i.fas.fa-clock.fs-3.text-amber-600
+              h3.fw-bold.mb-0 #{stats.pendingOrders || 0}
+              p.text-muted.small Đang chờ
+
+        div.col-6.col-md-3
+          div.card.border-0.shadow-sm.h-100
+            div.card-body.text-center
+              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#ecfdf5;")
+                i.fas.fa-dollar-sign.fs-3.text-emerald-600
+              h3.fw-bold.mb-0 #{stats.todayRevenue || '0đ'}
+              p.text-muted.small Doanh thu hôm nay
+
+      //- Lọc + Tìm kiếm
+      div.row.align-items-center.g-4.mb-5
+        div.col-lg-8
+          div.d-flex.flex-wrap.gap-2
+            a.btn.btn-outline-primary.rounded-pill.px-4.py-2(href="/organizer/orders" class=(!statusFilter || statusFilter === 'all' ? 'active' : '')) Tất cả
+            a.btn.btn-outline-primary.rounded-pill.px-4.py-2(href="/organizer/orders?status=pending" class=(statusFilter === 'pending' ? 'active' : '')) Chờ thanh toán
+            a.btn.btn-outline-primary.rounded-pill.px-4.py-2(href="/organizer/orders?status=paid" class=(statusFilter === 'paid' ? 'active' : '')) Đã thanh toán
+            a.btn.btn-outline-primary.rounded-pill.px-4.py-2(href="/organizer/orders?status=cancelled" class=(statusFilter === 'cancelled' ? 'active' : '')) Đã hủy
+            a.btn.btn-outline-primary.rounded-pill.px-4.py-2(href="/organizer/orders?status=refunded" class=(statusFilter === 'refunded' ? 'active' : '')) Hoàn tiền
+
+        div.col-lg-4
+          div.input-group
+            span.input-group-text
+              i.fas.fa-search
+            input.form-control#searchOrder(type="text" placeholder="Tìm theo mã đơn, tên khách, sự kiện...")
+
+      //- Bảng đơn hàng
+      div.card.border-0.shadow-sm.overflow-hidden
+        div.card-body.p-0
+          div.table-responsive
+            table.table.table-hover.align-middle.mb-0
+              thead.bg-light
+                tr
+                  th Mã đơn
+                  th Khách hàng
+                  th Sự kiện
+                  th Tổng tiền
+                  th Trạng thái
+                  th Ngày tạo
+                  th Hành động
+
+              tbody
+                if orders && orders.length > 0
+                  each order in orders
+                    tr
+                      td.fw-medium ##{order._id.toString().slice(-8)}
+                      td
+                        div.d-flex.align-items-center.gap-2
+                          img.rounded-circle(src=order.userId.avatar || '/images/default-avatar.jpg' width="36" height="36" alt="")
+                          span= order.userId.name || 'Khách vãng lai'
+                      td= order.eventId?.name || 'Sự kiện không xác định'
+                      td.fw-bold.text-primary= order.totalAmount.toLocaleString('vi-VN') + 'đ'
+                      td
+                        span.badge(class=order.status === 'paid' ? 'bg-success' : order.status === 'pending' ? 'bg-warning' : 'bg-danger')
+                          = order.status === 'paid' ? 'Đã thanh toán' : order.status === 'pending' ? 'Chờ xử lý' : order.status === 'cancelled' ? 'Đã hủy' : 'Hoàn tiền'
+                      td.text-muted.small= new Date(order.createdAt).toLocaleString('vi-VN')
+                      td
+                        a.btn.btn-sm.btn-outline-primary(href=`/organizer/order/${order._id}`) Chi tiết
+                else
+                  tr
+                    td(colspan="7").text-center.py-5
+                      i.fas.fa-shopping-cart.fs-1.text-muted.mb-3.d-block
+                      h5.text-muted Chưa có đơn hàng nào
+                      p.text-muted Hãy kiểm tra lại bộ lọc hoặc tạo sự kiện để nhận đơn hàng đầu tiên!
+
+      //- Phân trang (nếu có nhiều đơn)
+      if totalPages > 1
+        nav.mt-5
+          ul.pagination.justify-content-center
+            li.page-item(class=(currentPage === 1 ? 'disabled' : ''))
+              a.page-link(href=`/organizer/orders?page=${currentPage - 1}`) Trước
+            - for (let i = 1; i <= totalPages; i++)
+              li.page-item(class=(i === currentPage ? 'active' : ''))
+                a.page-link(href=`/organizer/orders?page=${i}`)= i
+            li.page-item(class=(currentPage === totalPages ? 'disabled' : ''))
+              a.page-link(href=`/organizer/orders?page=${currentPage + 1}`) Sau
+
+block append scripts
+  script.
+    // Tìm kiếm realtime (lọc bảng theo mã đơn, tên khách, sự kiện)
+    document.getElementById('searchOrder').addEventListener('keyup', function() {
+      const filter = this.value.toLowerCase();
+      document.querySelectorAll('tbody tr').forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+      });
+    });

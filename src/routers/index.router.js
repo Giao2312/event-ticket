@@ -1,31 +1,43 @@
-import express from "express";
-import authRouter from "./clients/auth.router.js";
-import orderRouter from "./clients/order.router.js";
-import ticketRouter from "./clients/ticket.router.js";
-import homeRouter from "./clients/home.router.js";
-import eventRouter from "./clients/event.router.js";
-import myTicketsRouter from "./clients/my_ticket.router.js";  
-import profileRouter from "./clients/profile.router.js";
-import paymentRouter from "./api/payment.api.js";
+// src/routers/index.js
+import express from 'express';
 
-import OrderController from '../controllers/order.controller.js';
-import authMiddleware  from '../middlewares/auth.middleware.js';
+// Web routers (render Pug)
+import authWebRouter from './web/auth.router.js';
+import homeWebRouter from './web/home.router.js';
+import eventWebRouter from './web/event.router.js';
+import profileWebRouter from './web/profile.router.js';
+import myTicketsWebRouter from './web/my-ticket.router.js';
 
+import orderWebRouter from './web/order.router.js';
+import dashboardWebRouter from './web/dashboard.router.js';
 
-const router = express.Router();
+// API routers (JSON)
+import eventApiRouter from './api/event.api.js';
+import orderApiRouter from './api/oder.api.js'; 
+import paymentApiRouter from './api/payment.api.js';
 
+export default (app) => {
+  // Web routes (giao diện Pug)
+  app.use('/', authWebRouter);    
+  app.use('/', homeWebRouter);    
+  app.use('/events', eventWebRouter);   
+  app.use('/', profileWebRouter);
+  app.use('/my-tickets', myTicketsWebRouter);
+  app.use('/', orderWebRouter);          
+  app.use('/', dashboardWebRouter); 
 
+  // API routes (JSON)
+  app.use('/api/events', eventApiRouter);
+  app.use('/api/orders', orderApiRouter);
+  app.use('/api/payment', paymentApiRouter);
 
-router.use("/auth", authRouter);
-router.use("/orders", orderRouter);
-router.use("/", homeRouter);
-router.use("/tickets", ticketRouter); 
-router.use("/my-tickets", myTicketsRouter);
-router.use("/profile", profileRouter);
-router.get('/checkout/:orderId', authMiddleware, OrderController.renderCheckoutPage);
+  // Error handling (cuối cùng)
+  app.use((req, res) => {
+    res.status(404).render('clients/page/error/404', { pageTitle: 'Không tìm thấy trang' });
+  });
 
-
-router.use("/events", eventRouter);
-router.use("/payment", paymentRouter);
-
-export default router;
+  app.use((err, req, res, next) => {
+    console.error('Server error:', err.stack);
+    res.status(500).render('clients/page/error/500', { pageTitle: 'Lỗi máy chủ' });
+  });
+};

@@ -450,16 +450,6 @@ section.py-5.bg-gradient-to-br.from-purple-900.to-pink-900 {
   border-radius: 12px;
 }
 
-#buyBtn {
-  background: linear-gradient(to right, #ec4899, #a855f7);
-  border: none;
-  font-weight: 700;
-  transition: all 0.3s;
-}
-#buyBtn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 10px 30px rgba(236,72,153,0.4);
-}
 
 #countdownModal .modal-content {
   border-radius: 16px;
@@ -651,9 +641,7 @@ header {
 }
 
 /* Sidebar đặt vé - Sticky mượt mà */
-.sticky-top {
-  z-index: 10;
-}
+
 
 .card {
   border-radius: 16px !important;
@@ -692,7 +680,7 @@ header {
 }
 
 /* Nút đặt vé - Hiệu ứng Gradient */
-#buyBtn {
+.buyBtn {
   background: linear-gradient(45deg, #0d6efd, #004dc7);
   border: none;
   padding: 12px;
@@ -702,7 +690,7 @@ header {
   transition: all 0.3s shadow;
 }
 
-#buyBtn:hover {
+.buyBtn:hover {
   box-shadow: 0 5px 15px rgba(13, 110, 253, 0.4);
   filter: brightness(1.1);
 }
@@ -725,6 +713,291 @@ header {
     cursor: pointer;
     transition: all 0.2s ease;
   }
+
+
+/* Category Pills - Giống mẫu ảnh 2 */
+.cat-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  background: #f8f9fa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  color: #444;
+  text-decoration: none !important;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.cat-pill:hover, .cat-pill.active {
+  background: #e11d48; /* Màu đỏ hồng chủ đạo */
+  color: #fff !important;
+  border-color: #e11d48;
+}
+
+/* Search Input */
+.search-input {
+  border-radius: 12px !important;
+  border: 1px solid #eee !important;
+  padding: 10px 10px 10px 40px !important;
+  background-color: #f9fafb !important;
+  font-size: 14px;
+}
+.event-item a {
+  color: inherit;
+  display: block;
+  height: 100%;
+}
+
+.event-item a:hover .card {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 30px rgba(168, 85, 247, 0.25);
+  transition: all 0.3s ease;
+}
+
+.event-item a:hover .card-img-top {
+  transform: scale(1.05);
+}
+
+
+.card-img-box {
+  height: 160px;
+  overflow: hidden;
+  border-radius: 15px 15px 0 0;
+}
+
+.card-img-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Badge trên ảnh */
+.badge-hot { background: #f97316; border-radius: 6px; }
+.badge-type { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); border-radius: 6px; }
+
+/* Font size nhỏ cho thông tin phụ */
+.x-small { font-size: 12px; }
+.event-name {
+  font-size: 15px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  height: 42px;
+}
+
+.price-text { font-size: 17px; color: #e11d48 !important; }
+
+/* --- Trang Danh Sách Sự Kiện --- */
+.events-page {
+  background-color: #f8f9fa !important; /* Nền xám nhạt sang trọng */
+}
+
+/* Hiệu ứng đổ bóng cho Card */
+.event-modern-card {
+  border-radius: 20px !important;
+  border: none !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden;
+}
+
+.event-modern-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* Style cho Badge thể loại */
+.badge-category {
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+
+/* Typography cho Tiêu đề sự kiện */
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  line-height: 1.4;
+}
+
+/* Nút bấm (Buttons) */
+.btn-outline-primary {
+  border-radius: 12px !important;
+  padding: 8px 20px;
+  font-weight: 500;
+}
+/* --- Trang Chi Tiết Sự Kiện --- */
+.rounded-4 {
+  border-radius: 24px !important;
+}
+
+.sticky-top {
+  padding-top: 20px;
+}
+
+/* Định dạng khu vực đặt vé */
+#bookingForm .form-select-lg {
+  border-radius: 12px;
+  background-color: #fcfcfc;
+}
+
+#buyBtn {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  border: none;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: opacity 0.3s;
+}
+
+#buyBtn:hover {
+  opacity: 0.9;
+}
+
+/* Layout Ban tổ chức */
+.organizer-box {
+  background: #ffffff;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  padding: 15px;
+}
+.event-item a {
+  color: inherit;
+  display: block;
+  height: 100%;
+}
+
+.event-item a:hover .card {
+  box-shadow: 0 10px 20px rgba(168, 85, 247, 0.3); /* Hiệu ứng hover tím */
+  transform: translateY(-5px);
+  transition: all 0.3s ease;
+}
+/* Card sự kiện giống ảnh thứ 2 */
+.event-item {
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.event-item:hover .card {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 30px rgba(168, 85, 247, 0.2);
+}
+
+.card-img-top {
+  transition: transform 0.4s ease;
+}
+
+.event-item:hover .card-img-top {
+  transform: scale(1.05);
+}
+
+/* Badge nổi bật góc trên trái */
+.badge.bg-primary {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.5rem;
+}
+
+/* Nút filter giống ảnh */
+.btn-outline-primary.rounded-pill {
+  padding: 0.5rem 1.2rem;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.btn-outline-primary.rounded-pill.active,
+.btn-outline-primary.rounded-pill:hover {
+  background-color: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+}
+
+
+.search-input:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 0.25rem rgba(168, 85, 247, 0.25);
+}
+
+/* Card container */
+.event-item .card {
+  border-radius: 16px !important;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Nút filter active */
+.btn-outline-primary.active {
+  background-color: #0d6efd !important;
+  color: white !important;
+}
+
+/* Gradient button tạo sự kiện */
+.btn-gradient {
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+  color: white;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(168, 85, 247, 0.3);
+}
+
+/* Badge trạng thái */
+.badge.bg-success { background-color: #10b981 !important; }
+.badge.bg-warning { background-color: #f59e0b !important; }
+.badge.bg-danger { background-color: #ef4444 !important; }
+
+/* Hover bảng đơn hàng */
+.table-hover tbody tr:hover {
+  background-color: rgba(168, 85, 247, 0.05);
+}
+.btn-gradient {
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+  color: white;
+  border: none;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(168, 85, 247, 0.3);
+}
+
+/* Preview ảnh khi upload (tùy chọn) */
+input[type="file"] {
+  cursor: pointer;
+}
+
+/* Card loại vé */
+.ticket-type {
+  transition: all 0.2s;
+}
+
+.ticket-type:hover {
+  background: rgba(168, 85, 247, 0.05);
+  border-radius: 0.5rem;
+}
+
+.btn-gradient {
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+  color: white !important;
+  border: none;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(168, 85, 247, 0.3);
+}
+
+/* Card thống kê hover */
+.card.shadow-sm:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+}
 
 /* Responsive cho Mobile */
 @media (max-width: 991.98px) {

@@ -16,10 +16,15 @@ const PaymentController = {
             const { orderId, method } = req.body;
             const order = await Order.findById(orderId).populate('eventId');
             if (!order) return res.status(404).json({ message: 'Đơn hàng không tồn tại' });
+            const normalizedMethod = method.toLowerCase();
 
             // Sửa lại cách gọi hàm để tránh lỗi 'this' undefined
             if (method === 'momo') {
                 return await PaymentController.handleMomoPayment(req, res, order);
+            }else if (normalizedMethod === 'vnpay') {
+            // Bạn chưa có hàm này, hãy thêm logic gọi VNPay ở đây
+            return res.status(501).json({ message: 'Tính năng VNPay đang được phát triển' });
+
             } else if (method === 'paypal') {
                 return await PaymentController.handlePaypalPayment(req, res, order);
             }
@@ -95,37 +100,88 @@ const PaymentController = {
         res.json({ success: true, paymentUrl: approveLink });
     },
 
-    retryPayment: async (req, res) => {
-        try {
-            const { orderId } = req.params;
-            const order = await Order.findById(orderId);
+retryPayment: async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.id; // Từ authMiddleware
 
-            if (!order) {
-                return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
-            }
+    // 1. Tìm order và kiểm tra quyền sở hữu
+    const order = await Order.findOne({ _id: orderId, userId });
 
-            // Chỉ cho phép Retry nếu đơn hàng đang bị lỗi xử lý
-            if (order.status !== 'PROCESSING_ERROR') {
-                return res.status(400).json({ 
-                    message: 'Chỉ có thể retry đơn hàng đang ở trạng thái lỗi xử lý (PROCESSING_ERROR)' 
-                });
-            }
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng hoặc bạn không có quyền truy cập' });
+    }
 
-            // Gọi lại hàm xử lý chung đã có Transaction
-            await PaymentController.completeOrderAndGenerateTickets(orderId);
+    // 2. Chỉ cho phép retry khi ở trạng thái lỗi xử lý
+    if (order.status !== 'PROCESSING_ERROR') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Chỉ có thể retry đơn hàng đang ở trạng thái lỗi xử lý (PROCESSING_ERROR)' 
+      });
+    }
 
-            res.json({ 
-                success: true, 
-                message: 'Đã xử lý lại đơn hàng và tạo vé thành công' 
-            });
-        } catch (error) {
-            console.error('Retry Payment Error:', error);
-            res.status(500).json({ 
-                message: 'Retry thất bại', 
-                error: error.message 
-            });
+    // 3. Kiểm tra thời gian hold (nếu hết hạn → không retry được)
+    if (new Date() > new Date(order.holdUntil)) {
+      // Optional: cập nhật trạng thái thành expired
+      order.status = 'EXPIRED';
+      await order.save();
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Đơn hàng đã hết thời gian giữ vé, không thể retry' 
+      });
+    }
+
+    // 4. Retry với retry logic (tránh WriteConflict)
+    const MAX_RETRIES = 3;
+    let attempt = 1;
+
+    while (attempt <= MAX_RETRIES) {
+      const session = await mongoose.startSession();
+      session.startTransaction();
+
+      try {
+        await PaymentController.completeOrderAndGenerateTickets(orderId, { session });
+
+        await session.commitTransaction();
+        await session.endSession();
+
+        // 5. Gửi thông báo (email hoặc push notification) – tùy chọn
+        // await sendOrderSuccessEmail(order.userId, order._id);
+
+        return res.json({ 
+          success: true, 
+          message: 'Đã xử lý lại đơn hàng và tạo vé thành công',
+          orderId: order._id 
+        });
+
+      } catch (err) {
+        await session.abortTransaction();
+        await session.endSession();
+
+        // Nếu là WriteConflict → retry
+        if (err.code === 112 || err.errorLabels?.includes('TransientTransactionError')) {
+          console.log(`WriteConflict khi retry order ${orderId}, lần ${attempt}/${MAX_RETRIES}`);
+          if (attempt === MAX_RETRIES) {
+            throw new Error('Hết lượt thử lại do xung đột giao dịch');
+          }
+          attempt++;
+          continue;
         }
-    },
+
+        // Lỗi khác → throw
+        throw err;
+      }
+    }
+
+  } catch (error) {
+    console.error('Retry Payment Error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Retry thất bại', 
+      error: error.message 
+    });
+  }
+},
 
     completeOrderAndGenerateTickets: async (orderId) => {
         const session = await mongoose.startSession();

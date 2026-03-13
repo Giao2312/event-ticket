@@ -20,7 +20,7 @@ const orderHistoryController = {
         method: order.paymentMethod
       }));
 
-      res.render("clients/page/user/profile", {
+      res.render("clients/page/profile/index", {
         pageTitle: "Quản lý tài khoản - Ticketbox",
         user: req.user,
         transactions,

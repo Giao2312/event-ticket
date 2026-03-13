@@ -10,6 +10,7 @@ const ticketTypeSchema = new mongoose.Schema({
   maxPerUser: { type: Number, default: 5 },
   saleStart: Date,
   saleEnd: Date,
+  
   status: { type: String, enum: ['active', 'inactive', 'sold_out'], default: 'active' }
 }, { timestamps: true });
 

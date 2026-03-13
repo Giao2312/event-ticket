@@ -11,30 +11,29 @@ header.sticky-top.z-50.border-bottom.bg-dark.bg-opacity-80.backdrop-blur-xl
       a(href="/events" class="text-sm fw-medium text-white text-opacity-75 hover-text-white transition") Sự kiện
       a(href="/events?category=am-nhac" class="text-sm fw-medium text-white text-opacity-75 hover-text-white transition") Âm nhạc
       a(href="/events?category=the-thao" class="text-sm fw-medium text-white text-opacity-75 hover-text-white transition") Thể thao
-      a(href="/events?category=workshop" class="text-sm fw-medium text-white text-opacity-75 hover-text-white transition") Workshop
+      a(href="/events?category=workshop" class="text-sm fw-medium text-white text-opacity-75 hover-text-white transition") Công nghệ
 
 
-    div.dropdown
+    div.d-none.d-md-flex.align-items-center.gap-3
       if user
-        a(href="#" class="d-flex align-items-center gap-2 text-white text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false")
-          div.w-8.h-8.rounded-circle.overflow-hidden.shadow-sm
-            img.w-100.h-100.object-cover(src=user.avatar || '/events/images/default-avatar.jpg' alt=user.name)
-          span.text-sm.fw-medium #{user.name}
-        ul.dropdown-menu.dropdown-menu-end
-          li: a.dropdown-item(href="/profile") 
-            i.fas.fa-user-circle.me-2
-            | Hồ sơ cá nhân
-          li: a.dropdown-item(href="/my-tickets") 
-            i.fas.fa-ticket-alt.me-2
-            | Vé của tôi
-          li: hr.dropdown-divider
-          li: a.dropdown-item.text-danger(href="/logout") 
-            i.fas.fa-sign-out-alt.me-2
-            | Đăng xuất
+        div.dropdown
+          a(href="#" class="d-flex align-items-center gap-2 text-white text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false")
+            div.w-8.h-8.rounded-circle.overflow-hidden.shadow-sm
+              img.w-100.h-100.object-cover(src=user.avatar || '/events/images/default-avatar.jpg' alt=user.name)
+            span.text-sm.fw-medium #{user.name}
+          ul.dropdown-menu.dropdown-menu-end
+            li
+              a.dropdown-item(href="/profile") Hồ sơ cá nhân
+            li
+              a.dropdown-item(href="/my-tickets") Vé của tôi
+            li
+              hr.dropdown-divider
+            li
+              button.btn.btn-outline-danger(onclick="handleLogout()") Đăng xuất
       else
         a(href="/login" class="btn btn-outline-light btn-sm px-4 py-2 me-2") Đăng nhập
         a(href="/register" class="btn btn-primary btn-sm px-5 py-2") Đăng ký
-      
+
 
       button.btn.btn-link.text-white.d-md-none.fs-4(type="button" data-bs-toggle="collapse" data-bs-target="#mobileMenu")
         i.fas.fa-bars
@@ -50,38 +49,40 @@ header.sticky-top.z-50.border-bottom.bg-dark.bg-opacity-80.backdrop-blur-xl
           if user
             a(href="/profile" class="text-white text-decoration-none fw-medium") Hồ sơ cá nhân
             a(href="/my-tickets" class="text-white text-decoration-none fw-medium") Vé của tôi
-            a(href="/logout" class="text-white text-decoration-none fw-medium") Đăng xuất
+            button.btn.btn-outline-danger(onclick="handleLogout()") Đăng xuất
           else
             a(href="/login" class="btn btn-outline-light btn-sm w-100 mb-2") Đăng nhập
             a(href="/register" class="btn btn-primary btn-sm w-100") Đăng ký
             
 
-block script 
-  script.
-    // Đóng menu mobile khi click vào một link
-    document.querySelectorAll('#mobileMenu a').forEach(link => {
-      link.addEventListener('click', () => {
-        const mobileMenu = document.getElementById('mobileMenu');
-        if (mobileMenu.classList.contains('show')) {
-          new bootstrap.Collapse(mobileMenu).hide();
-        }
-      });
-    });
-    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
-      toggle.addEventListener('click', (e) => {
-        // Chỉ thực hiện logic này nếu thực sự là menu dropdown
-        const menu = toggle.nextElementSibling;
-        if (menu && menu.classList.contains('dropdown-menu')) {
-          e.preventDefault();
-          menu.classList.toggle('show');
-        }
-      });
-    });
-        // Đóng dropdown khi click ngoài
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.dropdown')) {
-        document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
-          menu.classList.remove('show');
+  block append scripts 
+    script.
+      // Chỉ giữ phần đóng mobile menu
+      document.querySelectorAll('#mobileMenu a').forEach(link => {
+        link.addEventListener('click', () => {
+          const mobileMenu = document.getElementById('mobileMenu');
+          if (mobileMenu.classList.contains('show')) {
+            bootstrap.Collapse.getInstance(mobileMenu).hide();
+          }
         });
+      })
+
+      function handleLogout() {
+        if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+          fetch('/logout', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' }
+            })
+            .then(() => {
+              localStorage.removeItem('token'); // Nếu bạn dùng localStorage
+              window.location.href = '/'; // Redirect về trang chủ
+            })
+            .catch(err => {
+              console.error('Logout error:', err);
+              alert('Có lỗi khi đăng xuất');
+            });
+            localStorage.removeItem('token');
+        }
       }
-    });
+

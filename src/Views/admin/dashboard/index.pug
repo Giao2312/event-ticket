@@ -1,0 +1,156 @@
+extends ../../layout
+
+block content
+  section.dashboard.py-5.bg-light.min-vh-100
+    div.container
+      //- Header chào mừng + nút tạo sự kiện
+      div.d-flex.justify-content-between.align-items-center.mb-5
+        div
+          h1.fw-bold.text-dark.mb-1 Chào mừng trở lại, #{user.name}!
+          p.text-muted.small Chúc bạn một ngày làm việc hiệu quả
+
+        a.btn.btn-gradient.px-5.py-3.rounded-pill.shadow-sm(href="/admin/dashboard/events/create")
+          i.fas.fa-plus.me-2
+          | Tạo sự kiện
+
+      //- 4 thẻ tổng quan
+      div.row.g-4.mb-5
+        div.col-md-3
+          div.card.border-0.shadow-sm.h-100
+            div.card-body.text-center
+              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#f3e8ff;")
+                i.fas.fa-calendar-alt.fs-3.text-purple-600
+              h3.fw-bold.mb-0 #{stats && stats.totalEvents != null ? stats.totalEvents : 0}
+              p.text-muted.small Tổng sự kiện
+
+        div.col-md-3
+          div.card.border-0.shadow-sm.h-100
+            div.card-body.text-center
+              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#e0f2fe;")
+                i.fas.fa-ticket-alt.fs-3.text-blue-600
+              h3.fw-bold.mb-0 #{stats && stats.totalTicketsSold != null ? stats.totalTicketsSold : 0}
+              p.text-muted.small Vé đã bán
+
+
+
+        div.col-md-3
+          div.card.border-0.shadow-sm.h-100
+            div.card-body.text-center
+              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#fef3c7;")
+                i.fas.fa-shopping-cart.fs-3.text-amber-600
+              h3.fw-bold.mb-0 #{stats && stats.totalOrders != null ? stats.totalOrders : 0}
+              p.text-muted.small Đơn hàng
+
+        div.col-md-3
+          div.card.border-0.shadow-sm.h-100
+            div.card-body.text-center
+              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#ecfdf5;")
+                i.fas.fa-dollar-sign.fs-3.text-emerald-600
+              h3.fw-bold.mb-0 #{stats && stats.totalRevenue ? stats.totalRevenue.toLocaleString('vi-VN') : '0đ'}
+              p.text-muted.small Doanh thu
+
+      //- Tỷ lệ lấp đầy vé (Progress bar)
+      div.card.border-0.shadow-sm.mb-5
+        div.card-body
+          h5.fw-bold.mb-3
+            i.fas.fa-chart-bar.me-2.text-purple-600
+            | Tỷ lệ lấp đầy vé
+          div.progress.mb-2(style="height: 12px;")
+            div.progress-bar.bg-gradient-to-r.from-purple-500.to-pink-500(style=`width: ${stats.fillRate || 0}%`)
+          div.d-flex.justify-content-between.small.mt-2
+            span.text-muted #{stats.totalTicketsSold || 0} / #{stats.totalCapacity || '∞'} vé đã bán
+            span.fw-bold.text-purple-600 #{stats.fillRate || 0}%
+
+      //- Doanh thu & Đơn hàng 6 tháng (2 card biểu đồ)
+      div.row.g-4.mb-5
+        div.col-lg-6
+          div.card.border-0.shadow-sm.h-100
+            div.card-body
+              h5.fw-bold.mb-4 Doanh thu 6 tháng
+              canvas#revenueChart(height="180")
+        div.col-lg-6
+          div.card.border-0.shadow-sm.h-100
+            div.card-body
+              h5.fw-bold.mb-4 Đơn hàng 6 tháng
+              canvas#orderChart(height="180")
+
+      //- Sự kiện gần đây
+      div.card.border-0.shadow-sm.mb-5
+        div.card-body
+          div.d-flex.justify-content-between.align-items-center.mb-4
+            h5.fw-bold Sự kiện gần đây
+            a.text-primary.small.text-decoration-none(href="/admin/dashboard/events") Xem tất cả →
+          div.row.g-4
+            if recentEvents && recentEvents.length > 0
+              each event in recentEvents
+                div.col-md-4
+                  div.card.h-100.border-0.shadow-sm
+                    img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 140px; object-fit: cover;")
+                    div.card-body
+                      h6.card-title.fw-bold.mb-2= event.name
+                      p.text-muted.small.mb-2
+                        i.fas.fa-calendar-alt.me-1
+                        | #{new Date(event.date).toLocaleDateString('vi-VN')}
+                      span.badge(class=event.status === 'upcoming' ? 'bg-success' : event.status === 'ongoing' ? 'bg-warning' : 'bg-secondary')
+                        = event.status === 'upcoming' ? 'Sắp diễn ra' : event.status === 'ongoing' ? 'Đang diễn ra' : 'Đã kết thúc'
+            else
+              div.col-12.text-center.py-4
+                i.fas.fa-calendar-alt.fs-1.text-muted.mb-3.d-block
+                p.text-muted Chưa có sự kiện nào
+                a.btn.btn-outline-primary.mt-3(href="/organizer/events/create") + Tạo sự kiện đầu tiên
+
+      //- Top loại vé bán chạy
+      div.card.border-0.shadow-sm
+        div.card-body
+          h5.fw-bold.mb-4 Top loại vé bán chạy
+          ul.list-group.list-group-flush
+            if topTickets && topTickets.length > 0
+              each ticket in topTickets
+                li.list-group-item.d-flex.justify-content-between.align-items-center
+                  div
+                    strong= ticket._id.type
+                    small.text-muted.ms-2  - #{ticket.event.name}
+                  span.badge.bg-primary.rounded-pill= ticket.totalSold + ' vé'
+            else
+              li.list-group-item.text-center.text-muted Chưa có dữ liệu vé bán
+
+block append scripts
+  script(src="https://cdn.jsdelivr.net/npm/chart.js")
+  script.
+    // Biểu đồ Doanh thu
+    new Chart(document.getElementById('revenueChart'), {
+      type: 'line',
+      data: {
+        labels: !{JSON.stringify(monthlyRevenue.map(m => m.month))},
+        datasets: [{
+          label: 'Doanh thu',
+          data: !{JSON.stringify(monthlyRevenue.map(m => m.revenue))},
+          borderColor: '#a855f7',
+          tension: 0.4,
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+    // Biểu đồ Đơn hàng
+    new Chart(document.getElementById('orderChart'), {
+      type: 'bar',
+      data: {
+        labels: !{JSON.stringify(monthlyOrders.map(m => m.month))},
+        datasets: [{
+          label: 'Đơn hàng',
+          data: !{JSON.stringify(monthlyOrders.map(m => m.count))},
+          backgroundColor: '#ec4899'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });

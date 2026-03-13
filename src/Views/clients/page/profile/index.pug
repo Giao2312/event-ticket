@@ -81,30 +81,30 @@ block content
                   i.fas.fa-ticket-alt.me-2
                   | Xem vé của tôi
 
-block scripts
-  script.
-    document.getElementById('profileForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+block append scripts
+    script.
+      document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-      const formData = new FormData(e.target);
-      const data = Object.fromEntries(formData);
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData);
 
-      try {
-        const res = await fetch('/profile/update', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
+        try {
+          const res = await fetch('/profile/update', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
 
-        const result = await res.json();
+          const result = await res.json();
 
-        if (res.ok) {
-          alert('Cập nhật thông tin thành công!');
-          window.location.reload();
-        } else {
-          alert(result.message || 'Cập nhật thất bại');
+          if (res.ok) {
+            alert('Cập nhật thông tin thành công!');
+            window.location.reload();
+          } else {
+            alert(result.message || 'Cập nhật thất bại');
+          }
+        } catch (err) {
+          alert('Có lỗi kết nối server');
         }
-      } catch (err) {
-        alert('Có lỗi kết nối server');
-      }
-    });
+      });

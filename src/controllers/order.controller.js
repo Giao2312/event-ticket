@@ -27,64 +27,58 @@ const OrderController = {
 
         let totalAmount = 0;
         const orderItems = [];
-        let eventIdFromItems = null;
- 
+        let eventId = null;
 
         for (const item of items) {
-          const ticketType = await TicketType.findById(item.ticketTypeId).session(session);
-          
+          // 1. Update nguyên tử: Trừ vé và check điều kiện trong 1 bước
+          const ticketType = await TicketType.findOneAndUpdate(
+            { 
+              _id: item.ticketTypeId,
+              // Kiểm tra xem số vé còn lại có đủ đáp ứng không
+              $expr: { $gte: [{ $subtract: ["$quantity", { $add: ["$sold", "$holded"] }] }, item.quantity] }
+            },
+            { $inc: { holded: item.quantity } }, 
+            { session, new: true }
+          );
+
           if (!ticketType) {
-            throw new Error(`Loại vé ${item.ticketTypeId} không tồn tại`);
+            throw new Error(`Vé không tồn tại hoặc không đủ số lượng cho ID: ${item.ticketTypeId}`);
           }
 
-          eventIdFromItems = ticketType.eventId;
-
-          const actualAvailable = ticketType.quantity - ticketType.sold - ticketType.holded;
-          if (item.quantity > actualAvailable) {
-            throw new Error(`Vé "${ticketType.type}" chỉ còn ${actualAvailable} vé khả dụng`);
-          }
+          // 2. Gán eventId từ ticketType (chỉ gán 1 lần)
+          if (!eventId) eventId = ticketType.eventId;
 
           totalAmount += ticketType.price * item.quantity;
           orderItems.push({
-          ticketTypeId: ticketType._id,
-          quantity: item.quantity,
-          price: ticketType.price
+            ticketTypeId: ticketType._id,
+            quantity: item.quantity,
+            price: ticketType.price
           });
-
-
-          ticketType.available -= item.quantity;
-          ticketType.holded = (ticketType.holded || 0) + item.quantity;
-          await ticketType.save({ session });
         }
+
+        // 3. Kiểm tra kỹ trước khi tạo Order
+        if (!eventId) throw new Error('Không thể xác định sự kiện từ danh sách vé');
 
         const order = new Order({
           userId,
-          eventId: eventIdFromItems,
+          eventId, // Đã được đảm bảo không null ở bước trên
           items: orderItems,
           totalAmount,
           paymentMethod,
-          holdUntil: new Date(Date.now() + 15 * 60 * 1000) // 15 phút
+          holdUntil: new Date(Date.now() + 15 * 60 * 1000)
         });
 
         await order.save({ session });
-
         await session.commitTransaction();
 
-        res.status(201).json({
-          success: true,
-          message: 'Tạo đơn hàng thành công',
-          orderId: order._id,
-          totalAmount,
-          holdUntil: order.holdUntil
-        });
+        res.status(201).json({ success: true, orderId: order._id });
+
       } catch (err) {
         await session.abortTransaction();
         logger.error('Lỗi tạo đơn hàng:', err);
         res.status(400).json({ success: false, message: err.message });
-      } finally {
-        session.endSession();
       }
-    },
+    }
   ],
 
   payOrder: async (req, res) => {
@@ -220,10 +214,14 @@ const OrderController = {
   },
 
   renderCheckoutPage: async (req, res) => {
+ 
     try {
+         if (!req.user) {
+        return res.redirect('/login'); // Hoặc trả về trang thông báo yêu cầu đăng nhập
+      }
       const { orderId } = req.params;
       const userId = req.user.id;
-
+      
       const order = await Order.findOne({ 
         _id: orderId, 
         userId: userId,
@@ -232,9 +230,9 @@ const OrderController = {
       .populate('eventId', 'name date venue location image') 
       .populate('items.ticketTypeId', 'type price'); 
 
-      if (!order) {
+      if (!order || !order.eventId) { // Kiểm tra order và cả eventId
         return res.status(404).render('clients/page/error/404', {
-          message: 'Đơn hàng không tồn tại hoặc đã hết hạn giữ vé.'
+          message: 'Đơn hàng hoặc sự kiện không tồn tại.'
         });
       }
 
@@ -251,7 +249,7 @@ const OrderController = {
       
       res.render('clients/page/order/checkout', {
         pageTitle: 'Thanh toán đơn hàng',
-        order,
+        order, // Trong view, bạn dùng order.eventId để lấy thông tin sự kiện
         timeLeft, 
         layout: 'clients/layout/default'
       });
@@ -260,7 +258,7 @@ const OrderController = {
       res.status(500).render('clients/page/error/500');
     }
   },
-  
+
 
   paypalCreate: async (req, res) => {
   try {

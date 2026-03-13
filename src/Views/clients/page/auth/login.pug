@@ -32,71 +32,62 @@ block content
               div.text-center.mt-5.text-muted.small
                 | Bằng cách đăng nhập, bạn đồng ý với Điều khoản dịch vụ và Chính sách bảo mật
 
-block scripts
-  script.
-    const loginForm = document.getElementById('loginForm');
-    const loginBtn = document.getElementById('loginBtn');
-    const errorDiv = document.getElementById('loginErrors');
-    const errorList = document.getElementById('loginErrorList');
-    const togglePassword = document.getElementById('togglePassword');
-    const passwordInput = document.getElementById('password');
+block append scripts
 
-    if (togglePassword && passwordInput) {
-      togglePassword.addEventListener('click', () => {
-        const type = passwordInput.type === 'password' ? 'text' : 'password';
-        passwordInput.type = type;
-        togglePassword.innerHTML = type === 'password' 
-          ? '<i class="fas fa-eye-slash fs-5 text-muted"></i>' 
-          : '<i class="fas fa-eye fs-5 text-muted"></i>';
-      });
-    }
+    script.
+   
+      const togglePassword = document.getElementById('togglePassword');
+      const passwordInput = document.getElementById('password');
 
-    // Submit form đăng nhập
-    document.getElementById('loginBtn').addEventListener('click', async (e) => {
-      e.preventDefault();
-
-      const errorDiv = document.getElementById('loginErrors');
-      const errorList = document.getElementById('loginErrorList');
-      errorList.innerHTML = '';
-      errorDiv.classList.add('d-none');
-
-      const form = document.getElementById('loginForm');
-      const email = form.email.value.trim();
-      const password = form.password.value.trim();
-
-      if (!email || !password) {
-        errorList.innerHTML = '<li>Vui lòng điền đầy đủ thông tin</li>';
-        errorDiv.classList.remove('d-none');
-        return;
+      if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', () => {
+          const type = passwordInput.type === 'password' ? 'text' : 'password';
+          passwordInput.type = type;
+          togglePassword.innerHTML = type === 'password' 
+            ? '<i class="fas fa-eye-slash fs-5 text-muted"></i>' 
+            : '<i class="fas fa-eye fs-5 text-muted"></i>';
+        });
       }
 
-      // Đảm bảo phần này nằm trong script của Pug
-      try {
-        const res = await fetch('/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
-        });
+      document.getElementById('loginBtn').addEventListener('click', async (e) => {
+        e.preventDefault();
 
-        const data = await res.json();
+        const errorDiv = document.getElementById('loginErrors');
+        const errorList = document.getElementById('loginErrorList');
+        errorList.innerHTML = '';
+        errorDiv.classList.add('d-none');
 
-        if (res.ok) {
-          // 1. Lưu vào Cookie để Server (Pug) đọc được
-          document.cookie = `token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
-          // 2. Lưu vào LocalStorage cho các script client khác
-          localStorage.setItem('token', data.token);
-          
-          alert('Đăng nhập thành công!');
-          window.location.href = '/';
-        } else {
-          // Xử lý khi đăng nhập thất bại (hiển thị lỗi lên UI)
-          errorList.innerHTML = `<li>${data.message || 'Lỗi đăng nhập'}</li>`;
+        const form = document.getElementById('loginForm');
+        const email = form.email.value.trim();
+        const password = form.password.value.trim();
+
+        if (!email || !password) {
+          errorList.innerHTML = '<li>Vui lòng điền đầy đủ thông tin</li>';
+          errorDiv.classList.remove('d-none');
+          return;
+        }
+
+        try {
+          const res = await fetch('/login', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+
+          const data = await res.json();
+
+          if (res.ok) {
+            localStorage.setItem('token', data.token);
+            alert('Đăng nhập thành công!');
+            window.location.href = '/';  // Redirect về trang chủ
+          } else {
+            errorList.innerHTML = `<li>${data.message || 'Email hoặc mật khẩu không đúng'}</li>`;
+            errorDiv.classList.remove('d-none');
+          }
+        } catch (err) {
+          console.error('Login fetch error:', err);
+          errorList.innerHTML = '<li>Có lỗi kết nối server. Vui lòng thử lại sau.</li>';
           errorDiv.classList.remove('d-none');
         }
-      } catch (err) { // <--- Đảm bảo catch nằm ngay sau dấu } của try
-        console.error('Login error:', err);
-        errorList.innerHTML = '<li>Đã có lỗi xảy ra. Vui lòng thử lại sau.</li>';
-        errorDiv.classList.remove('d-none');
-      }
-
-    });
+      });
+      

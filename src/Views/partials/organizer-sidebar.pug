@@ -1,0 +1,25 @@
+aside.sidebar.bg-white.border-end.shadow-sm(style="width: 250px; min-height: 100vh;")
+  div.p-4
+    a.d-block.text-decoration-none(href="/dashboard/organizer")
+      h4.fw-bold.text-purple-600 EventVé Organizer
+    hr.my-4
+    ul.nav.flex-column
+      li.nav-item
+        a.nav-link.active(href="/dashboard/organizer")
+          i.fas.fa-home.me-2
+          | Tổng quan
+      li.nav-item
+        a.nav-link(href="/dashboard/organizer/events")
+          i.fas.fa-calendar-alt.me-2
+          | Sự kiện
+      li.nav-item
+        a.nav-link(href="/dashboard/organizer/orders")
+          i.fas.fa-shopping-cart.me-2
+          | Đơn hàng
+      li.nav-itemm 
+        a.nav-link(href="/dashboard/admin") Admin Dashboard
+      li.nav-item.mt-auto
+        a.nav-link.text-danger(href="/logout")
+          i.fas.fa-sign-out-alt.me-2
+    
+          | Đăng xuất

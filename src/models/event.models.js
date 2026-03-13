@@ -13,6 +13,12 @@ const eventSchema = new mongoose.Schema({
     required: [true, 'Tên sự kiện là bắt buộc'],
     trim: true
   },
+  category: { 
+    type: String, 
+    required: true,
+    enum: ['âm nhạc', 'ẩm thực', 'công nghệ', 'giải trí', 'kinh doanh', 'nghệ thuật', 'thể thao', 'workshop', 'khác'],
+    default: 'khác'
+  },
   description: { type: String, trim: true },
   date: { type: Date, required: [true, 'Ngày sự kiện là bắt buộc'] },
   location: { type: String, required: [true, 'Địa điểm là bắt buộc'] },

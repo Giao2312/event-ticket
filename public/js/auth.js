@@ -1,22 +1,36 @@
-// public/js/auth.js
+// /public/js/auth.js
+(function() {
+    const originalFetch = globalThis.fetch;
 
-const originalFetch = window.fetch;
-window.fetch = async (url, options = {}) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    options.headers = {
-      ...options.headers,
-      Authorization: `Bearer ${token}`
+    globalThis.fetch = async (url, options = {}) => {
+        options.headers = new Headers(options.headers || {});
+        const token = localStorage.getItem('token');
+        const isAuthUrl = url.includes('/login') || url.includes('/register');
+        
+        if (token && !isAuthUrl) {
+            options.headers.set('Authorization', `Bearer ${token}`);
+        }
+
+        const res = await originalFetch(url, options);
+
+        if (res.status === 401 || res.status === 403) {
+            performLogout();
+        }
+        return res;
     };
-  }
 
-  const res = await originalFetch(url, options);
+    async function performLogout() {
+        try {
+            await originalFetch('/auth/logout', { method: 'POST' });
+        } catch (err) {
+            console.error("Lỗi:", err);
+        } finally {
+            localStorage.removeItem('token');
+            globalThis.location.href = '/login';
+        }
+    }
 
-  if (res.status === 401 || res.status === 403) {
-    localStorage.removeItem('token');
-    alert('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-    window.location.href = '/login';
-  }
-
-  return res;
-};
+    // Gán vào globalThis để gọi từ onclick trong HTML
+    globalThis.handleLogout = performLogout;
+    console.log("Auth.js loaded successfully"); // Để debug trong console
+})();
