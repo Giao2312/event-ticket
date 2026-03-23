@@ -1,4 +1,4 @@
-extends ../../layout
+extends ../../../layout
 
 block content
   section.py-5.bg-light.min-vh-100
@@ -12,7 +12,7 @@ block content
             hr
             ul.nav.nav-pills.flex-column.mb-sm-auto.mb-0.align-items-center.align-items-sm-start
               li.nav-item
-                a.nav-link.px-0.align-middle(href="/dashboard/organizer")
+                a.nav-link.px-0.align-middle(href="/organizer/dashboard")
                   i.fas.fa-home.fs-4.me-2
                   span.ms-1 Tổng quan
               li.nav-item
@@ -23,16 +23,13 @@ block content
                 a.nav-link.px-0.align-middle(href="/organizer/orders")
                   i.fas.fa-shopping-cart.fs-4.me-2
                   span.ms-1 Đơn hàng
-              li.nav-item.mt-auto
-                a.nav-link.px-0.align-middle.text-danger(href="/logout")
-                  i.fas.fa-sign-out-alt.fs-4.me-2
-                  span.ms-1 Đăng xuất
+
 
         //- Nội dung chính
         main.col.py-5.px-4
           div.d-flex.justify-content-between.align-items-center.mb-4
             h2.fw-bold Quản lý sự kiện
-            a.btn.btn-gradient.px-5.py-3.rounded-pill.shadow-sm(href="/organizer/events/create")
+            a.btn.btn-gradient.px-5.py-3.rounded-pill.shadow-sm(href="/organizer/create-event")
               i.fas.fa-plus.me-2
               | Tạo sự kiện
 

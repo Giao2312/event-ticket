@@ -1,45 +1,46 @@
-
 import express from "express";
-import OrderController from "./../../controllers/order.controller.js";
-import  {authMiddleware}  from "../../middlewares/auth.middleware.js";
-
-const app = express();
+import OrderController from "../../controllers/order.controller.js";
+import PaymentController from "../../controllers/payment.controller.js";
+import { authMiddleware } from "../../middlewares/auth.middleware.js";
+import Order from "../../models/order.models.js"; // giả sử bạn có model Order
 
 const router = express.Router();
-app.get('/checkout', authMiddleware, async (req, res) => {
+
+// Trang checkout (query string ?orderId=...)
+router.get("/checkout", authMiddleware, async (req, res) => {
   const { orderId } = req.query;
 
-  if (!orderId) return res.redirect('/my-tickets');
+  if (!orderId) return res.redirect("/my-tickets");
 
   try {
     const order = await Order.findOne({ _id: orderId, userId: req.user.id })
-      .populate('eventId', 'name image date time location') // Populate event
+      .populate("eventId", "name image date time location")
       .lean();
 
     if (!order) {
-      return res.status(404).render('clients/page/error/404', { pageTitle: 'Không tìm thấy đơn hàng' });
+      return res.status(404).render("clients/page/error/404", { pageTitle: "Không tìm thấy đơn hàng" });
     }
 
     const holdUntil = new Date(order.holdUntil);
-    const timeLeft = Math.max(0, Math.floor((holdUntil - new Date()) / 1000)); 
+    const timeLeft = Math.max(0, Math.floor((holdUntil - new Date()) / 1000));
 
-    res.render('clients/page/oder/checkout', {
-      pageTitle: 'Thanh toán - EventVé',
+    res.render("clients/page/oder/checkout", {
+      pageTitle: "Thanh toán - EventVé",
       order,
-      event: order.eventId, // Truyền object event đã populate
-      timeLeft,             // Thời gian countdown (giây)
-      user: req.user
+      event: order.eventId,
+      timeLeft,
+      user: req.user,
     });
   } catch (err) {
-    console.error('Lỗi render checkout:', err);
-    res.status(500).render('clients/page/error/500');
+    console.error("Lỗi render checkout:", err);
+    res.status(500).render("clients/page/error/500");
   }
 });
 
-
-router.get('/checkout/:orderId', OrderController.renderCheckoutPage);
-
-router.get('/payment/success', (req, res) => res.render('clients/success'));
-router.get('/payment' , OrderController.getAllOrders);
+// Route khác (nếu có)
+router.get("/checkout/:orderId", OrderController.renderCheckoutPage);
+router.get("/payment/momo-return", PaymentController.momoReturn);
+router.get("/payment/success", (req, res) => res.render("clients/success"));
+router.get("/payment", OrderController.getAllOrders);
 
 export default router;

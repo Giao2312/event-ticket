@@ -35,10 +35,14 @@ block content
                   p.text-muted.small.mb-3
                     i.fas.fa-calendar-alt.me-1
                     | #{new Date(event.date).toLocaleDateString('vi-VN')}
+                  button.btn.btn-sm.btn-danger(onclick=`deleteEvent('${event._id}')`)
+                      i.fas.fa-trash
+                      | Xóa
                   div.d-flex.justify-content-between
                     span.badge(class=event.status === 'upcoming' ? 'bg-success' : event.status === 'ongoing' ? 'bg-warning' : 'bg-secondary')
                       = event.status === 'upcoming' ? 'Sắp diễn ra' : event.status === 'ongoing' ? 'Đang diễn ra' : 'Đã kết thúc'
                     a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${event._id}`) Quản lý
+                  
         else
           div.col-12.text-center.py-5
             i.fas.fa-calendar-alt.fs-1.text-muted.mb-3
@@ -70,3 +74,14 @@ block append scripts
 
     searchInput.addEventListener('keyup', filterEvents);
     statusFilter.addEventListener('change', filterEvents);
+
+      function deleteEvent(id) {
+        if (confirm('Bạn chắc chắn muốn xóa sự kiện này?')) {
+          fetch(`/admin/events/${id}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(data => {
+              if(data.success) location.reload();
+              else alert(data.message);
+            });
+        }
+      }

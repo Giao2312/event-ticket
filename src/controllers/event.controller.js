@@ -1,8 +1,7 @@
 import { param, query, validationResult } from 'express-validator';
 import Event from '../models/event.models.js';
-import TicketType from '../models/ticketType.models.js';
 import {authMiddleware} from '../middlewares/auth.middleware.js';
-import { verifyToken } from '../utils/jwt.js'; 
+
 
 const eventController = {
   detail: [
@@ -30,15 +29,16 @@ const eventController = {
           });
         }
 
-        // 2. Lấy danh sách loại vé từ collection TicketType
-        // Phải dùng .lean() để trả về mảng object thuần JS
-        const ticketTypes = await TicketType.find({ eventId: eventId }).lean();
+    
+        const ticketTypes = (event.ticketTypes && event.ticketTypes.length > 0)
+          ? event.ticketTypes
+          : (event.TicketType || []);
 
         // 3. Tính toán trên mảng ticketTypes vừa lấy được (không phải trên Model)
-        const totalAvailable = ticketTypes.reduce((sum, t) => sum + (t.quantity - t.sold - t.holded), 0);
+        const totalAvailable = ticketTypes.reduce((sum, t) => sum + ((t.quantity || 0) - (t.sold || 0) - (t.holded || 0)), 0);
         
         const minPrice = ticketTypes.length > 0
-          ? Math.min(...ticketTypes.map(t => t.price)).toLocaleString('vi-VN')
+          ? Math.min(...ticketTypes.map(t => t.price || 0)).toLocaleString('vi-VN')
           : 'Liên hệ';
 
         // 4. Render với dữ liệu đã chuẩn bị
@@ -64,16 +64,36 @@ getAllWeb: async (req, res) => {
   try {
     const categoryQuery = req.query.category;
     const searchQuery = req.query.search;
+    const role = (req.user?.role || '').toLowerCase();
+    const canSeeInternal = role === 'admin' || role === 'organizer';
+    const internalStatuses = ['pending', 'approved', 'published'];
+    let timeFilter = req.query.time || 'all';
+    const { startDate, endDate } = req.query;
+    if (!canSeeInternal && internalStatuses.includes(timeFilter)) timeFilter = 'all';
+
+    const categoryMap = {
+      'am-nhac': 'Âm nhạc',
+      'am-thuc': 'Ẩm thực',
+      'cong-nghe': 'Công nghệ',
+      'giai-tri': 'Giải trí',
+      'kinh-doanh': 'Kinh doanh',
+      'nghe-thuat': 'Nghệ thuật',
+      'the-thao': 'Thể thao',
+      'workshop': 'Workshop',
+      'khac': 'Khác'
+    };
+    const categorySlug = categoryQuery ? categoryQuery.toLowerCase() : '';
+    const categoryName = categoryMap[categorySlug] || categoryQuery;
 
     // Xử lý active category cho filter button
-    const activeCategory = categoryQuery ? categoryQuery.toLowerCase() : 'tất cả';
+    const activeCategory = categorySlug || 'tất cả';
 
     // Xây dựng query lọc
     let matchStage = {};
 
     // Lọc category (nếu không phải 'tất cả')
     if (categoryQuery && categoryQuery !== 'tất cả') {
-      matchStage.category = new RegExp(`^${categoryQuery}$`, 'i');
+      matchStage.category = new RegExp(`^${categoryName}$`, 'i');
     }
 
     // Lọc search (tên, mô tả, địa điểm)
@@ -83,6 +103,15 @@ getAllWeb: async (req, res) => {
         { description: new RegExp(searchQuery, 'i') },
         { location: new RegExp(searchQuery, 'i') }
       ];
+    }
+
+    if (startDate || endDate) {
+      matchStage.date = {};
+      if (startDate) matchStage.date.$gte = new Date(startDate);
+      if (endDate) matchStage.date.$lte = new Date(endDate);
+    }
+    if (timeFilter && timeFilter !== 'all') {
+      matchStage.status = timeFilter;
     }
 
     const events = await Event.aggregate([
@@ -116,17 +145,22 @@ getAllWeb: async (req, res) => {
       pageTitle: 'Danh sách sự kiện',
       events,
       categories: [
-        { name: 'Âm nhạc', icon: 'fa-music' },
-        { name: 'Ẩm thực', icon: 'fa-utensils' },
-        { name: 'Công nghệ', icon: 'fa-robot' },
-        { name: 'Giải trí', icon: 'fa-grin-stars' },
-        { name: 'Kinh doanh', icon: 'fa-briefcase' },
-        { name: 'Nghệ thuật', icon: 'fa-palette' },
-        { name: 'Thể thao', icon: 'fa-running' },
-        { name: 'Workshop', icon: 'fa-graduation-cap' }
+        { name: 'Âm nhạc', slug: 'am-nhac', icon: 'fa-music' },
+        { name: 'Ẩm thực', slug: 'am-thuc', icon: 'fa-utensils' },
+        { name: 'Công nghệ', slug: 'cong-nghe', icon: 'fa-robot' },
+        { name: 'Giải trí', slug: 'giai-tri', icon: 'fa-grin-stars' },
+        { name: 'Kinh doanh', slug: 'kinh-doanh', icon: 'fa-briefcase' },
+        { name: 'Nghệ thuật', slug: 'nghe-thuat', icon: 'fa-palette' },
+        { name: 'Thể thao', slug: 'the-thao', icon: 'fa-running' },
+        { name: 'Workshop', slug: 'workshop', icon: 'fa-graduation-cap' },
+        { name: 'Khác', slug: 'khac', icon: 'fa-ellipsis-h' }
       ],
       activeCategory,
       searchQuery: searchQuery || '',
+      startDate: startDate || '',
+      endDate: endDate || '',
+      timeFilter,
+      canSeeInternal,
       user: req.user || null
     });
   } catch (err) {
@@ -138,10 +172,20 @@ getAllWeb: async (req, res) => {
   // --- PHẦN DÀNH CHO API (TRẢ VỀ JSON) ---
   getAllApi: async (req, res) => {
     try {
-      const { category, search } = req.query;
+      const { category, search, time, startDate, endDate } = req.query;
+      const role = (req.user?.role || '').toLowerCase();
+      const canSeeInternal = role === 'admin' || role === 'organizer';
+      const internalStatuses = ['pending', 'approved', 'published'];
+      const safeTime = (!canSeeInternal && internalStatuses.includes(time)) ? 'all' : time;
       const query = {};
       if (category) query.category = category;
       if (search) query.name = { $regex: search, $options: 'i' };
+      if (safeTime && safeTime !== 'all') query.status = safeTime;
+      if (startDate || endDate) {
+        query.date = {};
+        if (startDate) query.date.$gte = new Date(startDate);
+        if (endDate) query.date.$lte = new Date(endDate);
+      }
 
       const events = await Event.find(query).sort({ date: 1 });
       
@@ -264,11 +308,6 @@ getAllWeb: async (req, res) => {
     const processedEvents = events.map(event => {
       let status = 'upcoming';
       const eventDate = new Date(event.date);
-      
-      // Logic đơn giản: 
-      // Nếu ngày sự kiện đã qua -> 'ended'
-      // Nếu ngày sự kiện là hôm nay hoặc tương lai -> 'upcoming'
-      // Bạn có thể mở rộng logic này (ví dụ: dùng trường duration)
       if (eventDate < now) {
         status = 'ended';
       } else {

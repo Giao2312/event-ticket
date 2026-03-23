@@ -1,4 +1,4 @@
-extends ../../layout
+extends ../../../layout
 
 block content
   section.create-event.py-5.bg-light.min-vh-100
@@ -14,7 +14,7 @@ block content
           | Quay lại danh sách
 
       //- Form chính
-      form#eventForm.needs-validation(novalidate)
+      form#eventForm.needs-validation(novalidate action="/organizer/create-event" method="POST" enctype="multipart/form-data")
         div.row.g-4
           //- Cột trái (Thông tin cơ bản + Thời gian & Địa điểm)
           div.col-lg-8
@@ -47,10 +47,26 @@ block content
                     option(value="kinh-doanh") Kinh doanh
                     option(value="am-thuc") Ẩm thực
 
+                //- Ảnh sự kiện (tách phần)
                 div.mb-4
-                  label.form-label.fw-medium Ảnh đại diện sự kiện *
-                  input.form-control(type="file" name="image" accept="image/*" required)
-                  small.text-muted.mt-2 Chọn ảnh đẹp, kích thước khuyến nghị 1200x600px
+                  label.form-label.fw-medium Ảnh nền sự kiện *
+                  input.form-control(type="file" name="coverImage" accept="image/*" required)
+                  small.text-muted.mt-2 Ảnh chính hiển thị ở banner, khuyến nghị 1200x600px
+
+                div.mb-4
+                  label.form-label.fw-medium Ảnh bổ sung (tối đa 5 ảnh)
+                  input.form-control(type="file" name="galleryImages" accept="image/*" multiple)
+                  small.text-muted.mt-2 Ảnh phụ hiển thị trong chi tiết sự kiện
+
+                div.mb-4#offlineProof
+                  label.form-label.fw-medium Ảnh xác thực địa điểm *
+                  input.form-control(type="file" name="venueProofImage" accept="image/*" required)
+                  small.text-muted.mt-2 Ảnh chụp tại điểm diễn ra sự kiện để xác thực
+
+                div.mb-4#onlineProof(style="display: none;")
+                  label.form-label.fw-medium Ảnh xác thực online (tùy chọn)
+                  input.form-control(type="file" name="onlineProofImage" accept="image/*")
+                  small.text-muted.mt-2 Ảnh lịch livestream / dashboard nền tảng / poster có watermark
 
             //- Thời gian & Địa điểm
             div.card.border-0.shadow-sm.rounded-4.mb-4
@@ -75,12 +91,35 @@ block content
                     input.form-control.form-control-lg(type="time" name="timeEnd")
 
                 div.mt-3
-                  label.form-label.fw-medium Địa điểm *
-                  input.form-control.form-control-lg(type="text" name="location" placeholder="Ví dụ: Nhà hát Hòa Bình, TP. Hồ Chí Minh" required)
+                  label.form-label.fw-medium Hình thức tổ chức *
+                  div.d-flex.gap-4
+                    div.form-check
+                      input.form-check-input(type="radio" name="eventMode" id="modeOffline" value="offline" checked)
+                      label.form-check-label(for="modeOffline") Offline
+                    div.form-check
+                      input.form-check-input(type="radio" name="eventMode" id="modeOnline" value="online")
+                      label.form-check-label(for="modeOnline") Online
 
-                div.mt-3
-                  label.form-label.fw-medium Link Google Maps (tùy chọn)
-                  input.form-control(type="url" name="mapLink" placeholder="https://maps.google.com/...")
+                //- Offline address fields
+                div.mt-3#offlineFields
+                  label.form-label.fw-medium Địa điểm tổ chức (Offline) *
+                  div.row.g-3
+                    div.col-md-6
+                      input.form-control.form-control-lg(type="text" name="venueName" placeholder="Tên địa điểm (VD: Nhà hát Hòa Bình)" required)
+                    div.col-md-6
+                      input.form-control.form-control-lg(type="text" name="city" placeholder="Tên thành phố" required)
+                    div.col-md-6
+                      input.form-control.form-control-lg(type="text" name="ward" placeholder="Phường/Xã" required)
+                    div.col-md-6
+                      input.form-control.form-control-lg(type="text" name="street" placeholder="Số nhà/Đường" required)
+                  div.mt-3
+                    label.form-label.fw-medium Link Google Maps (tùy chọn)
+                    input.form-control(type="url" name="mapLink" placeholder="https://maps.google.com/...")
+
+                //- Online address fields
+                div.mt-3#onlineFields(style="display: none;")
+                  label.form-label.fw-medium Link sự kiện online *
+                  input.form-control.form-control-lg(type="url" name="onlineLink" placeholder="https://zoom.us/... hoặc link livestream")
 
           //- Cột phải (Loại vé + Cài đặt)
           div.col-lg-4
@@ -130,6 +169,29 @@ block content
               i.fas.fa-save.me-2
               | Tạo sự kiện ngay
 
+          //- Thông tin thanh toán của nhà tổ chức
+          div.card.border-0.shadow-sm.rounded-4.mb-4
+            div.card-body.p-4
+              h5.fw-bold.mb-4
+                i.fas.fa-credit-card.me-2.text-purple-600
+                | Thông tin thanh toán
+              div.mb-3
+                label.form-label.fw-medium Hình thức nhận tiền *
+                select.form-select.form-select-lg(name="payoutMethod" required)
+                  option(value="") Chọn phương thức
+                  option(value="bank") Chuyển khoản ngân hàng
+                  option(value="momo") Ví MoMo
+                  option(value="paypal") PayPal
+              div.mb-3
+                label.form-label.fw-medium Tên chủ tài khoản
+                input.form-control.form-control-lg(type="text" name="accountName" placeholder="VD: Nguyễn Văn A")
+              div.mb-3
+                label.form-label.fw-medium Số tài khoản / Số ví
+                input.form-control.form-control-lg(type="text" name="accountNumber" placeholder="VD: 0123456789")
+              div.mb-3
+                label.form-label.fw-medium Ngân hàng / Nhà cung cấp
+                input.form-control.form-control-lg(type="text" name="bankName" placeholder="VD: Vietcombank / MoMo / PayPal")
+
 block append scripts
   script.
     // Thêm loại vé động
@@ -167,3 +229,25 @@ block append scripts
       }
       form.classList.add('was-validated');
     });
+
+    // Toggle online/offline fields
+    const offlineFields = document.getElementById('offlineFields');
+    const onlineFields = document.getElementById('onlineFields');
+    const offlineProof = document.getElementById('offlineProof');
+    const onlineProof = document.getElementById('onlineProof');
+    const venueProofInput = document.querySelector('input[name="venueProofImage"]');
+    const modeOffline = document.getElementById('modeOffline');
+    const modeOnline = document.getElementById('modeOnline');
+
+    const updateMode = () => {
+      const isOnline = modeOnline.checked;
+      offlineFields.style.display = isOnline ? 'none' : '';
+      onlineFields.style.display = isOnline ? '' : 'none';
+      offlineProof.style.display = isOnline ? 'none' : '';
+      onlineProof.style.display = isOnline ? '' : 'none';
+      if (venueProofInput) venueProofInput.required = !isOnline;
+    };
+
+    modeOffline.addEventListener('change', updateMode);
+    modeOnline.addEventListener('change', updateMode);
+    updateMode();

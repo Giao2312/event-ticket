@@ -1,4 +1,4 @@
-extends ../../../layout
+﻿extends ../../../layout
 
 block content
   - 
@@ -125,83 +125,99 @@ block content
         const btnPlus = document.getElementById('btnPlus');
         const btnMinus = document.getElementById('btnMinus');
         const buyBtn = document.getElementById('buyBtn');
+        const bookingForm = document.getElementById('bookingForm');
+
+        // Tránh bind lặp listener nếu script bị chạy lại
+        if (!ticketSelect || !qtyInput || !totalEl || !btnPlus || !btnMinus || !buyBtn || !bookingForm) return;
+        if (bookingForm.dataset.bound === '1') return;
+        bookingForm.dataset.bound = '1';
+
+        const getCurrentOption = () => ticketSelect.options[ticketSelect.selectedIndex] || null;
+        const getQty = () => Number.parseInt(qtyInput.value, 10) || 1;
+        const getPrice = () => {
+          const option = getCurrentOption();
+          return option ? (Number.parseInt(option.dataset.price, 10) || 0) : 0;
+        };
+        const getMaxAvailable = () => {
+          const option = getCurrentOption();
+          const max = option ? Number.parseInt(option.dataset.available, 10) : 0;
+          return Number.isNaN(max) ? 0 : Math.max(0, max);
+        };
 
         const updatePrice = () => {
-          const option = ticketSelect.options[ticketSelect.selectedIndex];
-          if (!option) return;
-          
-          const price = parseInt(option.dataset.price) || 0;
-          const qty = parseInt(qtyInput.value) || 1;
+          const price = getPrice();
+          const qty = getQty();
           totalEl.textContent = (price * qty).toLocaleString('vi-VN') + 'đ';
         };
 
         // Xử lý nút tăng/giảm số lượng qua Event Listener
         btnPlus.addEventListener('click', () => {
-          const option = ticketSelect.options[ticketSelect.selectedIndex];
-          const max = parseInt(option.dataset.available) || 99;
-          let current = parseInt(qtyInput.value);
+          const max = getMaxAvailable();
+          let current = getQty();
           if (current < max) {
-            qtyInput.value = current + 1;
+            qtyInput.value = String(current + 1);
             updatePrice();
           }
         });
 
         btnMinus.addEventListener('click', () => {
-          let current = parseInt(qtyInput.value);
+          let current = getQty();
           if (current > 1) {
-            qtyInput.value = current - 1;
+            qtyInput.value = String(current - 1);
             updatePrice();
           }
         });
 
         ticketSelect.addEventListener('change', () => {
-          qtyInput.value = 1;
+          const max = getMaxAvailable();
+          qtyInput.value = String(max > 0 ? 1 : 0);
           updatePrice();
         });
 
         // Xử lý đặt vé
         buyBtn.addEventListener('click', async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-          alert('Vui lòng đăng nhập để tiếp tục');
-          return window.location.href = '/auth/login';
-      }
+          const isLoggedIn = #{JSON.stringify(!!user)};
+          if (!isLoggedIn) {
+            alert('Vui lòng đăng nhập để tiếp tục');
+            return window.location.href = '/login';
+          }
 
-      const payload = {
-          items: [{
+          const payload = {
+            items: [{
               ticketTypeId: ticketSelect.value, // ID của loại vé đã chọn
-              quantity: parseInt(qtyInput.value)
-          }],
-          paymentMethod: 'VNPay' // Mặc định hoặc lấy từ một radio button
-      };
+              quantity: getQty()
+            }],
+            paymentMethod: 'momo' // Demo: chỉ dùng MoMo
+          };
 
-      try {
-          buyBtn.disabled = true;
-          buyBtn.textContent = 'Đang giữ chỗ...';
+          try {
+            buyBtn.disabled = true;
+            buyBtn.textContent = 'Đang giữ chỗ...';
 
-          const res = await fetch('/api/orders/create', {
+            const res = await fetch('/api/orders/create', {
               method: 'POST',
+              credentials: 'same-origin',
               headers: { 
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}` 
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify(payload)
-          });
+            });
 
-          const data = await res.json();
-          if (data.success) {
+            const data = await res.json();
+            if (data.success) {
               // Sau khi tạo đơn hàng thành công, chuyển đến trang thanh toán riêng
               window.location.href = `/checkout/${data.orderId}`;
-          } else {
+            } else {
               alert(data.message || 'Lỗi đặt vé');
               buyBtn.disabled = false;
+            }
+          } catch (err) {
+            console.error(err);
+            buyBtn.disabled = false;
           }
-      } catch (err) {
-          console.error(err);
-          buyBtn.disabled = false;
-      }
-      });
+        });
 
         // Khởi tạo giá tiền ban đầu
         updatePrice();
       });
+

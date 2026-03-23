@@ -1,22 +1,35 @@
 import express from "express";
-import homeController  from "../../controllers/home.controller.js";
+import homeController from "../../controllers/home.controller.js";
+import { authMiddleware } from "../../middlewares/auth.middleware.js";
+import Event from "../../models/event.models.js"; // import tĩnh
 
-const app = express();
 const router = express.Router();
 
-router.get("/", homeController.index);
-app.get('/', async (req, res) => {
-  const Event = (await import('./src/models/event.models.js')).default;
-  const events = await Event.find().sort({ date: 1 }).limit(10).lean();
+// Trang chủ
+router.get("/", authMiddleware, homeController.index); // nếu controller xử lý chính
 
-  console.log('Render trang chủ với user:', req.user ? req.user.name : 'null');
+// Hoặc nếu bạn muốn logic inline (ưu tiên cái này nếu controller chưa đầy đủ)
+router.get("/", async (req, res) => {
+  try {
+    const events = await Event.find().sort({ date: 1 }).limit(10).lean();
 
-  res.render('clients/page/home/index', {
-    pageTitle: 'Trang chủ - EventVé',
-    events: events,
-    user: req.user || null  // ← BẮT BUỘC PHẢI CÓ DÒNG NÀY
-  });
-  
+    console.log("Render trang chủ với user:", req.user ? req.user.name : "null");
+
+    res.render("clients/page/home/index", {
+      pageTitle: "Trang chủ - EventVé",
+      events,
+      user: req.user || null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.render("clients/page/home/index", {
+      pageTitle: "Trang chủ - EventVé",
+      events: [],
+      user: req.user || null,
+    });
+  }
 });
+
 export default router;
+
 

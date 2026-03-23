@@ -1,4 +1,4 @@
-extends ../../layout
+extends ../../../layout
 
 block content
   section.dashboard.py-5.bg-light.min-vh-100
@@ -14,38 +14,34 @@ block content
           | Tạo sự kiện
 
       //- Thống kê nhanh (4 card)
-      div.row.g-4.mb-5
-        div.col-6.col-md-3
-          div.card.border-0.shadow-sm.h-100
-            div.card-body.text-center
-              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#f3e8ff;")
-                i.fas.fa-shopping-cart.fs-3.text-purple-600
-              h3.fw-bold.mb-0 #{stats.totalOrders || 0}
-              p.text-muted.small Tổng đơn hàng
+    div.row.g-4.mb-5
+      div.col-6.col-md-3
+        div.card.border-0.shadow-sm.h-100
+          div.card-body.text-center
+            // ... (icon)
+            h3.fw-bold.mb-0= (stats && stats.totalOrders) ? stats.totalOrders : 0
+            p.text-muted.small Tổng đơn hàng
 
-        div.col-6.col-md-3
-          div.card.border-0.shadow-sm.h-100
-            div.card-body.text-center
-              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#e0f2fe;")
-                i.fas.fa-check-circle.fs-3.text-blue-600
-              h3.fw-bold.mb-0 #{stats.paidOrders || 0}
-              p.text-muted.small Đã thanh toán
+      div.col-6.col-md-3
+        div.card.border-0.shadow-sm.h-100
+          div.card-body.text-center
+            // ... (icon)
+            h3.fw-bold.mb-0= (stats && stats.paidOrders) ? stats.paidOrders : 0
+            p.text-muted.small Đã thanh toán
 
-        div.col-6.col-md-3
-          div.card.border-0.shadow-sm.h-100
-            div.card-body.text-center
-              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#fef3c7;")
-                i.fas.fa-clock.fs-3.text-amber-600
-              h3.fw-bold.mb-0 #{stats.pendingOrders || 0}
-              p.text-muted.small Đang chờ
+      div.col-6.col-md-3
+        div.card.border-0.shadow-sm.h-100
+          div.card-body.text-center
+            // ... (icon)
+            h3.fw-bold.mb-0= (stats && stats.pendingOrders) ? stats.pendingOrders : 0
+            p.text-muted.small Đang chờ
 
-        div.col-6.col-md-3
-          div.card.border-0.shadow-sm.h-100
-            div.card-body.text-center
-              div.rounded-circle.mx-auto.mb-3.d-flex.align-items-center.justify-content-center(style="width:60px;height:60px;background:#ecfdf5;")
-                i.fas.fa-dollar-sign.fs-3.text-emerald-600
-              h3.fw-bold.mb-0 #{stats.todayRevenue || '0đ'}
-              p.text-muted.small Doanh thu hôm nay
+      div.col-6.col-md-3
+        div.card.border-0.shadow-sm.h-100
+          div.card-body.text-center
+            // ... (icon)
+            h3.fw-bold.mb-0= (stats && stats.todayRevenue) ? stats.todayRevenue : '0đ'
+            p.text-muted.small Doanh thu hôm nay
 
       //- Lọc + Tìm kiếm
       div.row.align-items-center.g-4.mb-5
@@ -87,7 +83,7 @@ block content
                         div.d-flex.align-items-center.gap-2
                           img.rounded-circle(src=order.userId.avatar || '/images/default-avatar.jpg' width="36" height="36" alt="")
                           span= order.userId.name || 'Khách vãng lai'
-                      td= order.eventId?.name || 'Sự kiện không xác định'
+                      td= (order.eventId && order.eventId.name) ? order.eventId.name : 'Sự kiện không xác định'
                       td.fw-bold.text-primary= order.totalAmount.toLocaleString('vi-VN') + 'đ'
                       td
                         span.badge(class=order.status === 'paid' ? 'bg-success' : order.status === 'pending' ? 'bg-warning' : 'bg-danger')

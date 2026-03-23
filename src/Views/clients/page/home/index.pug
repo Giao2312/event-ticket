@@ -1,20 +1,20 @@
 extends ../../../layout
 
 block hero
-  section.min-vh-100.d-flex.align-items-center.position-relative.overflow-hidden(style="background: linear-gradient(to bottom right, #4c1d95, #4338ca, #be185d); color: white;")
+  section.min-vh-60.d-flex.align-items-center.position-relative.overflow-hidden(style="background: linear-gradient(to bottom right, #4c1d95, #4338ca, #be185d); color: white;")
     div.position-absolute.top-0.start-0.end-0.bottom-0.bg-black.opacity-40.z-0
 
-    div.container.position-relative.z-10.py-5.py-md-5
+    div.container.position-relative.z-10.py-4.py-md-4
       div.mx-auto.text-center(style="max-width: 900px;")
-        h1.display-3.fw-bold.mb-4
+        h1.display-4.fw-bold.mb-3
           | Khám phá &
           br
           span(style="background: linear-gradient(to right, #ec4899, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent;") Đặt vé sự kiện
 
-        p.lead.mb-5.opacity-75
+        p.lead.mb-4.opacity-75
           | Nền tảng bán vé sự kiện hàng đầu. Tìm kiếm, đặt vé và tận hưởng những trải nghiệm tuyệt vời.
 
-        form.mx-auto.mt-5.d-flex.align-items-center.gap-3.rounded-pill.border.border-white.border-opacity-25.bg-white.bg-opacity-10.p-2.backdrop-blur(style="max-width: 500px;" action="/events" method="GET")
+        form.mx-auto.mt-4.d-flex.align-items-center.gap-3.rounded-pill.border.border-white.border-opacity-25.bg-white.bg-opacity-10.p-2.backdrop-blur(style="max-width: 500px;" action="/events" method="GET")
           i.fas.fa-search.ms-4.text-white.opacity-75.fs-4
           input.form-control.bg-transparent.border-0.text-white.placeholder-white.placeholder-opacity-50.outline-0.flex-grow-1.fs-5(
             type="text"
@@ -25,10 +25,58 @@ block hero
             | Tìm kiếm
 
 block content
-  //- Stats Section
-  section.border-bottom.bg-dark.py-5
+  //- Time Filter Section (moved up)
+  section.py-4.bg-light
     div.container
-      div.row.g-4.text-center.text-white
+      div.d-flex.justify-content-between.align-items-center.mb-3
+        h2.text-dark.fw-bold Sự kiện theo thời gian
+        a(href="/events" class="text-primary fw-medium text-decoration-none hover-underline") Xem tất cả →
+
+      form.d-flex.flex-wrap.gap-2.mb-3(method="GET" action="/")
+        select.form-select.w-auto(name="time")
+          option(value="all" selected=(filters && filters.time === 'all')) Tất cả trạng thái
+          option(value="upcoming" selected=(filters && filters.time === 'upcoming')) Sắp diễn ra
+          option(value="ongoing" selected=(filters && filters.time === 'ongoing')) Đang diễn ra
+          option(value="ended" selected=(filters && filters.time === 'ended')) Đã kết thúc
+          if canSeeInternal
+            option(value="pending" selected=(filters && filters.time === 'pending')) Chờ duyệt
+            option(value="approved" selected=(filters && filters.time === 'approved')) Đã duyệt
+            option(value="published" selected=(filters && filters.time === 'published')) Đã xuất bản
+        input.form-control.w-auto(type="date" name="startDate" value=filters && filters.startDate)
+        input.form-control.w-auto(type="date" name="endDate" value=filters && filters.endDate)
+        button.btn.btn-outline-dark(type="submit") Lọc
+
+      div.row.g-4
+        if events && events.length > 0
+          each event in events
+            div.col-md-6.col-lg-3
+              a.text-decoration-none(href=`/events/${event._id}`)
+                div.card.bg-white.text-dark.border-0.shadow-lg.overflow-hidden.h-100
+                  img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 200px; object-fit: cover;")
+                  div.card-body.p-4
+                    span.badge.bg-primary.mb-2.align-self-start Sự kiện
+                    h5.card-title.fw-bold.mb-3= event.name
+                    p.card-text.small.text-muted.mb-2
+                      i.fas.fa-calendar-alt.me-1
+                      | #{new Date(event.date).toLocaleDateString('vi-VN')} • #{event.time || 'TBC'}
+                    p.card-text.small.text-muted.mb-3
+                      i.fas.fa-map-marker-alt.me-1
+                      | #{event.location || 'TBC'}
+                    div.d-flex.justify-content-between.align-items-center
+                      span.fw-bold.text-primary= event.displayPrice || 'Liên hệ'
+                      span.btn.btn-sm.btn-outline-dark Chi tiết
+                    if event.ticketTypes && event.ticketTypes.length > 0
+                      ul.list-unstyled.mt-3.mb-0.small.text-muted
+                        each tt in event.ticketTypes.slice(0, 3)
+                          li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
+        else
+          div.col-12.text-center
+            p.text-muted Không có sự kiện phù hợp.
+
+  //- Stats Section
+  section.border-bottom.bg-white.py-5
+    div.container
+      div.row.g-4.text-center.text-dark
         div.col-6.col-md-3
           div.d-flex.align-items-center.justify-content-center.gap-3
             div.d-flex.align-items-center.justify-content-center.rounded-circle.bg-primary.bg-opacity-10.w-12.h-12
@@ -59,10 +107,10 @@ block content
               p.text-muted.small Bảo mật
 
 
-  section.py-5.bg-dark
+  section.py-5.bg-light
     div.container
       div.d-flex.justify-content-between.align-items-center.mb-4
-        h2.text-white.fw-bold Sự kiện nổi bật
+        h2.text-dark.fw-bold Sự kiện nổi bật
         a(href="/events" class="text-primary fw-medium text-decoration-none hover-underline") Xem tất cả →
 
       div.row.g-4
@@ -70,48 +118,22 @@ block content
           each event in featuredEvents
             div.col-md-6.col-lg-3
               a.text-decoration-none(href=`/events/${event._id}`)
-                div.card.bg-dark.text-white.border-0.shadow-lg.overflow-hidden.h-100.hover-translate-y
+                div.card.bg-white.text-dark.border-0.shadow-lg.overflow-hidden.h-100.hover-translate-y
                   img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 200px; object-fit: cover;")
                   div.card-body.d-flex.flex-column.p-4
                     span.badge.bg-primary.mb-2.align-self-start Nổi bật
                     h5.card-title.fw-bold.mb-3= event.name
-                    p.card-text.small.text-white-50.flex-grow-1= event.description ? event.description.substring(0, 80) + '...' : 'Chưa có mô tả.'
+                    p.card-text.small.text-muted.flex-grow-1= event.description ? event.description.substring(0, 80) + '...' : 'Chưa có mô tả.'
                     div.mt-auto.d-flex.justify-content-between.align-items-center
                       span.fw-bold.text-primary= event.displayPrice || 'Liên hệ'
-                      span.btn.btn-sm.btn-outline-light Chi tiết
+                      span.btn.btn-sm.btn-outline-dark Chi tiết
+                    if event.ticketTypes && event.ticketTypes.length > 0
+                      ul.list-unstyled.mt-3.mb-0.small.text-muted
+                        each tt in event.ticketTypes.slice(0, 3)
+                          li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
         else
           div.col-12.text-center
-            p.text-white-50 Hiện chưa có sự kiện nổi bật.
-
-  //- Upcoming Events Section
-  section.py-5.bg-black
-    div.container
-      div.d-flex.justify-content-between.align-items-center.mb-4
-        h2.text-white.fw-bold Sắp diễn ra
-        a(href="/events" class="text-primary fw-medium text-decoration-none hover-underline") Xem tất cả →
-
-      div.row.g-4
-        if upcomingEvents && upcomingEvents.length > 0
-          each event in upcomingEvents
-            div.col-md-6.col-lg-3
-              a.text-decoration-none(href=`/events/${event._id}`)
-                div.card.bg-dark.text-white.border-0.shadow-lg.overflow-hidden.h-100
-                  img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 200px; object-fit: cover;")
-                  div.card-body.p-4
-                    span.badge.bg-secondary.mb-2.align-self-start Sắp diễn ra
-                    h5.card-title.fw-bold.mb-3= event.name
-                    p.card-text.small.text-white-50.mb-2
-                      i.fas.fa-calendar-alt.me-1
-                      | #{new Date(event.date).toLocaleDateString('vi-VN')} • #{event.time || 'TBC'}
-                    p.card-text.small.text-white-50.mb-3
-                      i.fas.fa-map-marker-alt.me-1
-                      | #{event.location || 'TBC'}
-                    div.d-flex.justify-content-between.align-items-center
-                      span.fw-bold.text-primary= event.displayPrice || 'Liên hệ'
-                      span.btn.btn-sm.btn-outline-light Chi tiết
-        else
-          div.col-12.text-center
-            p.text-white-50 Không có sự kiện nào sắp diễn ra.
+            p.text-muted Hiện chưa có sự kiện nổi bật.
 
   //- Organizer CTA
   section.py-5.bg-gradient-to-br.from-purple-900.to-pink-900.text-white

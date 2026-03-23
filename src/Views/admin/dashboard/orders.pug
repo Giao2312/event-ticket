@@ -1,0 +1,101 @@
+extends ../../layout
+
+block content
+  section.py-5.bg-light
+    div.container
+      div.d-flex.justify-content-between.align-items-center.mb-4
+        h2.fw-bold Quản lý đơn hàng
+        a.btn.btn-outline-secondary(href="/admin/dashboard") Quay lại dashboard
+
+      //- KPI trạng thái
+      div.row.g-4.mb-4
+        div.col-md-3
+          div.card.border-0.shadow-sm.text-center
+            div.card-body
+              h6.text-muted.mb-1 Thành công
+              h3.fw-bold.text-success #{stats.paidCount || 0}
+        div.col-md-3
+          div.card.border-0.shadow-sm.text-center
+            div.card-body
+              h6.text-muted.mb-1 Chờ thanh toán
+              h3.fw-bold.text-warning #{stats.pendingCount || 0}
+        div.col-md-3
+          div.card.border-0.shadow-sm.text-center
+            div.card-body
+              h6.text-muted.mb-1 Đã hủy
+              h3.fw-bold.text-danger #{stats.cancelledCount || 0}
+        div.col-md-3
+          div.card.border-0.shadow-sm.text-center
+            div.card-body
+              h6.text-muted.mb-1 Hết hạn
+              h3.fw-bold.text-secondary #{stats.expiredCount || 0}
+
+      //- Bộ lọc
+      form.row.g-3.mb-4(method="GET" action="/admin/dashboard/orders")
+        div.col-md-6
+          div.input-group
+            span.input-group-text
+              i.fas.fa-search
+            input.form-control(type="text" name="q" placeholder="Tìm theo mã đơn / tên / email / sự kiện" value=filters.q)
+        div.col-md-3
+          select.form-select(name="status")
+            option(value="") Tất cả trạng thái
+            option(value="PAID" selected=filters.status==='PAID') Thành công
+            option(value="PENDING" selected=filters.status==='PENDING') Chờ thanh toán
+            option(value="CANCELLED" selected=filters.status==='CANCELLED') Đã hủy
+            option(value="EXPIRED" selected=filters.status==='EXPIRED') Hết hạn
+        div.col-md-3
+          button.btn.btn-primary.w-100(type="submit") Lọc
+
+      if errorMessage
+        div.alert.alert-danger= errorMessage
+
+      //- Bảng đơn hàng
+      div.table-responsive
+        table.table.table-hover.align-middle
+          thead.table-light
+            tr
+              th Mã đơn
+              th Khách hàng
+              th Sự kiện
+              th Vé
+              th Tổng tiền
+              th Trạng thái
+              th Thanh toán
+              th Ngày tạo
+          tbody
+            if orders && orders.length > 0
+              each o in orders
+                tr
+                  td= o._id
+                  td= (o.user && o.user.name) || 'Ẩn danh'
+                  td= (o.event && o.event.name) || 'N/A'
+                  td= o.totalItems || 0
+                  td.text-success #{Number(o.totalAmount || 0).toLocaleString('vi-VN')} đ
+                  td
+                    if o.status === 'PAID'
+                      span.badge.bg-success Thành công
+                    else if o.status === 'PENDING'
+                      span.badge.bg-warning.text-dark Chờ
+                    else if o.status === 'CANCELLED'
+                      span.badge.bg-danger Đã hủy
+                    else
+                      span.badge.bg-secondary Hết hạn
+                  td= (o.paymentMethod || '').toUpperCase()
+                  td= new Date(o.createdAt).toLocaleString('vi-VN')
+            else
+              tr
+                td.text-center(colspan="8") Không có đơn hàng phù hợp
+
+      //- Phân trang
+      if pagination && pagination.totalPages > 1
+        nav.mt-4
+          ul.pagination
+            - const baseQuery = `?q=${encodeURIComponent(filters.q || '')}&status=${encodeURIComponent(filters.status || '')}&page=`;
+            li.page-item(class=pagination.page <= 1 ? 'disabled' : '')
+              a.page-link(href=`/admin/dashboard/orders${baseQuery}${pagination.page - 1}`) Trước
+            each i in Array.from({length: pagination.totalPages}, (_, idx) => idx + 1)
+              li.page-item(class=i === pagination.page ? 'active' : '')
+                a.page-link(href=`/admin/dashboard/orders${baseQuery}${i}`)= i
+            li.page-item(class=pagination.page >= pagination.totalPages ? 'disabled' : '')
+              a.page-link(href=`/admin/dashboard/orders${baseQuery}${pagination.page + 1}`) Sau

@@ -17,7 +17,12 @@ const homeController = {
           });
 
       try {
-        const { category, startDate, endDate } = req.query;
+        const { category, startDate, endDate, time } = req.query;
+        const role = (req.user?.role || '').toLowerCase();
+        const canSeeInternal = role === 'admin' || role === 'organizer';
+        const internalStatuses = ['pending', 'approved', 'published'];
+        let timeFilter = time || 'all';
+        if (!canSeeInternal && internalStatuses.includes(timeFilter)) timeFilter = 'all';
 
         // 1. Lấy dữ liệu cho phần "Sự kiện nổi bật" (Featured) - Lấy 4 cái mới nhất
         const featuredEventsRaw = await Event.find()
@@ -42,6 +47,9 @@ const homeController = {
           filterQuery.date = {};
           if (startDate) filterQuery.date.$gte = new Date(startDate);
           if (endDate) filterQuery.date.$lte = new Date(endDate);
+        }
+        if (timeFilter && timeFilter !== 'all') {
+          filterQuery.status = timeFilter;
         }
 
         const events = await Event.find(filterQuery)
@@ -68,7 +76,8 @@ const homeController = {
           featuredEvents: formatEvents(featuredEventsRaw), // Gửi mảng nổi bật
           upcomingEvents: formatEvents(upcomingEventsRaw), // Gửi mảng sắp diễn ra
           events: formatEvents(events),                   // Gửi mảng danh sách chính
-          filters: { category: category || 'Tất cả', startDate: startDate || '', endDate: endDate || '' },
+          filters: { category: category || 'Tất cả', startDate: startDate || '', endDate: endDate || '', time: timeFilter },
+          canSeeInternal,
           categories: ['Tất cả', 'Âm nhạc', 'Hội thảo', 'Thể thao', 'Sân khấu', 'Triển lãm'],
           pagination: { page, totalPages: Math.ceil(total / limit) }
         });

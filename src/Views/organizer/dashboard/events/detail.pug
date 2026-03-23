@@ -1,0 +1,171 @@
+extends ../../../layout
+
+block content
+  - 
+    const now = new Date();
+    const eventsList = events || [];
+    const getStatus = (ev) => {
+      if (ev && ev.status) return ev.status;
+      if (!ev || !ev.date) return 'upcoming';
+      const d = new Date(ev.date);
+      const sameDay = d.toDateString() === now.toDateString();
+      if (d < now && !sameDay) return 'ended';
+      if (sameDay) return 'ongoing';
+      return 'upcoming';
+    };
+    const calcTotalTickets = (ev) => {
+      if (ev?.totalTickets != null) return ev.totalTickets;
+      return (ev.ticketTypes || []).reduce((sum, t) => sum + (t.quantity || 0), 0);
+    };
+    const calcSoldTickets = (ev) => {
+      if (ev?.totalSold != null) return ev.totalSold;
+      return (ev.ticketTypes || []).reduce((sum, t) => sum + (t.sold || 0), 0);
+    };
+    const pendingEvents = eventsList.filter(e => getStatus(e) === 'pending');
+    const ongoingEvents = eventsList.filter(e => getStatus(e) === 'ongoing');
+    const upcomingEvents = eventsList.filter(e => getStatus(e) === 'upcoming');
+    const endedEvents = eventsList.filter(e => getStatus(e) === 'ended');
+
+  section.py-5.bg-light.min-vh-100
+    div.container-fluid
+      div.row
+        //- Sidebar
+        aside.col-auto.col-md-3.col-xl-2.px-sm-2.px-0.bg-white.border-end.shadow-sm
+          div.d-flex.flex-column.align-items-center.align-items-sm-start.px-3.pt-2.text-dark.min-vh-100
+            a.d-flex.align-items-center.pb-3.mb-md-0.me-md-auto.text-dark.text-decoration-none
+              span.fs-5.fw-bold EventVé Organizer
+            hr
+            ul.nav.nav-pills.flex-column.mb-sm-auto.mb-0.align-items-center.align-items-sm-start
+              li.nav-item
+                a.nav-link.px-0.align-middle(href="/organizer/dashboard")
+                  i.fas.fa-home.fs-4.me-2
+                  span.ms-1 Tổng quan
+              li.nav-item
+                a.nav-link.px-0.align-middle.active(href="/organizer/events")
+                  i.fas.fa-calendar-alt.fs-4.me-2
+                  span.ms-1 Sự kiện
+              li.nav-item
+                a.nav-link.px-0.align-middle(href="/organizer/orders")
+                  i.fas.fa-shopping-cart.fs-4.me-2
+                  span.ms-1 Đơn hàng
+
+        //- Main
+        main.col.py-5.px-4
+          if created
+            div.alert.alert-success.d-flex.align-items-center(role="alert")
+              i.fas.fa-check-circle.me-2
+              | Đã gửi yêu cầu tạo sự kiện cho admin duyệt. Sự kiện của bạn đang ở trạng thái chờ duyệt.
+
+          div.d-flex.justify-content-between.align-items-center.mb-4
+            h2.fw-bold Sự kiện của tôi
+            a.btn.btn-gradient.px-4.py-2.rounded-pill.shadow-sm(href="/organizer/create-event")
+              i.fas.fa-plus.me-2
+              | Tạo sự kiện
+
+          //- Pending
+          h4.fw-bold.mb-3 Chờ duyệt
+          if pendingEvents.length > 0
+            div.row.g-4.mb-5
+              each ev in pendingEvents
+                div.col-12.col-md-6.col-lg-4
+                  div.card.border-0.shadow-sm.h-100
+                    img.card-img-top(src=ev.image || '/images/placeholder.jpg' alt=ev.name style="height: 180px; object-fit: cover;")
+                    div.card-body.d-flex.flex-column
+                      span.badge.bg-info.mb-2 Chờ duyệt
+                      h5.fw-bold= ev.name
+                      p.text-muted.small.mb-1
+                        i.fas.fa-calendar-alt.me-2
+                        | #{new Date(ev.date).toLocaleDateString('vi-VN')}
+                      p.text-muted.small.mb-2
+                        i.fas.fa-map-marker-alt.me-2
+                        | #{ev.location || 'Chưa xác định'}
+                      div.d-flex.justify-content-between.align-items-center.mt-auto
+                        span.text-primary.fw-bold= `${calcSoldTickets(ev)}/${calcTotalTickets(ev)} vé`
+                        a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${ev._id}`) Xem chi tiết
+                      if ev.ticketTypes && ev.ticketTypes.length > 0
+                        ul.list-unstyled.mt-2.mb-0.small.text-muted
+                          each tt in ev.ticketTypes
+                            li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
+          else
+            p.text-muted.mb-5 Chưa có sự kiện nào đang chờ duyệt.
+
+          //- Ongoing
+          h4.fw-bold.mb-3 Đang diễn ra
+          if ongoingEvents.length > 0
+            div.row.g-4.mb-5
+              each ev in ongoingEvents
+                div.col-12.col-md-6.col-lg-4
+                  div.card.border-0.shadow-sm.h-100
+                    img.card-img-top(src=ev.image || '/images/placeholder.jpg' alt=ev.name style="height: 180px; object-fit: cover;")
+                    div.card-body.d-flex.flex-column
+                      span.badge.bg-warning.text-dark.mb-2 Đang diễn ra
+                      h5.fw-bold= ev.name
+                      p.text-muted.small.mb-1
+                        i.fas.fa-calendar-alt.me-2
+                        | #{new Date(ev.date).toLocaleDateString('vi-VN')}
+                      p.text-muted.small.mb-2
+                        i.fas.fa-map-marker-alt.me-2
+                        | #{ev.location || 'Chưa xác định'}
+                      div.d-flex.justify-content-between.align-items-center.mt-auto
+                        span.text-primary.fw-bold= `${calcSoldTickets(ev)}/${calcTotalTickets(ev)} vé`
+                        a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${ev._id}`) Quản lý
+                      if ev.ticketTypes && ev.ticketTypes.length > 0
+                        ul.list-unstyled.mt-2.mb-0.small.text-muted
+                          each tt in ev.ticketTypes
+                            li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
+          else
+            p.text-muted.mb-5 Chưa có sự kiện nào đang diễn ra.
+
+          //- Upcoming
+          h4.fw-bold.mb-3 Sắp diễn ra
+          if upcomingEvents.length > 0
+            div.row.g-4.mb-5
+              each ev in upcomingEvents
+                div.col-12.col-md-6.col-lg-4
+                  div.card.border-0.shadow-sm.h-100
+                    img.card-img-top(src=ev.image || '/images/placeholder.jpg' alt=ev.name style="height: 180px; object-fit: cover;")
+                    div.card-body.d-flex.flex-column
+                      span.badge.bg-success.mb-2 Sắp diễn ra
+                      h5.fw-bold= ev.name
+                      p.text-muted.small.mb-1
+                        i.fas.fa-calendar-alt.me-2
+                        | #{new Date(ev.date).toLocaleDateString('vi-VN')}
+                      p.text-muted.small.mb-2
+                        i.fas.fa-map-marker-alt.me-2
+                        | #{ev.location || 'Chưa xác định'}
+                      div.d-flex.justify-content-between.align-items-center.mt-auto
+                        span.text-primary.fw-bold= `${calcSoldTickets(ev)}/${calcTotalTickets(ev)} vé`
+                        a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${ev._id}`) Quản lý
+                      if ev.ticketTypes && ev.ticketTypes.length > 0
+                        ul.list-unstyled.mt-2.mb-0.small.text-muted
+                          each tt in ev.ticketTypes
+                            li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
+          else
+            p.text-muted.mb-5 Chưa có sự kiện nào sắp diễn ra.
+
+          //- Ended
+          h4.fw-bold.mb-3 Đã kết thúc
+          if endedEvents.length > 0
+            div.row.g-4
+              each ev in endedEvents
+                div.col-12.col-md-6.col-lg-4
+                  div.card.border-0.shadow-sm.h-100
+                    img.card-img-top(src=ev.image || '/images/placeholder.jpg' alt=ev.name style="height: 180px; object-fit: cover;")
+                    div.card-body.d-flex.flex-column
+                      span.badge.bg-secondary.mb-2 Đã kết thúc
+                      h5.fw-bold= ev.name
+                      p.text-muted.small.mb-1
+                        i.fas.fa-calendar-alt.me-2
+                        | #{new Date(ev.date).toLocaleDateString('vi-VN')}
+                      p.text-muted.small.mb-2
+                        i.fas.fa-map-marker-alt.me-2
+                        | #{ev.location || 'Chưa xác định'}
+                      div.d-flex.justify-content-between.align-items-center.mt-auto
+                        span.text-primary.fw-bold= `${calcSoldTickets(ev)}/${calcTotalTickets(ev)} vé`
+                        a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${ev._id}`) Xem chi tiết
+                      if ev.ticketTypes && ev.ticketTypes.length > 0
+                        ul.list-unstyled.mt-2.mb-0.small.text-muted
+                          each tt in ev.ticketTypes
+                            li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
+          else
+            p.text-muted Chưa có sự kiện nào đã kết thúc.

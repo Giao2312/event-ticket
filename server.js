@@ -7,9 +7,9 @@ import cookieParser from 'cookie-parser';
 
 import connectDB from './src/config/db.js';
 import startCronJobs from './src/utils/cron.js';
-import { authMiddleware } from './src/middlewares/auth.middleware.js';
 import routerIndex from './src/routers/index.router.js';
-
+import {globalViewVars} from './src/middlewares/view.middleware.js';
+import { authMiddleware } from './src/middlewares/auth.middleware.js';
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,13 +22,14 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-
+app.use(authMiddleware);
 // Static files
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use('/bootstrap', express.static(path.join(__dirname, 'node_modules/bootstrap/dist')));
 
 // Auth middleware toàn cục
-app.use(authMiddleware);
+app.use(globalViewVars);
+
 
 // Truyền user vào Pug
 app.use((req, res, next) => {

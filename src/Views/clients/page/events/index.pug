@@ -14,13 +14,31 @@ block content
           div.d-flex.flex-wrap.gap-2.justify-content-center.justify-content-lg-start
             a.btn.btn-outline-primary.rounded-pill.px-4(href="/events" class=(!activeCategory ? 'active' : '')) Tất cả
             each cat in categories
-              a.btn.btn-outline-primary.rounded-pill.px-4(href=`/events?category=${cat.name.toLowerCase()}` class=(activeCategory === cat.name.toLowerCase() ? 'active' : ''))
+              a.btn.btn-outline-primary.rounded-pill.px-4(href=`/events?category=${cat.slug || cat.name.toLowerCase()}` class=(activeCategory === (cat.slug || cat.name.toLowerCase()) ? 'active' : ''))
                 | #{cat.name}
         
         div.col-lg-3
           div.position-relative
             i.fas.fa-search.position-absolute.top-50.start-0.ms-3.translate-middle-y.text-muted
             input.form-control.rounded-pill.ps-5#searchInput(type="text" placeholder="Tìm kiếm sự kiện...")
+        div.col-lg-6
+          form.d-flex.flex-wrap.gap-2(method="GET" action="/events")
+            if activeCategory && activeCategory !== 'tất cả'
+              input(type="hidden" name="category" value=activeCategory)
+            if searchQuery
+              input(type="hidden" name="search" value=searchQuery)
+            select.form-select.rounded-pill.w-auto(name="time")
+              option(value="all" selected=(timeFilter === 'all')) Tất cả trạng thái
+              option(value="upcoming" selected=(timeFilter === 'upcoming')) Sắp diễn ra
+              option(value="ongoing" selected=(timeFilter === 'ongoing')) Đang diễn ra
+              option(value="ended" selected=(timeFilter === 'ended')) Đã kết thúc
+              if canSeeInternal
+                option(value="pending" selected=(timeFilter === 'pending')) Chờ duyệt
+                option(value="approved" selected=(timeFilter === 'approved')) Đã duyệt
+                option(value="published" selected=(timeFilter === 'published')) Đã xuất bản
+            input.form-control.rounded-pill.w-auto(type="date" name="startDate" value=startDate)
+            input.form-control.rounded-pill.w-auto(type="date" name="endDate" value=endDate)
+            button.btn.btn-outline-secondary.rounded-pill(type="submit") Lọc
 
       //- Lưới sự kiện (4 cột trên màn hình lg)
       div.row.g-4#eventsGrid
@@ -39,9 +57,15 @@ block content
                     p.text-muted.small.mb-1
                       i.fas.fa-calendar-alt.me-2
                       | #{new Date(event.date).toLocaleDateString('vi-VN')}
+                    - const ticketPrices = (event.ticketTypes || []).map(t => t.price || 0).filter(p => p > 0)
+                    - const displayPrice = (event.minPrice != null) ? event.minPrice : (ticketPrices.length ? Math.min(...ticketPrices) : null)
                     div.mt-auto.d-flex.justify-content-between.align-items-center.pt-3
-                      span.text-primary.fw-bold.price-text= event.minPrice ? event.minPrice.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
+                      span.text-primary.fw-bold.price-text= displayPrice ? displayPrice.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
                       span.btn.btn-sm.btn-outline-primary Chi tiết
+                    if event.ticketTypes && event.ticketTypes.length > 0
+                      ul.list-unstyled.mt-2.mb-0.small.text-muted
+                        each tt in event.ticketTypes.slice(0, 3)
+                          li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
         else
           div.col-12.text-center.py-5
             p.text-muted Không tìm thấy sự kiện nào.

@@ -30,7 +30,6 @@ const userSchema = new mongoose.Schema({
 });
 
 
-userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ role: 1 }); 
 
 

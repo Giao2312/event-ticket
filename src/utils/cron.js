@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import Order from '../models/order.models.js';
-import TicketType from '../models/ticketType.models.js';
+import Event from '../models/event.models.js';
 import mongoose from 'mongoose';
 import logger from '../utils/logger.js';
 
@@ -14,12 +14,18 @@ import logger from '../utils/logger.js';
             for (const order of expiredOrders) {
                 const session = await mongoose.startSession();
                 await session.withTransaction(async () => {
+                    const event = await Event.findById(order.eventId).session(session);
                     for (const item of order.items) {
-                        await TicketType.findByIdAndUpdate(item.ticketTypeId, {
-                            $inc: { available: item.quantity, holded: -item.quantity }
-                        }, { session });
+                        if (!event) continue;
+                        const ticketType = event.ticketTypes.id(item.ticketTypeId);
+                        if (!ticketType) continue;
+                        const holded = ticketType.holded || 0;
+                        ticketType.holded = Math.max(0, holded - item.quantity);
                     }
-                    order.status = 'CANCELLED';
+                    if (event) {
+                        await event.save({ session });
+                    }
+                    order.status = 'EXPIRED';
                     await order.save({ session });
                 });
                 session.endSession();

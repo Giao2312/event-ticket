@@ -1,88 +1,131 @@
-header.sticky-top.z-50.border-bottom.bg-dark.bg-opacity-80.backdrop-blur-xl
-  div.container.d-flex.align-items-center.justify-content-between.h-16
 
-    a(href="/" class="d-flex align-items-center gap-2 fw-bold text-xl text-white text-decoration-none")
+header.sticky-top.z-50.border-bottom.bg-white
+  div.container.h-16.d-flex.align-items-center.justify-content-between
+    
+
+    a(href="/" class="d-flex align-items-center gap-2 fw-bold text-xl text-dark text-decoration-none")
       div.d-flex.align-items-center.justify-content-center.rounded-circle.bg-gradient-hero.w-9.h-9
         i.fas.fa-ticket-alt.text-white.fs-5
       span EventVé
 
 
-    nav.d-none.d-md-flex.align-items-center.gap-4
-      a(href="/events" class="text-sm fw-medium text-white text-opacity-75 hover-text-white transition") Sự kiện
-      a(href="/events?category=am-nhac" class="text-sm fw-medium text-white text-opacity-75 hover-text-white transition") Âm nhạc
-      a(href="/events?category=the-thao" class="text-sm fw-medium text-white text-opacity-75 hover-text-white transition") Thể thao
-      a(href="/events?category=workshop" class="text-sm fw-medium text-white text-opacity-75 hover-text-white transition") Công nghệ
-
+    form.d-none.d-md-flex.align-items-center.mx-4.flex-grow-1.justify-content-center(action="/events" method="GET")
+      div.d-flex.align-items-center.gap-2.bg-white.border.rounded-pill.px-3(style="width: 50%; min-width: 280px; max-width: 520px;")
+        i.fas.fa-search.text-muted
+        input.form-control.border-0.shadow-none.flex-grow-1(type="text" name="search" placeholder="Tìm sự kiện, nghệ sĩ, địa điểm...")
 
     div.d-none.d-md-flex.align-items-center.gap-3
+      if user && (user.role || '').toLowerCase() === 'organizer'
+        a.btn.btn-primary.btn-sm.px-4(href="/organizer/create-event") Tạo sự kiện
+      else
+        a.btn.btn-outline-primary.btn-sm.px-4(href="/become-organizer") Trở thành nhà tổ chức
       if user
         div.dropdown
-          a(href="#" class="d-flex align-items-center gap-2 text-white text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false")
+          a.d-flex.align-items-center.gap-2.text-dark.text-decoration-none(href="#" data-bs-toggle="dropdown")
             div.w-8.h-8.rounded-circle.overflow-hidden.shadow-sm
-              img.w-100.h-100.object-cover(src=user.avatar || '/events/images/default-avatar.jpg' alt=user.name)
+              img.w-100.h-100.object-cover(src=user.avatar || '/events/images/default-avatar.jpg', alt=user.name)
             span.text-sm.fw-medium #{user.name}
           ul.dropdown-menu.dropdown-menu-end
-            li
-              a.dropdown-item(href="/profile") Hồ sơ cá nhân
-            li
-              a.dropdown-item(href="/my-tickets") Vé của tôi
-            li
-              hr.dropdown-divider
-            li
-              button.btn.btn-outline-danger(onclick="handleLogout()") Đăng xuất
+            - const role = (user.role || '').toLowerCase()
+            if role === 'admin' 
+              li: h6.dropdown-header.text-danger.fw-bold Quản trị hệ thống
+              li: a.dropdown-item(href="/admin/dashboard") Bảng điều khiển Admin
+              li: a.dropdown-item(href="/admin/dashboard/events") Quản lý sự kiện
+              li: a.dropdown-item(href="/admin/dashboard/users") Quản lý người dùng
+              li: hr.dropdown-divider
+
+            else if role === 'organizer'
+              li: h6.dropdown-header.text-primary.fw-bold Quản lý
+              li: a.dropdown-item(href="/organizer/dashboard") Bảng điều khiển
+              li: a.dropdown-item(href="/organizer/create-event") Tạo sự kiện
+              li: a.dropdown-item(href="/organizer/orders") Quản lý đơn hàng
+              li: hr.dropdown-divider
+            li: a.dropdown-item(href="/profile") Hồ sơ cá nhân
+            li: a.dropdown-item(href="/my-tickets") Vé của tôi
+            li: hr.dropdown-divider
+            li: button.dropdown-item.text-danger(onclick="handleLogout()") Đăng xuất
       else
-        a(href="/login" class="btn btn-outline-light btn-sm px-4 py-2 me-2") Đăng nhập
-        a(href="/register" class="btn btn-primary btn-sm px-5 py-2") Đăng ký
+        a.btn.btn-outline-secondary.btn-sm.px-4(href="/login") Đăng nhập
+        a.btn.btn-primary.btn-sm.px-4(href="/register") Đăng ký
 
 
-      button.btn.btn-link.text-white.d-md-none.fs-4(type="button" data-bs-toggle="collapse" data-bs-target="#mobileMenu")
-        i.fas.fa-bars
+    button.btn.btn-link.text-dark.d-md-none.fs-4(type="button" data-bs-toggle="collapse" data-bs-target="#mobileMenu")
+      i.fas.fa-bars
 
 
-    div#mobileMenu.collapse.d-md-none.bg-dark.border-top.border-white.border-opacity-10
-      div.container.py-3
-        nav.d-flex.flex-column.gap-3
-          a(href="/events" class="text-white text-decoration-none fw-medium") Sự kiện
-          a(href="/events?category=am-nhac" class="text-white text-decoration-none fw-medium") Âm nhạc
-          a(href="/events?category=the-thao" class="text-white text-decoration-none fw-medium") Thể thao
-          a(href="/events?category=workshop" class="text-white text-decoration-none fw-medium") Workshop
-          if user
-            a(href="/profile" class="text-white text-decoration-none fw-medium") Hồ sơ cá nhân
-            a(href="/my-tickets" class="text-white text-decoration-none fw-medium") Vé của tôi
-            button.btn.btn-outline-danger(onclick="handleLogout()") Đăng xuất
-          else
-            a(href="/login" class="btn btn-outline-light btn-sm w-100 mb-2") Đăng nhập
-            a(href="/register" class="btn btn-primary btn-sm w-100") Đăng ký
-            
+  div#mobileMenu.collapse.d-md-none.bg-white.border-top
+    div.container.py-3
+      nav.d-flex.flex-column.gap-3
+        form.d-flex.align-items-center.gap-2(action="/events" method="GET")
+          i.fas.fa-search.text-muted
+          input.form-control(type="text" name="search" placeholder="Tìm sự kiện...")
+        if user && (user.role || '').toLowerCase() === 'organizer'
+          a.text-dark.text-decoration-none(href="/organizer/create-event") Tạo sự kiện
+        else
+          a.text-dark.text-decoration-none(href="/become-organizer") Trở thành nhà tổ chức
+        if user
+          if user.role === 'admin'
+            hr.my-1.border-white.border-opacity-25
+            a.text-danger.fw-bold(href="/admin/dashboard") Quản trị hệ thống
+          else if isOrganizer
+            hr.my-1.border-white.border-opacity-25
+            a.text-primary.fw-bold(href="/organizer/dashboard") Quản lý sự kiện
+            a.text-dark(href="/organizer/orders") Đơn hàng khách mua
+          a.text-dark(href="/profile") Hồ sơ cá nhân
+          a.text-dark(href="/my-tickets") Vé của tôi
+          button.btn.btn-outline-danger.w-100(onclick="handleLogout()") Đăng xuất
+        else
+          a.btn.btn-outline-secondary.w-100(href="/login") Đăng nhập
+          a.btn.btn-primary.w-100(href="/register") Đăng ký
 
-  block append scripts 
-    script.
-      // Chỉ giữ phần đóng mobile menu
-      document.querySelectorAll('#mobileMenu a').forEach(link => {
-        link.addEventListener('click', () => {
-          const mobileMenu = document.getElementById('mobileMenu');
-          if (mobileMenu.classList.contains('show')) {
-            bootstrap.Collapse.getInstance(mobileMenu).hide();
-          }
-        });
-      })
+//- Subnav categories
+div.d-none.d-md-block.bg-white.border-top
+  div.container.py-2
+    div.d-flex.align-items-center.flex-wrap.gap-2
+      a.btn.btn-sm.rounded-pill.border.text-dark.bg-white.category-pill(href="/events?category=am-nhac") Âm nhạc
+      a.btn.btn-sm.rounded-pill.border.text-dark.bg-white.category-pill(href="/events?category=am-thuc") Ẩm thực
+      a.btn.btn-sm.rounded-pill.border.text-dark.bg-white.category-pill(href="/events?category=cong-nghe") Công nghệ
+      a.btn.btn-sm.rounded-pill.border.text-dark.bg-white.category-pill(href="/events?category=giai-tri") Giải trí
+      a.btn.btn-sm.rounded-pill.border.text-dark.bg-white.category-pill(href="/events?category=kinh-doanh") Kinh doanh
+      a.btn.btn-sm.rounded-pill.border.text-dark.bg-white.category-pill(href="/events?category=nghe-thuat") Nghệ thuật
+      a.btn.btn-sm.rounded-pill.border.text-dark.bg-white.category-pill(href="/events?category=the-thao") Thể thao
+      a.btn.btn-sm.rounded-pill.border.text-dark.bg-white.category-pill(href="/events?category=workshop") Workshop
+      a.btn.btn-sm.rounded-pill.border.text-dark.bg-white.category-pill(href="/events?category=khac") Khác
 
-      function handleLogout() {
-        if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
-          fetch('/logout', {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' }
-            })
-            .then(() => {
-              localStorage.removeItem('token'); // Nếu bạn dùng localStorage
-              window.location.href = '/'; // Redirect về trang chủ
-            })
-            .catch(err => {
-              console.error('Logout error:', err);
-              alert('Có lỗi khi đăng xuất');
-            });
-            localStorage.removeItem('token');
+block append scripts 
+  script.
+
+    document.querySelectorAll('#mobileMenu a').forEach(link => {
+      link.addEventListener('click', () => {
+        const mobileMenu = document.getElementById('mobileMenu');
+        const bsCollapse = bootstrap.Collapse.getInstance(mobileMenu);
+        if (bsCollapse) bsCollapse.hide();
+      });
+    });
+    
+
+    const handleLogout = async () => {
+      const { isConfirmed } = await Swal.fire({
+        title: 'Bạn muốn đăng xuất?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Đăng xuất',
+        cancelButtonText: 'Hủy'
+      });
+
+      if (!isConfirmed) return;
+
+      Swal.fire({ title: 'Đang xử lý...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      try {
+        const response = await fetch('/api/auth/logout', { method: 'POST' });
+        const result = await response.json();
+        if (result.success) {
+          window.location.href = '/';
+        } else {
+          throw new Error(result.message);
         }
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Lỗi', text: error.message });
       }
-
+    };

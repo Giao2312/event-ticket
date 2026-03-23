@@ -1,38 +1,47 @@
-import crypto from 'node:crypto';
+﻿import crypto from 'node:crypto';
 import axios from 'axios';
-import paypal from "@paypal/checkout-server-sdk";
-import mongoose from 'mongoose'; // THÊM DÒNG NÀY
+import mongoose from 'mongoose'; // THÃŠM DÃ’NG NÃ€Y
 import env from '../config/env.js';
 import Order from '../models/order.models.js';
 import Ticket from '../models/ticket.models.js';
+import Event from '../models/event.models.js';
 import qrcode from 'qrcode';
 
-const environment = new paypal.core.SandboxEnvironment(env.PAYPAL_CLIENT_ID, env.PAYPAL_SECRET);
-const paypalClient = new paypal.core.PayPalHttpClient(environment);
+const buildClientRedirect = (path) => {
+    const base = (env.CLIENT_URL || '').trim();
+    return base ? `${base}${path}` : path;
+};
 
 const PaymentController = {
     createPayment: async (req, res) => {
         try {
-            const { orderId, method } = req.body;
-            const order = await Order.findById(orderId).populate('eventId');
-            if (!order) return res.status(404).json({ message: 'Đơn hàng không tồn tại' });
-            const normalizedMethod = method.toLowerCase();
-
-            // Sửa lại cách gọi hàm để tránh lỗi 'this' undefined
-            if (method === 'momo') {
-                return await PaymentController.handleMomoPayment(req, res, order);
-            }else if (normalizedMethod === 'vnpay') {
-            // Bạn chưa có hàm này, hãy thêm logic gọi VNPay ở đây
-            return res.status(501).json({ message: 'Tính năng VNPay đang được phát triển' });
-
-            } else if (method === 'paypal') {
-                return await PaymentController.handlePaypalPayment(req, res, order);
+            if (!req.user || !req.user.id) {
+                return res.status(401).json({ success: false, message: 'Vui long dang nhap de thanh toan' });
             }
 
-            res.status(400).json({ message: 'Phương thức thanh toán không hợp lệ' });
+            const { orderId, method } = req.body;
+            const order = await Order.findById(orderId).populate('eventId');
+            if (!order) return res.status(404).json({ message: 'ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i' });
+            if (order.userId?.toString() !== req.user.id.toString()) {
+                return res.status(403).json({ success: false, message: 'Ban khong co quyen thanh toan don hang nay' });
+            }
+            const normalizedMethod = (method || '').toString().toLowerCase();
+            if (normalizedMethod !== 'momo') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Ban demo hien chi ho tro thanh toan MoMo'
+                });
+            }
+            if (order.status !== 'PENDING') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Don hang khong o trang thai cho thanh toan'
+                });
+            }
+            return await PaymentController.handleMomoPayment(req, res, order);
         } catch (error) {
             console.error('Payment Error:', error);
-            res.status(500).json({ message: 'Lỗi server' });
+            res.status(500).json({ message: 'Lá»—i server' });
         }
     },
 
@@ -41,9 +50,9 @@ const PaymentController = {
     const amount = Number.parseInt(order.totalAmount); 
     const requestId = order._id + Date.now();
     const orderIdMomo = order._id + Date.now();
-    const orderInfo = `Thanh toán EventPass: ${order.eventId.name}`;
+    const orderInfo = `Thanh toÃ¡n EventPass: ${order.eventId.name}`;
     
-    // 2. Chú ý thứ tự tham số theo chuẩn MoMo v2
+    // 2. ChÃº Ã½ thá»© tá»± tham sá»‘ theo chuáº©n MoMo v2
     // accessKey, amount, extraData, ipnUrl, orderId, orderInfo, partnerCode, redirectUrl, requestId, requestType
     const rawSignature = `accessKey=${env.MOMO_ACCESS_KEY}&amount=${amount}&extraData=&ipnUrl=${env.MOMO_RETURN_URL}&orderId=${orderIdMomo}&orderInfo=${orderInfo}&partnerCode=${env.MOMO_PARTNER_CODE}&redirectUrl=${env.MOMO_RETURN_URL}&requestId=${requestId}&requestType=captureWallet`;
     
@@ -53,10 +62,10 @@ const PaymentController = {
 
     const response = await axios.post(env.MOMO_API_URL, {
         partnerCode: env.MOMO_PARTNER_CODE,
-        partnerName: "EventPass", // Thêm nếu cần thiết
-        storeId: "MomoTestStore", // Thêm nếu cần thiết
+        partnerName: "EventPass", // ThÃªm náº¿u cáº§n thiáº¿t
+        storeId: "MomoTestStore", // ThÃªm náº¿u cáº§n thiáº¿t
         requestId,
-        amount, // Đã là Number
+        amount, // ÄÃ£ lÃ  Number
         orderId: orderIdMomo,
         orderInfo,
         redirectUrl: env.MOMO_RETURN_URL,
@@ -64,7 +73,7 @@ const PaymentController = {
         signature,
         requestType: "captureWallet",
         lang: 'vi',
-        extraData: "" // Đảm bảo trường này tồn tại
+        extraData: "" // Äáº£m báº£o trÆ°á»ng nÃ y tá»“n táº¡i
     });
 
     order.paymentMethod = 'momo';
@@ -75,63 +84,44 @@ const PaymentController = {
 },
 
     handlePaypalPayment: async (req, res, order) => {
-        const request = new paypal.orders.OrdersCreateRequest();
-        // Tính tỷ giá USD (Nên để 25000 hoặc tỷ giá thực tế)
-        const usdAmount = (order.totalAmount / 25000).toFixed(2);
-        
-        request.requestBody({
-            intent: 'CAPTURE',
-            purchase_units: [{
-                amount: { currency_code: 'USD', value: usdAmount },
-                description: `EventPass Ticket: ${order.eventId.name}`
-            }],
-            application_context: { 
-                return_url: env.PAYPAL_RETURN_URL, 
-                cancel_url: env.PAYPAL_CANCEL_URL 
-            }
+        return res.status(503).json({
+            success: false,
+            message: 'Ban demo dang tam dung PayPal, vui long dung MoMo'
         });
-
-        const response = await paypalClient.execute(request);
-        order.paymentMethod = 'paypal';
-        order.paypalOrderId = response.result.id;
-        await order.save();
-
-        const approveLink = response.result.links.find(link => link.rel === 'approve').href;
-        res.json({ success: true, paymentUrl: approveLink });
     },
 
 retryPayment: async (req, res) => {
   try {
     const { orderId } = req.params;
-    const userId = req.user.id; // Từ authMiddleware
+    const userId = req.user.id; // Tá»« authMiddleware
 
-    // 1. Tìm order và kiểm tra quyền sở hữu
+    // 1. TÃ¬m order vÃ  kiá»ƒm tra quyá»n sá»Ÿ há»¯u
     const order = await Order.findOne({ _id: orderId, userId });
 
     if (!order) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng hoặc bạn không có quyền truy cập' });
+      return res.status(404).json({ success: false, message: 'KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng hoáº·c báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p' });
     }
 
-    // 2. Chỉ cho phép retry khi ở trạng thái lỗi xử lý
+    // 2. Chá»‰ cho phÃ©p retry khi á»Ÿ tráº¡ng thÃ¡i lá»—i xá»­ lÃ½
     if (order.status !== 'PROCESSING_ERROR') {
       return res.status(400).json({ 
         success: false, 
-        message: 'Chỉ có thể retry đơn hàng đang ở trạng thái lỗi xử lý (PROCESSING_ERROR)' 
+        message: 'Chá»‰ cÃ³ thá»ƒ retry Ä‘Æ¡n hÃ ng Ä‘ang á»Ÿ tráº¡ng thÃ¡i lá»—i xá»­ lÃ½ (PROCESSING_ERROR)' 
       });
     }
 
-    // 3. Kiểm tra thời gian hold (nếu hết hạn → không retry được)
+    // 3. Kiá»ƒm tra thá»i gian hold (náº¿u háº¿t háº¡n â†’ khÃ´ng retry Ä‘Æ°á»£c)
     if (new Date() > new Date(order.holdUntil)) {
-      // Optional: cập nhật trạng thái thành expired
+      // Optional: cáº­p nháº­t tráº¡ng thÃ¡i thÃ nh expired
       order.status = 'EXPIRED';
       await order.save();
       return res.status(400).json({ 
         success: false, 
-        message: 'Đơn hàng đã hết thời gian giữ vé, không thể retry' 
+        message: 'ÄÆ¡n hÃ ng Ä‘Ã£ háº¿t thá»i gian giá»¯ vÃ©, khÃ´ng thá»ƒ retry' 
       });
     }
 
-    // 4. Retry với retry logic (tránh WriteConflict)
+    // 4. Retry vá»›i retry logic (trÃ¡nh WriteConflict)
     const MAX_RETRIES = 3;
     let attempt = 1;
 
@@ -145,12 +135,12 @@ retryPayment: async (req, res) => {
         await session.commitTransaction();
         await session.endSession();
 
-        // 5. Gửi thông báo (email hoặc push notification) – tùy chọn
+        // 5. Gá»­i thÃ´ng bÃ¡o (email hoáº·c push notification) â€“ tÃ¹y chá»n
         // await sendOrderSuccessEmail(order.userId, order._id);
 
         return res.json({ 
           success: true, 
-          message: 'Đã xử lý lại đơn hàng và tạo vé thành công',
+          message: 'ÄÃ£ xá»­ lÃ½ láº¡i Ä‘Æ¡n hÃ ng vÃ  táº¡o vÃ© thÃ nh cÃ´ng',
           orderId: order._id 
         });
 
@@ -158,17 +148,17 @@ retryPayment: async (req, res) => {
         await session.abortTransaction();
         await session.endSession();
 
-        // Nếu là WriteConflict → retry
+        // Náº¿u lÃ  WriteConflict â†’ retry
         if (err.code === 112 || err.errorLabels?.includes('TransientTransactionError')) {
-          console.log(`WriteConflict khi retry order ${orderId}, lần ${attempt}/${MAX_RETRIES}`);
+          console.log(`WriteConflict khi retry order ${orderId}, láº§n ${attempt}/${MAX_RETRIES}`);
           if (attempt === MAX_RETRIES) {
-            throw new Error('Hết lượt thử lại do xung đột giao dịch');
+            throw new Error('Háº¿t lÆ°á»£t thá»­ láº¡i do xung Ä‘á»™t giao dá»‹ch');
           }
           attempt++;
           continue;
         }
 
-        // Lỗi khác → throw
+        // Lá»—i khÃ¡c â†’ throw
         throw err;
       }
     }
@@ -177,7 +167,7 @@ retryPayment: async (req, res) => {
     console.error('Retry Payment Error:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Retry thất bại', 
+      message: 'Retry tháº¥t báº¡i', 
       error: error.message 
     });
   }
@@ -196,38 +186,57 @@ retryPayment: async (req, res) => {
                 return order;
             }
 
-            order.status = 'PAID';
-            order.paidAt = new Date();
-            await order.save({ session });
+            const event = await Event.findById(order.eventId).session(session);
+            if (!event) {
+                throw new Error('Khong tim thay su kien de xuat ve');
+            }
 
             const ticketsToCreate = [];
             for (const item of order.items) {
+                const ticketType = event.ticketTypes.id(item.ticketTypeId);
+                if (!ticketType) {
+                    throw new Error(`Khong tim thay loai ve: ${item.ticketTypeId}`);
+                }
+
+                const holded = ticketType.holded || 0;
+                ticketType.holded = Math.max(0, holded - item.quantity);
+                ticketType.sold = Math.min(ticketType.quantity, (ticketType.sold || 0) + item.quantity);
+
                 for (let i = 0; i < item.quantity; i++) {
                     const qrData = `Ticket:${order._id}-${item.ticketTypeId}-${Date.now()}-${i}`;
                     const qrImage = await qrcode.toDataURL(qrData);
 
                     ticketsToCreate.push({
-                        orderId: order._id,
-                        ticketTypeId: item.ticketTypeId,
-                        userId: order.userId,
-                        qrCode: qrImage,
-                        code: qrData
+                        user: order.userId,
+                        event: order.eventId,
+                        ticketType: ticketType.type || String(item.ticketTypeId),
+                        quantity: 1,
+                        price: item.price,
+                        status: 'paid',
+                        qrCode: qrImage
                     });
                 }
             }
 
-            await Ticket.insertMany(ticketsToCreate, { session });
+            await event.save({ session });
+            const createdTickets = await Ticket.insertMany(ticketsToCreate, { session });
+
+            order.status = 'PAID';
+            order.paidAt = new Date();
+            order.tickets = createdTickets.map(t => t._id);
+            await order.save({ session });
+
             await session.commitTransaction();
-            console.log('Transaction thành công cho đơn hàng:', orderId);
+            console.log('Transaction thÃ nh cÃ´ng cho Ä‘Æ¡n hÃ ng:', orderId);
 
         } catch (error) {
             await session.abortTransaction();
-            // Sử dụng findByIdAndUpdate ngoài session để ghi log lỗi
+            // Sá»­ dá»¥ng findByIdAndUpdate ngoÃ i session Ä‘á»ƒ ghi log lá»—i
             await Order.findByIdAndUpdate(orderId, {
                 status: 'PROCESSING_ERROR',
                 errorLog: error.message
             });
-            console.error('Lỗi hệ thống sau khi khách đã trả tiền:', error);
+            console.error('Lá»—i há»‡ thá»‘ng sau khi khÃ¡ch Ä‘Ã£ tráº£ tiá»n:', error);
             throw error;
         } finally {
             session.endSession();
@@ -235,41 +244,39 @@ retryPayment: async (req, res) => {
     },
 
     momoReturn: async (req, res) => {
-        const { resultCode, orderId } = req.query;
+        const { resultCode, orderId, requestId } = req.query;
         try {
-            if (resultCode === '0') {
-                const order = await Order.findOne({ momoOrderId: orderId });
+            const normalizedCode = String(resultCode ?? '');
+            const isSuccess = normalizedCode === '0' || normalizedCode === '9000';
+            const momoRef = orderId || requestId;
+
+            if (isSuccess && momoRef) {
+                let order = await Order.findOne({ momoOrderId: momoRef });
+
+                // Fallback cho demo: orderId MoMo co the kem timestamp, lay ObjectId goc
+                if (!order && typeof momoRef === 'string' && momoRef.length >= 24) {
+                    const baseOrderId = momoRef.slice(0, 24);
+                    if (mongoose.Types.ObjectId.isValid(baseOrderId)) {
+                        order = await Order.findById(baseOrderId);
+                    }
+                }
+
                 if (order) {
                     await PaymentController.completeOrderAndGenerateTickets(order._id);
-                    return res.redirect(`${env.CLIENT_URL}/payment/success`);
+                    return res.redirect(buildClientRedirect('/my-tickets?payment=success'));
                 }
             }
-            res.redirect(`${env.CLIENT_URL}/payment/failed`);
+            res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
         } catch (err) {
             console.error('Momo Return Error:', err);
-            res.redirect(`${env.CLIENT_URL}/payment/failed`);
+            res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
         }
     },
 
     paypalReturn: async (req, res) => {
-        const { token } = req.query;
-        try {
-            const request = new paypal.orders.OrdersCaptureRequest(token);
-            const capture = await paypalClient.execute(request);
-
-            if (capture.result.status === 'COMPLETED') {
-                const order = await Order.findOne({ paypalOrderId: token });
-                if (order) {
-                    await PaymentController.completeOrderAndGenerateTickets(order._id);
-                    return res.redirect(`${env.CLIENT_URL}/payment/success`);
-                }
-            }
-            res.redirect(`${env.CLIENT_URL}/payment/failed`);
-        } catch (err) {
-            console.error('Paypal Return Error:', err);
-            res.redirect(`${env.CLIENT_URL}/payment/failed`);
-        }
+        return res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
     }
 };
 
 export default PaymentController;
+

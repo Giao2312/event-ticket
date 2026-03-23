@@ -4,7 +4,7 @@ block content
   section.py-5.bg-light
     div.container
       div.row.g-4
-        //- Bên trái: Thông tin đơn hàng
+   
         div.col-lg-8
           div.card.border-0.shadow-sm.rounded-4
             div.card-body.p-4
@@ -21,7 +21,7 @@ block content
                     h5.mb-1= order.eventId.name || 'Sự kiện không xác định'
                     p.text-muted.small 
                       i.fas.fa-clock.me-1
-                      | 10 phút để hoàn tất thanh toán
+                      | 15 phút để hoàn tất thanh toán
               
               hr
               table.table.table-borderless
@@ -41,7 +41,7 @@ block content
                 small.text-warning-emphasis 
                   i.fas.fa-exclamation-triangle.me-2
                   | Vé của bạn đang được giữ trong 
-                  span#countdown 10:00
+                  span#countdown 15:00
 
         //- Bên phải: Thanh toán
         div.col-lg-4
@@ -139,5 +139,4 @@ block content
         }
         });
 
-      startCountdown(900); // 15 phút giữ vé
       

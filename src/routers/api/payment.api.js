@@ -1,6 +1,6 @@
 import express from 'express';
 import PaymentController from '../../controllers/payment.controller.js';
-import {isAdmin , verifyToken}  from '../../middlewares/auth.middleware.js';
+import { authMiddleware, isAdmin, verifyToken } from '../../middlewares/auth.middleware.js';
  
 const router = express.Router();
 
@@ -9,7 +9,7 @@ const router = express.Router();
  * @desc    Khởi tạo thanh toán (MoMo hoặc PayPal)
  * @access  Private (Người dùng đã đăng nhập)
  */
-router.post('/create',  PaymentController.createPayment);
+router.post('/create', authMiddleware, PaymentController.createPayment);
 
 /**
  * @route   GET /api/payment/momo-return
@@ -18,12 +18,12 @@ router.post('/create',  PaymentController.createPayment);
  */
 router.get('/momo-return', PaymentController.momoReturn);
 
-/**
- * @route   GET /api/payment/paypal-return
- * @desc    Nhận kết quả trả về từ PayPal sau khi khách thanh toán
- * @access  Public (Cổng thanh toán gọi về)
- */
-router.get('/paypal-return', PaymentController.paypalReturn);
+router.get('/paypal-return', (req, res) => {
+  return res.status(503).json({
+    success: false,
+    message: 'Ban demo dang tam dung PayPal, vui long dung MoMo'
+  });
+});
 
 /**
  * @route   POST /api/payment/admin/retry/:orderId

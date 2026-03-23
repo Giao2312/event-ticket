@@ -7,7 +7,18 @@ import logger from '../utils/logger.js';
 
 export const register = [
   body('name').trim().isLength({ min: 3 }).withMessage('Tên không hợp lệ'),
-  body('email').isEmail().normalizeEmail().withMessage('Email không hợp lệ'),
+  body('email')
+    .isEmail({ require_tld: false })
+    .normalizeEmail()
+    .custom((value) => {
+    const isNormalEmail = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(value);
+    const isTestEmail = value.toLowerCase().endsWith('@demo');
+    
+      if (isNormalEmail || isTestEmail) {
+          return true;
+      }
+      throw new Error('Email không đúng định dạng hoặc đuôi @demo');
+    }),
   body('password').isLength({ min: 6 }).withMessage('Mật khẩu >=6 ký tự'),
 
   async (req, res) => {
@@ -27,12 +38,12 @@ export const register = [
         console.log('[REGISTER] Email đã tồn tại:', email);
         return res.status(400).json({ success: false, message: 'Email đã tồn tại' });
       }
-
-
+      // hashpassword 
+      const hashPassword = await bcrypt.hash(password, 10);
       const user = new User({
         name,
         email: email.toLowerCase(),
-        password // gửi plain text vào đây
+        password : hashPassword 
       });
 
       const savedUser = await user.save();
@@ -57,69 +68,86 @@ export const register = [
   }
 ];
 
-export const login = [
-  body('email').isEmail().normalizeEmail().withMessage('Email không hợp lệ'),
-  body('password').exists().withMessage('Mật khẩu bắt buộc'),
+
+
+  export const login = [
+  body('email').isEmail().normalizeEmail(),
+  body('password').exists(),
 
   async (req, res) => {
-    // 1. Kiểm tra validation trước
+
     const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
     try {
+
       const { email, password } = req.body;
 
-      // 2. Tìm user trong DB
       const user = await User.findOne({ email: email.toLowerCase() });
-      if (!user) return res.status(400).json({ message: 'Email không tồn tại' });
-
-      // 3. Kiểm tra mật khẩu
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) return res.status(400).json({ message: 'Mật khẩu sai' });
-
-      // 4. Tạo token sau khi xác thực thành công
-      const token = signToken({ id: user._id, role: user.role, name: user.name, avatar: user.avatar });
-
-      if (!token) {
-          return res.status(500).json({ message: "Lỗi tạo token" });
+      if (!user) {
+        return res.status(400).json({ message: "Email không tồn tại" });
       }
-      const refreshToken = signRefreshToken({ id: user._id });
-      // 5. Gửi cookie (HttpOnly) để bảo mật
-     
-      res.cookie('token', token, {
-        httpOnly: true, 
-        secure: false,
-        path: '/',
-        sameSite: 'Lax',
-        maxAge: 24 * 60 * 60 * 1000 // 1 ngày
+
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Mật khẩu sai" });
+      }
+
+      const token = signToken({
+        id: user._id,
+        role: user.role
       });
 
-      // 6. Phản hồi JSON
-      res.json({
-        message: 'Đăng nhập thành công',
-        token: token,
-        user: { id: user._id, name: user.name, email: user.email, role: user.role }
+      res.cookie("token", token, {
+        httpOnly: true,
+        sameSite: "Lax",
+        maxAge: 24 * 60 * 60 * 1000
       });
+
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'Lax',
+        maxAge: 24 * 60 * 60 * 1000
+      });
+
+      return res.json({
+        success: true,
+        message: "Đăng nhập thành công",
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email
+        }
+      });
+
     } catch (err) {
-      logger.error('Login error:', err);
-      res.status(500).json({ message: 'Lỗi máy chủ' });
+
+      logger.error("Login error:", err);
+      return res.status(500).json({ message: "Lỗi server" });
+
     }
+  
   }
 ];
 
-export const logout = (req, res) => {
+export const logout = async (req, res) => {
   try {
-      // Xóa cookie (tên phải khớp với tên khi login)
-      res.clearCookie('token', {
-        httpOnly: true,
-        secure: false,
-        sameSite: 'strict',
-        path: '/' 
-      });
+    // 1. Xóa cookie token
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: false, 
+      path: '/'
+    });
 
-      // res.redirect('/');
-    } catch (err) {
-      logger.error('Logout error:', err);
-      // res.redirect('/'); // Vẫn redirect dù lỗi
-    }
-  };
+    // 2. (Tuỳ chọn) Nếu bạn lưu refreshToken trong DB, hãy xoá nó ở đây
+    // await User.findByIdAndUpdate(req.user.id, { refreshToken: null });
+
+    res.status(200).json({ success: true, message: 'Đăng xuất thành công' });
+  } catch (err) {
+    logger.error('Logout error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server' });
+  }
+};

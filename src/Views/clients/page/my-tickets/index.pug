@@ -19,49 +19,12 @@ block content
                     | #{ticket.event.date.toLocaleDateString('vi-VN')} • #{ticket.event.location}
                   p.text-muted
                     i.fas.fa-ticket-alt.me-2
-                    | Loại vé: #{ticket.type} • Số lượng: #{ticket.quantity}
+                    | Loại vé: #{ticket.ticketType} • Số lượng: #{ticket.quantity}
                 div.col-md-3.text-end
                   h5.text-primary.fw-bold #{ticket.price.toLocaleString()}đ
-                  span.badge.bg-success Đã sử dụng
-                  a.btn.btn-outline-primary.mt-3(href=`/tickets/${ticket._id}`) Xem vé
+                  span.badge(class=ticket.status === 'paid' ? 'bg-success' : ticket.status === 'pending' ? 'bg-warning text-dark' : 'bg-secondary')
+                    = ticket.status === 'paid' ? 'Đã thanh toán' : ticket.status === 'pending' ? 'Chờ thanh toán' : 'Đã hủy'
+                  a.btn.btn-outline-primary.mt-3(href=`/my-tickets/${ticket._id}`) Xem vé
       else
         div.alert.alert-info.text-center Bạn chưa có vé nào. 
           a(href="/events") Khám phá sự kiện ngay!
-          
-  block append scripts
-    script.
-      // Script xử lý tương tác trên trang vé của tôi (nếu cần)
-      document.addEventListener('DOMContentLoaded', () => {
-        // Ví dụ: Xử lý click vào nút "Xem vé"                                                                      
-        document.querySelectorAll('.btn-outline-primary').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const url = btn.getAttribute('href');
-            window.location.href = url; // Điều hướng đến trang chi tiết vé
-          });
-        });
-      });
-
-      document.getElementById('profileForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-    
-      const formData = new FormData(e.target);
-
-      try {
-        const res = await fetch('/api/profile/update', {
-          method: 'PUT',
-          // Không set Content-Type header khi dùng FormData, trình duyệt sẽ tự làm
-          body: formData 
-        });
-
-        const result = await res.json();
-        if (res.ok) {
-          alert('Cập nhật thành công!');
-          window.location.reload();
-        } else {
-          alert(result.message);
-        }
-      } catch (err) {
-        alert('Lỗi kết nối');
-      }
-      });

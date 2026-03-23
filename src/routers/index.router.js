@@ -9,24 +9,25 @@ import profileWebRouter from './web/profile.router.js';
 import myTicketsWebRouter from './web/my-ticket.router.js';
 
 import orderWebRouter from './web/order.router.js';
-import dashboardWebRouter from './web/dashboard.router.js';
-
+import adminRouter from './web/admin.router.js';
+import dashboardOrganizerRouter from './web/organizer.router.js';
 // API routers (JSON)
 import eventApiRouter from './api/event.api.js';
 import orderApiRouter from './api/oder.api.js'; 
 import paymentApiRouter from './api/payment.api.js';
 
 export default (app) => {
-  // Web routes (giao diện Pug)
+
   app.use('/', authWebRouter);    
   app.use('/', homeWebRouter);    
   app.use('/events', eventWebRouter);   
   app.use('/', profileWebRouter);
   app.use('/my-tickets', myTicketsWebRouter);
   app.use('/', orderWebRouter);          
-  app.use('/', dashboardWebRouter); 
+  app.use('/', adminRouter); 
+  app.use('/',dashboardOrganizerRouter);
 
-  // API routes (JSON)
+
   app.use('/api/events', eventApiRouter);
   app.use('/api/orders', orderApiRouter);
   app.use('/api/payment', paymentApiRouter);

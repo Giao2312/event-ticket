@@ -11,7 +11,7 @@ block content
               p.text-center.text-muted.mb-5 Chào mừng trở lại với EventVé
 
               // Hiển thị lỗi từ server hoặc client
-              div#loginErrors.alert.alert-danger(role="alert" style="display: none;")
+              div#loginErrors.alert.alert-danger.d-none
                 ul.mb-0#loginErrorList
 
               form#loginForm
@@ -68,7 +68,8 @@ block append scripts
         }
 
         try {
-          const res = await fetch('/login', { 
+
+          const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
@@ -77,17 +78,13 @@ block append scripts
           const data = await res.json();
 
           if (res.ok) {
-            localStorage.setItem('token', data.token);
-            alert('Đăng nhập thành công!');
-            window.location.href = '/';  // Redirect về trang chủ
+            window.location.href = "/";
           } else {
-            errorList.innerHTML = `<li>${data.message || 'Email hoặc mật khẩu không đúng'}</li>`;
-            errorDiv.classList.remove('d-none');
+            console.log(data.message);
           }
+
         } catch (err) {
-          console.error('Login fetch error:', err);
-          errorList.innerHTML = '<li>Có lỗi kết nối server. Vui lòng thử lại sau.</li>';
-          errorDiv.classList.remove('d-none');
+          console.error(err);
         }
       });
       
