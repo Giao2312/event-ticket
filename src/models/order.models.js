@@ -12,7 +12,7 @@ const orderSchema = new mongoose.Schema({
   totalAmount: { type: Number, required: true },
   status: {
     type: String,
-    enum: ['PENDING', 'PAID', 'CANCELLED', 'EXPIRED'],
+    enum: ['PENDING', 'PAID', 'CANCELLED', 'EXPIRED', 'PAYMENT_FAILED'],
     default: 'PENDING'
   },
   paymentMethod: {
@@ -21,9 +21,12 @@ const orderSchema = new mongoose.Schema({
     required: true,
     set: (v) => v ? v.toLowerCase() : v
   },
+  momoOrderId: { type: String, index: true, sparse: true },
   paypalOrderId: { type: String },
-  holdUntil: { type: Date, default: () => new Date(Date.now() + 15 * 60 * 1000) }, 
-  tickets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Ticket' }], 
+  paymentError: { type: String, default: null },
+  holdUntil: { type: Date, default: () => new Date(Date.now() + 15 * 60 * 1000) },
+  tickets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Ticket' }],
+  profileVerifiedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   paidAt: Date
 });

@@ -56,12 +56,13 @@ block content
               form#bookingForm
                 div.mb-3
                   label.form-label Loại vé
-                    select.form-select.form-select-lg#ticketType(name="ticketTypeId")
+                  select.form-select.form-select-lg#ticketType(name="ticketTypeId" data-event-available=available data-user-limit=perUserTicketLimit data-user-reserved=userReservedTickets)
                       each type in ticketTypes || []
                         option(
                           value=type._id, 
                           data-price=type.price, 
-                          data-available=(type.quantity - type.sold - type.holded)
+                          data-available=(type.quantity - type.sold - type.holded),
+                          data-type-name=type.type
                         )
                           | #{type.type} - #{type.price.toLocaleString('vi-VN')} VNĐ
                 
@@ -70,9 +71,10 @@ block content
                   div.input-group.input-group-lg
                     button.btn.btn-outline-secondary#btnMinus(type="button") -
                     input.form-control.text-center#quantity(
-                      type="number" value="1" min="1" readonly 
+                      type="number" value="1" min="1" step="1" inputmode="numeric"
                       style="color: #000 !important; background-color: #fff !important;")
                     button.btn.btn-outline-secondary#btnPlus(type="button") +
+                  small.text-muted.d-block.mt-2#ticketLimitHint
                 
                 div.d-flex.justify-content-between.align-items-center.bg-light.p-3.rounded-3.mb-4
                   span.fw-bold Tổng cộng
@@ -88,29 +90,29 @@ block content
         a.btn.btn-sm.btn-outline-primary.rounded-pill(href="/events") Xem tất cả
       
       div.row.g-4#eventsGrid
-        if events && events.length > 0
-          each event in events
-            - const price = event.minPrice ? event.minPrice.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
-            - const date = event.date ? new Date(event.date).toLocaleDateString('vi-VN') : 'Chưa xác định'
-            - const img = event.image || '/images/placeholder.jpg'
+        if relatedEvents && relatedEvents.length > 0
+          each relatedEvent in relatedEvents
+            - const price = relatedEvent.minPrice !== null && relatedEvent.minPrice !== undefined ? relatedEvent.minPrice.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
+            - const date = relatedEvent.date ? new Date(relatedEvent.date).toLocaleDateString('vi-VN') : 'Chưa xác định'
+            - const img = getImageUrl(relatedEvent.image)
 
-            a.text-decoration-none(href=`/events/${event._id}`)  // ← Bọc toàn bộ card trong thẻ <a>
-              div.col-12.col-md-6.col-lg-3.event-item
+            div.col-12.col-md-6.col-lg-3.event-item
+              a.text-decoration-none(href=`/events/${relatedEvent._id}`)
                 div.card.h-100.border-0.shadow-sm.overflow-hidden.hover-shadow
-                  img.card-img-top(src=img alt=event.name style="height: 220px; object-fit: cover;")
+                  img.card-img-top(src=img alt=relatedEvent.name style="height: 220px; object-fit: cover;" onerror="this.src='/events/images/placeholder.jpg'")
                   div.card-body.d-flex.flex-column
-                    span.badge.bg-primary.mb-2.align-self-start= event.category || 'Nổi bật'
-                    h5.card-title.fw-bold= event.name || 'Tên sự kiện'
+                    span.badge.bg-primary.mb-2.align-self-start= relatedEvent.category || 'Nổi bật'
+                    h5.card-title.fw-bold= relatedEvent.name || 'Tên sự kiện'
                     p.text-muted.small.mb-1
                       i.fas.fa-calendar-alt.me-2
-                      | #{date} • #{event.time || 'Giờ TBC'}
+                      | #{date}
                     p.text-muted.small.mb-3
                       i.fas.fa-map-marker-alt.me-2
-                      | #{event.location || 'Địa điểm TBC'}
-                    
+                      | #{relatedEvent.location || 'Địa điểm TBC'}
+
                     div.mt-auto.d-flex.justify-content-between.align-items-center
                       span.text-primary.fw-bold= price
-                      span.btn.btn-sm.btn-outline-primary Chi tiết  // ← Giữ nút này để UX rõ ràng, nhưng không cần href nữa
+                      span.btn.btn-sm.btn-outline-primary Chi tiết
         else
           div.col-12.text-center.py-5
             p.text-muted Hiện chưa có sự kiện nào được đăng tải.      
@@ -126,22 +128,39 @@ block content
         const btnMinus = document.getElementById('btnMinus');
         const buyBtn = document.getElementById('buyBtn');
         const bookingForm = document.getElementById('bookingForm');
+        const ticketLimitHint = document.getElementById('ticketLimitHint');
 
         // Tránh bind lặp listener nếu script bị chạy lại
-        if (!ticketSelect || !qtyInput || !totalEl || !btnPlus || !btnMinus || !buyBtn || !bookingForm) return;
+        if (!ticketSelect || !qtyInput || !totalEl || !btnPlus || !btnMinus || !buyBtn || !bookingForm || !ticketLimitHint) return;
         if (bookingForm.dataset.bound === '1') return;
         bookingForm.dataset.bound = '1';
 
+        const isLoggedIn = !{JSON.stringify(Boolean(isLoggedIn))};
+        const isProfileComplete = !{JSON.stringify(Boolean(isProfileComplete))};
+        const verifyProfileRedirect = !{JSON.stringify(verifyProfileRedirect || '/verify-profile')};
+
         const getCurrentOption = () => ticketSelect.options[ticketSelect.selectedIndex] || null;
-        const getQty = () => Number.parseInt(qtyInput.value, 10) || 1;
+        const getQty = () => {
+          const parsed = Number.parseInt(qtyInput.value, 10);
+          return Number.isNaN(parsed) ? 1 : parsed;
+        };
         const getPrice = () => {
           const option = getCurrentOption();
           return option ? (Number.parseInt(option.dataset.price, 10) || 0) : 0;
         };
-        const getMaxAvailable = () => {
+        const getTicketTypeAvailable = () => {
           const option = getCurrentOption();
           const max = option ? Number.parseInt(option.dataset.available, 10) : 0;
           return Number.isNaN(max) ? 0 : Math.max(0, max);
+        };
+        const getUserLimit = () => Number.parseInt(ticketSelect.dataset.userLimit, 10) || 3;
+        const getUserReserved = () => Number.parseInt(ticketSelect.dataset.userReserved, 10) || 0;
+        const getRemainingAccountAllowance = () => Math.max(0, getUserLimit() - getUserReserved());
+        const getEffectiveMax = () => Math.max(0, Math.min(getTicketTypeAvailable(), getRemainingAccountAllowance()));
+        const clampQty = (value) => {
+          const max = getEffectiveMax();
+          if (max <= 0) return 0;
+          return Math.min(max, Math.max(1, Number.parseInt(value, 10) || 1));
         };
 
         const updatePrice = () => {
@@ -149,37 +168,59 @@ block content
           const qty = getQty();
           totalEl.textContent = (price * qty).toLocaleString('vi-VN') + 'đ';
         };
+        const updateTicketLimitHint = () => {
+          const option = getCurrentOption();
+          const typeName = option ? option.dataset.typeName : 'Loại vé';
+          const effectiveMax = getEffectiveMax();
+          const accountRemaining = getRemainingAccountAllowance();
+          const typeAvailable = getTicketTypeAvailable();
+
+          if (accountRemaining <= 0) {
+            ticketLimitHint.textContent = `Bạn đã dùng hết giới hạn ${getUserLimit()} vé cho sự kiện này.`;
+            return;
+          }
+
+          ticketLimitHint.textContent = `${typeName}: còn ${typeAvailable} vé. Tài khoản của bạn được mua thêm tối đa ${effectiveMax} vé cho sự kiện này (giới hạn sự kiện: ${getUserLimit()} vé, đã giữ/mua: ${getUserReserved()} vé).`;
+        };
+        const syncQuantityInput = (nextValue) => {
+          qtyInput.value = String(clampQty(nextValue));
+          qtyInput.max = String(getEffectiveMax());
+          updatePrice();
+          updateTicketLimitHint();
+          const disabled = getEffectiveMax() <= 0;
+          buyBtn.disabled = disabled;
+          btnPlus.disabled = disabled;
+          btnMinus.disabled = disabled;
+        };
 
         // Xử lý nút tăng/giảm số lượng qua Event Listener
         btnPlus.addEventListener('click', () => {
-          const max = getMaxAvailable();
-          let current = getQty();
-          if (current < max) {
-            qtyInput.value = String(current + 1);
-            updatePrice();
-          }
+          syncQuantityInput(getQty() + 1);
         });
 
         btnMinus.addEventListener('click', () => {
-          let current = getQty();
-          if (current > 1) {
-            qtyInput.value = String(current - 1);
-            updatePrice();
-          }
+          syncQuantityInput(getQty() - 1);
+        });
+
+        qtyInput.addEventListener('input', () => {
+          qtyInput.value = qtyInput.value.replace(/[^\d]/g, '');
+        });
+
+        qtyInput.addEventListener('blur', () => {
+          syncQuantityInput(qtyInput.value);
         });
 
         ticketSelect.addEventListener('change', () => {
-          const max = getMaxAvailable();
-          qtyInput.value = String(max > 0 ? 1 : 0);
-          updatePrice();
+          syncQuantityInput(1);
         });
 
         // Xử lý đặt vé
         buyBtn.addEventListener('click', async () => {
-          const isLoggedIn = #{JSON.stringify(!!user)};
           if (!isLoggedIn) {
-            alert('Vui lòng đăng nhập để tiếp tục');
-            return window.location.href = '/login';
+            if (confirm('Vui lòng đăng nhập để tiếp tục đặt vé.')) {
+              window.location.href = '/login';
+            }
+            return;
           }
 
           const payload = {
@@ -190,6 +231,12 @@ block content
             paymentMethod: 'momo' // Demo: chỉ dùng MoMo
           };
 
+          if (!isProfileComplete) {
+            const bookingData = encodeURIComponent(JSON.stringify(payload));
+            window.location.href = `${verifyProfileRedirect}${verifyProfileRedirect.includes('?') ? '&' : '?'}booking=${bookingData}`;
+            return;
+          }
+
           try {
             buyBtn.disabled = true;
             buyBtn.textContent = 'Đang giữ chỗ...';
@@ -197,27 +244,70 @@ block content
             const res = await fetch('/api/orders/create', {
               method: 'POST',
               credentials: 'same-origin',
-              headers: { 
+              headers: {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify(payload)
             });
 
-            const data = await res.json();
+            // Parse JSON response
+            let data;
+            try {
+              data = await res.json();
+            } catch (parseErr) {
+              console.error('JSON parse error:', parseErr, 'Status:', res.status);
+              if (res.status === 401) {
+                if (confirm('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')) {
+                  window.location.href = '/login';
+                }
+              } else {
+                alert('Không thể xử lý response từ server');
+              }
+              buyBtn.disabled = false;
+              buyBtn.textContent = 'Đặt vé ngay';
+              return;
+            }
+
+            // Xử lý các status code khác nhau
+            if (res.status === 401) {
+              // Chưa đăng nhập - chuyển đến trang login
+              if (confirm('Vui lòng đăng nhập để tiếp tục đặt vé.')) {
+                window.location.href = '/login';
+              }
+              buyBtn.disabled = false;
+              buyBtn.textContent = 'Đặt vé ngay';
+              return;
+            }
+
+            if (res.status === 403) {
+              if (data.redirectUrl) {
+                // Profile chưa đầy đủ - chuyển đến trang xác minh
+                window.location.href = data.redirectUrl;
+              } else {
+                // Lỗi khác
+                alert(data.message || 'Không có quyền thực hiện thao tác này');
+              }
+              buyBtn.disabled = false;
+              buyBtn.textContent = 'Đặt vé ngay';
+              return;
+            }
+
             if (data.success) {
               // Sau khi tạo đơn hàng thành công, chuyển đến trang thanh toán riêng
               window.location.href = `/checkout/${data.orderId}`;
             } else {
               alert(data.message || 'Lỗi đặt vé');
               buyBtn.disabled = false;
+              buyBtn.textContent = 'Đặt vé ngay';
             }
           } catch (err) {
-            console.error(err);
+            console.error('Lỗi khi đặt vé:', err);
+            alert('Có lỗi xảy ra. Vui lòng thử lại.');
             buyBtn.disabled = false;
+            buyBtn.textContent = 'Đặt vé ngay';
           }
         });
 
         // Khởi tạo giá tiền ban đầu
-        updatePrice();
+        syncQuantityInput(1);
       });
-

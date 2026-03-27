@@ -1,0 +1,146 @@
+extends ../../layout
+
+block content
+  section.py-5.bg-light
+    .container
+      .d-flex.justify-content-between.align-items-center.mb-4.flex-wrap.gap-2
+        div
+          h2.fw-bold.mb-1 Quản lý người dùng
+          p.text-muted.mb-0 Theo dõi tài khoản, vai trò và trạng thái hoạt động toàn hệ thống.
+        .d-flex.gap-2
+          a.btn.btn-outline-secondary(href="/admin/dashboard") Quay lại dashboard
+          a.btn.btn-outline-primary(href="/admin/dashboard/orders") Quản lý đơn hàng
+
+      .row.g-4.mb-4
+        .col-md-4.col-lg-2
+          .card.border-0.shadow-sm.text-center.h-100
+            .card-body
+              h6.text-muted.mb-1 Tổng user
+              h3.fw-bold= stats.totalUsers || 0
+        .col-md-4.col-lg-2
+          .card.border-0.shadow-sm.text-center.h-100
+            .card-body
+              h6.text-muted.mb-1 Đang hoạt động
+              h3.fw-bold.text-success= stats.activeUsers || 0
+        .col-md-4.col-lg-2
+          .card.border-0.shadow-sm.text-center.h-100
+            .card-body
+              h6.text-muted.mb-1 Đã khóa
+              h3.fw-bold.text-danger= stats.inactiveUsers || 0
+        .col-md-4.col-lg-2
+          .card.border-0.shadow-sm.text-center.h-100
+            .card-body
+              h6.text-muted.mb-1 Admin
+              h3.fw-bold.text-primary= stats.adminCount || 0
+        .col-md-4.col-lg-2
+          .card.border-0.shadow-sm.text-center.h-100
+            .card-body
+              h6.text-muted.mb-1 Organizer
+              h3.fw-bold.text-warning= stats.organizerCount || 0
+        .col-md-4.col-lg-2
+          .card.border-0.shadow-sm.text-center.h-100
+            .card-body
+              h6.text-muted.mb-1 User thường
+              h3.fw-bold.text-secondary= stats.userCount || 0
+
+      form.row.g-3.mb-4(method="GET" action="/admin/dashboard/users")
+        .col-md-6
+          .input-group
+            span.input-group-text
+              i.fas.fa-search
+            input.form-control(type="text" name="q" placeholder="Tìm theo tên, email hoặc số điện thoại" value=filters.q)
+        .col-md-3
+          select.form-select(name="role")
+            option(value="") Tất cả vai trò
+            option(value="admin" selected=filters.role==='admin') Admin
+            option(value="Organizer" selected=filters.role==='Organizer') Organizer
+            option(value="user" selected=filters.role==='user') User
+        .col-md-2
+          select.form-select(name="status")
+            option(value="") Tất cả trạng thái
+            option(value="active" selected=filters.status==='active') Đang hoạt động
+            option(value="inactive" selected=filters.status==='inactive') Đã khóa
+        .col-md-1
+          button.btn.btn-primary.w-100(type="submit") Lọc
+
+      if errorMessage
+        .alert.alert-danger= errorMessage
+
+      .table-responsive
+        table.table.table-hover.align-middle
+          thead.table-light
+            tr
+              th Tên
+              th Email
+              th Điện thoại
+              th Vai trò
+              th Trạng thái
+              th Ngày tạo
+              th.text-end Thao tác
+          tbody
+            if users && users.length > 0
+              each u in users
+                tr
+                  td.fw-semibold= u.name || 'Chưa cập nhật'
+                  td= u.email || 'N/A'
+                  td= u.phone || 'Chưa cập nhật'
+                  td
+                    if u.role === 'admin'
+                      span.badge.bg-primary Admin
+                    else if u.role === 'Organizer'
+                      span.badge.bg-warning.text-dark Organizer
+                    else
+                      span.badge.bg-secondary User
+                  td
+                    if u.isActive
+                      span.badge.bg-success Đang hoạt động
+                    else
+                      span.badge.bg-danger Đã khóa
+                  td= new Date(u.createdAt).toLocaleString('vi-VN')
+                  td.text-end
+                    if user && String(user._id) === String(u._id)
+                      span.text-muted.small Tài khoản hiện tại
+                    else
+                      button.btn.btn-sm(class=u.isActive ? 'btn-outline-danger' : 'btn-outline-success' onclick=`toggleUserStatus('${u._id}')`)
+                        if u.isActive
+                          | Khóa
+                        else
+                          | Mở khóa
+            else
+              tr
+                td.text-center(colspan="7") Không có người dùng phù hợp
+
+      if pagination && pagination.totalPages > 1
+        nav.mt-4
+          ul.pagination
+            - const baseQuery = `?q=${encodeURIComponent(filters.q || '')}&role=${encodeURIComponent(filters.role || '')}&status=${encodeURIComponent(filters.status || '')}&page=`;
+            li.page-item(class=pagination.page <= 1 ? 'disabled' : '')
+              a.page-link(href=`/admin/dashboard/users${baseQuery}${pagination.page - 1}`) Trước
+            each i in Array.from({ length: pagination.totalPages }, (_, idx) => idx + 1)
+              li.page-item(class=i === pagination.page ? 'active' : '')
+                a.page-link(href=`/admin/dashboard/users${baseQuery}${i}`)= i
+            li.page-item(class=pagination.page >= pagination.totalPages ? 'disabled' : '')
+              a.page-link(href=`/admin/dashboard/users${baseQuery}${pagination.page + 1}`) Sau
+
+block append scripts
+  script.
+    async function toggleUserStatus(userId) {
+      const confirmed = confirm('Bạn có chắc chắn muốn thay đổi trạng thái tài khoản này?');
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch(`/admin/users/${userId}/toggle-status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          location.reload();
+        } else {
+          alert(data.message || 'Không thể cập nhật trạng thái người dùng');
+        }
+      } catch (err) {
+        alert('Lỗi kết nối: ' + err.message);
+      }
+    }

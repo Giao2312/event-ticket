@@ -1,4 +1,4 @@
-// server.js (sau khi sửa)
+
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'node:path';
@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3000;
 
 const app = express();
 
-// Middleware chung
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -42,7 +42,7 @@ app.use((req, res, next) => {
 app.set('views', path.join(process.cwd(), 'src/views'));
 app.set('view engine', 'pug');
 
-// Mount TẤT CẢ router (web + api)
+
 routerIndex(app);
 
 // Khởi động server

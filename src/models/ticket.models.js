@@ -9,11 +9,11 @@ const ticketSchema = new mongoose.Schema({
   quantity: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true },
   status: { type: String, enum: ['pending', 'paid', 'cancelled'], default: 'pending' },
-  qrCode: { type: String, unique: true }, // DataURL QR real
+  qrCode: { type: String }, // DataURL QR real
   purchasedAt: { type: Date, default: Date.now }
 });
 
-ticketSchema.index({ qrCode: 1 }, { unique: true });
+ticketSchema.index({ qrCode: 1 }, { unique: true, sparse: true });
 ticketSchema.index({ event: 1, user: 1 });
 
 ticketSchema.virtual('isValid').get(function () {

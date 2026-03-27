@@ -1,96 +1,415 @@
 extends ../../../layout
 
 block content
-  section.events-page.py-5.bg-white
-    div.container
-      //- Tiêu đề
-      div.mb-5.text-center
-        h1.fw-bold.text-dark Khám phá sự kiện
-          p.text-muted    Tìm kiếm và khám phá các sự kiện phù hợp với bạn
+  section.events-page.py-5
+    .container
+      style.
+        .filter-toolbar {
+          display: flex;
+          justify-content: flex-end;
+          gap: 0.6rem;
+          flex-wrap: wrap;
+          position: relative;
+          z-index: 20;
+        }
+        .filter-chip-toggle {
+          border: 1px solid #22c55e;
+          background: #22c55e;
+          color: #fff;
+          border-radius: 999px;
+          font-weight: 600;
+          padding: 0.45rem 1rem;
+          line-height: 1.2;
+          transition: all 0.2s ease;
+        }
+        .filter-chip-toggle.alt {
+          background: #0f172a;
+          border-color: #334155;
+        }
+        .filter-chip-toggle:hover {
+          transform: translateY(-1px);
+          opacity: 0.95;
+        }
+        .filter-popover {
+          display: none;
+          position: absolute;
+          right: 0;
+          top: calc(100% + 0.65rem);
+          width: min(980px, 100%);
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+          padding: 1rem;
+        }
+        .filter-popover.open {
+          display: block;
+        }
+        .filter-popover .section-title {
+          font-size: 1.15rem;
+          font-weight: 700;
+          margin-bottom: 0.85rem;
+        }
+        .preset-grid {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 0.55rem;
+        }
+        .preset-btn {
+          border: 1px solid #d1d5db;
+          background: #f8fafc;
+          color: #334155;
+          border-radius: 10px;
+          padding: 0.5rem 0.55rem;
+          font-weight: 600;
+        }
+        .preset-btn.active {
+          background: #22c55e;
+          border-color: #22c55e;
+          color: #fff;
+        }
+        .filter-divider {
+          border-top: 1px dashed #cbd5e1;
+          margin: 1rem 0;
+        }
+        .location-list {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.55rem;
+        }
+        .filter-check {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .genre-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+        .genre-chip {
+          border: 1px solid #cbd5e1;
+          background: #fff;
+          border-radius: 999px;
+          padding: 0.45rem 0.9rem;
+          font-weight: 500;
+          color: #334155;
+        }
+        .genre-chip.active {
+          background: #22c55e;
+          border-color: #22c55e;
+          color: #fff;
+        }
+        .filter-actions {
+          margin-top: 1rem;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.7rem;
+        }
+        .btn-filter-reset {
+          border: 1px solid #cbd5e1;
+          background: #fff;
+          color: #334155;
+          border-radius: 10px;
+          padding: 0.7rem;
+          font-weight: 600;
+        }
+        .btn-filter-apply {
+          border: 1px solid #22c55e;
+          background: #22c55e;
+          color: #fff;
+          border-radius: 10px;
+          padding: 0.7rem;
+          font-weight: 700;
+        }
+        .active-tag {
+          border: 1px solid #22c55e;
+          color: #16a34a;
+          background: #f0fdf4;
+          border-radius: 999px;
+          padding: 0.45rem 0.85rem;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+        @media (max-width: 992px) {
+          .preset-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .location-list {
+            grid-template-columns: 1fr;
+          }
+          .filter-popover {
+            width: 100%;
+          }
+          .filter-actions {
+            grid-template-columns: 1fr;
+          }
+        }
 
-      //- Thanh lọc và Tìm kiếm
-      div.row.align-items-center.g-3.mb-5
-        div.col-lg-9
-          div.d-flex.flex-wrap.gap-2.justify-content-center.justify-content-lg-start
-            a.btn.btn-outline-primary.rounded-pill.px-4(href="/events" class=(!activeCategory ? 'active' : '')) Tất cả
+      - const activeCatObj = (categories || []).find((c) => c.slug === activeCategory)
+      - const currentCategoryLabel = activeCatObj ? activeCatObj.name : 'Tất cả'
+      - const isOtherProvince = selectedProvince && !['Hồ Chí Minh', 'Hà Nội', 'Đà Lạt'].includes(selectedProvince)
+
+      .mb-5.text-center
+        h1.app-section-title Khám phá sự kiện
+        p.app-section-subtitle Tìm kiếm và khám phá các sự kiện phù hợp với bạn
+
+      .row.align-items-center.g-3.mb-3
+        .col-lg-8
+          .d-flex.flex-wrap.gap-2.justify-content-center.justify-content-lg-start
+            a.btn.btn-filter-chip(href='/events' class=(!activeCategory || activeCategory === 'tat-ca' ? 'active' : '')) Tất cả
             each cat in categories
-              a.btn.btn-outline-primary.rounded-pill.px-4(href=`/events?category=${cat.slug || cat.name.toLowerCase()}` class=(activeCategory === (cat.slug || cat.name.toLowerCase()) ? 'active' : ''))
-                | #{cat.name}
-        
-        div.col-lg-3
-          div.position-relative
-            i.fas.fa-search.position-absolute.top-50.start-0.ms-3.translate-middle-y.text-muted
-            input.form-control.rounded-pill.ps-5#searchInput(type="text" placeholder="Tìm kiếm sự kiện...")
-        div.col-lg-6
-          form.d-flex.flex-wrap.gap-2(method="GET" action="/events")
-            if activeCategory && activeCategory !== 'tất cả'
-              input(type="hidden" name="category" value=activeCategory)
-            if searchQuery
-              input(type="hidden" name="search" value=searchQuery)
-            select.form-select.rounded-pill.w-auto(name="time")
-              option(value="all" selected=(timeFilter === 'all')) Tất cả trạng thái
-              option(value="upcoming" selected=(timeFilter === 'upcoming')) Sắp diễn ra
-              option(value="ongoing" selected=(timeFilter === 'ongoing')) Đang diễn ra
-              option(value="ended" selected=(timeFilter === 'ended')) Đã kết thúc
-              if canSeeInternal
-                option(value="pending" selected=(timeFilter === 'pending')) Chờ duyệt
-                option(value="approved" selected=(timeFilter === 'approved')) Đã duyệt
-                option(value="published" selected=(timeFilter === 'published')) Đã xuất bản
-            input.form-control.rounded-pill.w-auto(type="date" name="startDate" value=startDate)
-            input.form-control.rounded-pill.w-auto(type="date" name="endDate" value=endDate)
-            button.btn.btn-outline-secondary.rounded-pill(type="submit") Lọc
+              a.btn.btn-filter-chip(href=`/events?category=${cat.slug}` class=(activeCategory === cat.slug ? 'active' : '')) #{cat.name}
 
-      //- Lưới sự kiện (4 cột trên màn hình lg)
-      div.row.g-4#eventsGrid
+        .col-lg-4
+          form(method='GET' action='/events')
+            if activeCategory && activeCategory !== 'tat-ca'
+              input(type='hidden' name='category' value=activeCategory)
+            input(type='hidden' name='time' value=timeFilter || 'all')
+            input(type='hidden' name='province' value=selectedProvince || '')
+            input(type='hidden' name='startDate' value=startDate || '')
+            input(type='hidden' name='endDate' value=endDate || '')
+            input(type='hidden' name='dayPreset' value=dayPreset || 'all')
+            input(type='hidden' name='free' value=freeOnly ? '1' : '0')
+            .position-relative
+              i.fas.fa-search.position-absolute.top-50.start-0.ms-3.translate-middle-y.text-muted
+              input.form-control.input-brand.rounded-pill.ps-5(type='text' name='search' placeholder='Tìm kiếm sự kiện...' value=searchQuery)
+
+      .filter-toolbar.mb-4
+        button.filter-chip-toggle.alt(type='button' data-panel='dayPanel')
+          i.fa-solid.fa-calendar-days.me-2
+          | #{dayPreset === 'today' ? 'Hôm nay' : dayPreset === 'tomorrow' ? 'Ngày mai' : dayPreset === 'this-weekend' ? 'Cuối tuần này' : dayPreset === 'this-month' ? 'Tháng này' : 'Tất cả các ngày'}
+
+        button.filter-chip-toggle(type='button' data-panel='advancedPanel')
+          i.fa-solid.fa-filter.me-2
+          | Bộ lọc
+
+        span.active-tag
+          i.fa-regular.fa-circle-check.me-1
+          | #{currentCategoryLabel}
+
+        form#eventFilterForm(method='GET' action='/events')
+          input(type='hidden' name='search' value=searchQuery || '')
+          input#filterCategory(type='hidden' name='category' value=(activeCategory && activeCategory !== 'tat-ca') ? activeCategory : '')
+          input#filterTime(type='hidden' name='time' value=timeFilter || 'all')
+          input#filterProvince(type='hidden' name='province' value=selectedProvince || '')
+          input#filterStartDate(type='hidden' name='startDate' value=startDate || '')
+          input#filterEndDate(type='hidden' name='endDate' value=endDate || '')
+          input#filterDayPreset(type='hidden' name='dayPreset' value=dayPreset || 'all')
+          input#filterFree(type='hidden' name='free' value=freeOnly ? '1' : '0')
+
+          #dayPanel.filter-popover
+            .section-title Chọn thời gian
+            .preset-grid
+              button.preset-btn(type='button' data-value='all' class=(dayPreset === 'all' ? 'active' : '')) Tất cả các ngày
+              button.preset-btn(type='button' data-value='today' class=(dayPreset === 'today' ? 'active' : '')) Hôm nay
+              button.preset-btn(type='button' data-value='tomorrow' class=(dayPreset === 'tomorrow' ? 'active' : '')) Ngày mai
+              button.preset-btn(type='button' data-value='this-weekend' class=(dayPreset === 'this-weekend' ? 'active' : '')) Cuối tuần này
+              button.preset-btn(type='button' data-value='this-month' class=(dayPreset === 'this-month' ? 'active' : '')) Tháng này
+
+            .filter-divider
+
+            .row.g-2
+              .col-md-6
+                label.form-label.text-muted.mb-1 Từ ngày
+                input#manualStart.form-control.input-brand(type='date' value=startDate || '')
+              .col-md-6
+                label.form-label.text-muted.mb-1 Đến ngày
+                input#manualEnd.form-control.input-brand(type='date' value=endDate || '')
+
+            .filter-actions
+              button#resetDay.btn-filter-reset(type='button') Thiết lập lại
+              button#applyDay.btn-filter-apply(type='button') Áp dụng
+
+          #advancedPanel.filter-popover
+            .section-title Bộ lọc nâng cao
+            h6.fw-bold.mb-2 Vị trí
+            .location-list.mb-3
+              label.filter-check
+                input(type='radio' name='provinceRadio' value='' checked=(!selectedProvince))
+                span Toàn quốc
+              label.filter-check
+                input(type='radio' name='provinceRadio' value='Hồ Chí Minh' checked=(selectedProvince === 'Hồ Chí Minh'))
+                span Hồ Chí Minh
+              label.filter-check
+                input(type='radio' name='provinceRadio' value='Hà Nội' checked=(selectedProvince === 'Hà Nội'))
+                span Hà Nội
+              label.filter-check
+                input(type='radio' name='provinceRadio' value='Đà Lạt' checked=(selectedProvince === 'Đà Lạt'))
+                span Đà Lạt
+              label.filter-check
+                input(type='radio' name='provinceRadio' value='__other__' checked=isOtherProvince)
+                span Vị trí khác
+
+            select#provinceOther.form-select.input-brand.mb-3(disabled=!selectedProvince || !isOtherProvince)
+              option(value='') Chọn tỉnh/thành khác
+              each p in provinceOptions || []
+                option(value=p selected=(selectedProvince === p))= p
+
+            .filter-divider
+
+            h6.fw-bold.mb-2 Giá tiền
+            .d-flex.align-items-center.justify-content-between.mb-3
+              span Miễn phí
+              .form-check.form-switch.m-0
+                input#freeSwitch.form-check-input(type='checkbox' checked=freeOnly)
+
+            .filter-divider
+
+            h6.fw-bold.mb-2 Thể loại
+            .genre-list
+              button.genre-chip(type='button' data-category='' class=(!activeCategory || activeCategory === 'tat-ca' ? 'active' : '')) Tất cả
+              each cat in categories
+                button.genre-chip(type='button' data-category=cat.slug class=(activeCategory === cat.slug ? 'active' : '')) #{cat.name}
+
+            .filter-actions
+              button#resetAdvanced.btn-filter-reset(type='button') Thiết lập lại
+              button#applyAdvanced.btn-filter-apply(type='button') Áp dụng
+
+      .row.g-4#eventsGrid
         if events && events.length > 0
           each event in events
-            div.col-12.col-md-6.col-lg-3.event-item
+            .col-12.col-md-6.col-lg-3.event-item
               a.text-decoration-none(href=`/events/${event._id}`)
-                div.card.h-100.border-0.shadow-sm.overflow-hidden
-                  //- Ảnh card
-                  div.card-img-box
+                .card.app-card.event-card.h-100
+                  .card-img-box
                     img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name)
-                  //- Nội dung
-                  div.card-body.d-flex.flex-column
-                    span.badge.bg-primary.mb-2.align-self-start= event.category || 'Nổi bật'
-                    h5.card-title.fw-bold.event-name= event.name
+                    span.event-tag.event-tag-featured Nổi bật
+                    if event.category
+                      span.event-tag.event-tag-primary(style='left: auto; right: 10px;')= event.category
+                  .card-body.d-flex.flex-column
+                    h5.card-title.fw-bold.event-name.mb-2= event.name
                     p.text-muted.small.mb-1
                       i.fas.fa-calendar-alt.me-2
                       | #{new Date(event.date).toLocaleDateString('vi-VN')}
+                    p.text-muted.small.mb-2
+                      i.fas.fa-map-marker-alt.me-2
+                      | #{event.location || 'TBC'}
                     - const ticketPrices = (event.ticketTypes || []).map(t => t.price || 0).filter(p => p > 0)
-                    - const displayPrice = (event.minPrice != null) ? event.minPrice : (ticketPrices.length ? Math.min(...ticketPrices) : null)
-                    div.mt-auto.d-flex.justify-content-between.align-items-center.pt-3
+                    - const displayPrice = ticketPrices.length ? Math.min(...ticketPrices) : null
+                    .mt-auto.d-flex.justify-content-between.align-items-center.pt-3
                       span.text-primary.fw-bold.price-text= displayPrice ? displayPrice.toLocaleString('vi-VN') + 'đ' : 'Liên hệ'
-                      span.btn.btn-sm.btn-outline-primary Chi tiết
-                    if event.ticketTypes && event.ticketTypes.length > 0
-                      ul.list-unstyled.mt-2.mb-0.small.text-muted
-                        each tt in event.ticketTypes.slice(0, 3)
-                          li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
+                      span.btn.btn-sm.btn-brand-secondary Chi tiết
         else
-          div.col-12.text-center.py-5
+          .col-12.text-center.py-5
             p.text-muted Không tìm thấy sự kiện nào.
-
-
 
 block append scripts
   script.
-    // Hover animation cho card (tùy chọn, đẹp hơn)
-    document.querySelectorAll('.event-item').forEach(item => {
-      item.addEventListener('mouseenter', () => {
-        item.querySelector('.card').style.transform = 'translateY(-8px)';
-        item.querySelector('.card').style.boxShadow = '0 20px 30px rgba(168, 85, 247, 0.2)';
-      });
-      item.addEventListener('mouseleave', () => {
-        item.querySelector('.card').style.transform = 'translateY(0)';
-        item.querySelector('.card').style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
-      });
-    });
+    (() => {
+      const filterForm = document.getElementById('eventFilterForm');
+      if (!filterForm) return;
 
-    // Tìm kiếm realtime (lọc card theo tên)
-    document.getElementById('searchInput')?.addEventListener('keyup', function() {
-      const filter = this.value.toLowerCase();
-      document.querySelectorAll('.event-item').forEach(item => {
-        const title = item.querySelector('.card-title')?.innerText.toLowerCase() || '';
-        item.style.display = title.includes(filter) ? '' : 'none';
+      const hiddenCategory = document.getElementById('filterCategory');
+      const hiddenProvince = document.getElementById('filterProvince');
+      const hiddenDayPreset = document.getElementById('filterDayPreset');
+      const hiddenStart = document.getElementById('filterStartDate');
+      const hiddenEnd = document.getElementById('filterEndDate');
+      const hiddenFree = document.getElementById('filterFree');
+
+      const dayPanel = document.getElementById('dayPanel');
+      const advancedPanel = document.getElementById('advancedPanel');
+      const manualStart = document.getElementById('manualStart');
+      const manualEnd = document.getElementById('manualEnd');
+      const provinceOther = document.getElementById('provinceOther');
+      const freeSwitch = document.getElementById('freeSwitch');
+
+      const closePanels = () => {
+        dayPanel.classList.remove('open');
+        advancedPanel.classList.remove('open');
+      };
+
+      document.querySelectorAll('.filter-chip-toggle[data-panel]').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const target = e.currentTarget.getAttribute('data-panel');
+          if (target === 'dayPanel') {
+            const nextOpen = !dayPanel.classList.contains('open');
+            closePanels();
+            if (nextOpen) dayPanel.classList.add('open');
+          }
+          if (target === 'advancedPanel') {
+            const nextOpen = !advancedPanel.classList.contains('open');
+            closePanels();
+            if (nextOpen) advancedPanel.classList.add('open');
+          }
+        });
       });
-    });
+
+      document.addEventListener('click', (e) => {
+        if (filterForm.contains(e.target) || e.target.closest('.filter-chip-toggle')) return;
+        closePanels();
+      });
+
+      document.querySelectorAll('.preset-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.preset-btn').forEach((item) => item.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      });
+
+      document.querySelectorAll('input[name="provinceRadio"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+          const isOther = radio.value === '__other__' && radio.checked;
+          provinceOther.disabled = !isOther;
+          if (!isOther) provinceOther.value = '';
+        });
+      });
+
+      document.querySelectorAll('.genre-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          document.querySelectorAll('.genre-chip').forEach((item) => item.classList.remove('active'));
+          chip.classList.add('active');
+          hiddenCategory.value = chip.getAttribute('data-category') || '';
+        });
+      });
+
+      document.getElementById('applyDay')?.addEventListener('click', () => {
+        const activePreset = document.querySelector('.preset-btn.active')?.getAttribute('data-value') || 'all';
+        hiddenDayPreset.value = activePreset;
+
+        if (manualStart.value || manualEnd.value) {
+          hiddenStart.value = manualStart.value || '';
+          hiddenEnd.value = manualEnd.value || '';
+          hiddenDayPreset.value = 'all';
+        } else {
+          hiddenStart.value = '';
+          hiddenEnd.value = '';
+        }
+
+        filterForm.submit();
+      });
+
+      document.getElementById('resetDay')?.addEventListener('click', () => {
+        hiddenDayPreset.value = 'all';
+        hiddenStart.value = '';
+        hiddenEnd.value = '';
+        manualStart.value = '';
+        manualEnd.value = '';
+        document.querySelectorAll('.preset-btn').forEach((item) => item.classList.remove('active'));
+        document.querySelector('.preset-btn[data-value="all"]')?.classList.add('active');
+      });
+
+      document.getElementById('applyAdvanced')?.addEventListener('click', () => {
+        const checkedProvince = document.querySelector('input[name="provinceRadio"]:checked');
+        if (checkedProvince?.value === '__other__') {
+          hiddenProvince.value = provinceOther.value || '';
+        } else {
+          hiddenProvince.value = checkedProvince?.value || '';
+        }
+
+        hiddenFree.value = freeSwitch.checked ? '1' : '0';
+        filterForm.submit();
+      });
+
+      document.getElementById('resetAdvanced')?.addEventListener('click', () => {
+        hiddenProvince.value = '';
+        hiddenFree.value = '0';
+        if (freeSwitch) freeSwitch.checked = false;
+        document.querySelector('input[name="provinceRadio"][value=""]')?.click();
+        provinceOther.value = '';
+        provinceOther.disabled = true;
+        hiddenCategory.value = '';
+        document.querySelectorAll('.genre-chip').forEach((chip) => chip.classList.remove('active'));
+        document.querySelector('.genre-chip[data-category=""]')?.classList.add('active');
+      });
+    })();

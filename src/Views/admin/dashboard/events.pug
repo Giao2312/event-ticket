@@ -1,55 +1,54 @@
 extends ../../layout
 
 block content
-  section.py-5.bg-light
-    div.container
-      div.d-flex.justify-content-between.align-items-center.mb-4
-        h2.fw-bold Quản lý sự kiện
-        a.btn.btn-gradient.px-5.py-3.rounded-pill.shadow-sm(href="/create-event")
+  section.py-5
+    .container
+      .d-flex.justify-content-between.align-items-center.mb-4.flex-wrap.gap-2
+        div
+          h2.app-section-title.mb-1 Quản lý sự kiện
+          p.app-section-subtitle.mb-0 Theo dõi, tìm kiếm và thao tác nhanh trên các sự kiện.
+        a.btn.btn-brand-primary.px-4.py-2(href="/create-event")
           i.fas.fa-plus.me-2
           | Tạo sự kiện
 
-      //- Search + Filter
-      div.row.mb-5
-        div.col-md-8
-          div.input-group
-            span.input-group-text
+      .row.mb-5.g-3
+        .col-md-8
+          .input-group
+            span.input-group-text.bg-white.border-end-0
               i.fas.fa-search
-            input.form-control#searchEvent(type="text" placeholder="Tìm kiếm sự kiện...")
-        div.col-md-4
-          select.form-select#filterStatus
+            input.form-control.input-brand.border-start-0#searchEvent(type="text" placeholder="Tìm kiếm sự kiện...")
+        .col-md-4
+          select.form-select.input-brand#filterStatus
             option(value="") Tất cả trạng thái
             option(value="upcoming") Sắp diễn ra
             option(value="ongoing") Đang diễn ra
             option(value="ended") Đã kết thúc
 
-      //- Danh sách sự kiện
       div#eventList.row.g-4
         if events && events.length > 0
           each event in events
             div.col-12.col-md-6.col-lg-4(data-status=event.status)
-              div.card.border-0.shadow-sm.h-100
-                img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 160px; object-fit: cover;")
+              div.card.app-card.h-100
+                img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 180px; object-fit: cover;")
                 div.card-body
                   h5.card-title.fw-bold.mb-2= event.name
                   p.text-muted.small.mb-3
                     i.fas.fa-calendar-alt.me-1
                     | #{new Date(event.date).toLocaleDateString('vi-VN')}
-                  button.btn.btn-sm.btn-danger(onclick=`deleteEvent('${event._id}')`)
-                      i.fas.fa-trash
-                      | Xóa
-                  div.d-flex.justify-content-between
+                  .d-flex.justify-content-between.align-items-center
                     span.badge(class=event.status === 'upcoming' ? 'bg-success' : event.status === 'ongoing' ? 'bg-warning' : 'bg-secondary')
                       = event.status === 'upcoming' ? 'Sắp diễn ra' : event.status === 'ongoing' ? 'Đang diễn ra' : 'Đã kết thúc'
-                    a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${event._id}`) Quản lý
-                  
+                    .d-flex.gap-2
+                      a.btn.btn-sm.btn-brand-secondary(href=`/admin/dashboard/events/${event._id}`) Phân tích
+                      button.btn.btn-sm.btn-brand-danger(onclick=`deleteEvent('${event._id}')`)
+                        i.fas.fa-trash
+                        | Xóa
         else
           div.col-12.text-center.py-5
             i.fas.fa-calendar-alt.fs-1.text-muted.mb-3
             h5.text-dark Không tìm thấy sự kiện nào
-            p.text-muted Hãy tạo sự kiện đầu tiên ngay!
-            a.btn.btn-gradient.px-5.py-3.mt-3(href="/create-event") + Tạo sự kiện đầu tiên
-
+            p.text-muted Hãy tạo sự kiện đầu tiên ngay.
+            a.btn.btn-brand-primary.px-5.py-3.mt-3(href="/create-event") + Tạo sự kiện đầu tiên
 
 block append scripts
   script.
@@ -64,10 +63,8 @@ block append scripts
       cards.forEach(card => {
         const title = card.querySelector('.card-title').innerText.toLowerCase();
         const status = card.getAttribute('data-status');
-
         const matchesSearch = title.includes(searchTerm);
-        const matchesStatus = statusTerm === "" || status === statusTerm;
-
+        const matchesStatus = statusTerm === '' || status === statusTerm;
         card.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
       });
     }
@@ -75,13 +72,13 @@ block append scripts
     searchInput.addEventListener('keyup', filterEvents);
     statusFilter.addEventListener('change', filterEvents);
 
-      function deleteEvent(id) {
-        if (confirm('Bạn chắc chắn muốn xóa sự kiện này?')) {
-          fetch(`/admin/events/${id}`, { method: 'DELETE' })
-            .then(res => res.json())
-            .then(data => {
-              if(data.success) location.reload();
-              else alert(data.message);
-            });
-        }
+    function deleteEvent(id) {
+      if (confirm('Bạn chắc chắn muốn xóa sự kiện này?')) {
+        fetch(`/admin/events/${id}`, { method: 'DELETE' })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) location.reload();
+            else alert(data.message);
+          });
       }
+    }

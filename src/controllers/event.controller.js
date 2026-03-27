@@ -1,7 +1,267 @@
 import { param, query, validationResult } from 'express-validator';
 import Event from '../models/event.models.js';
-import {authMiddleware} from '../middlewares/auth.middleware.js';
+import Order from '../models/order.models.js';
+import { authMiddleware } from '../middlewares/auth.middleware.js';
+import logger from '../utils/logger.js';
+import {
+  CATEGORY_MAP,
+  CATEGORY_OPTIONS,
+  createUnifiedEvent,
+  toSlugLike
+} from '../services/event.service.js';
 
+const extractProvince = (location = '') => {
+  if (!location || typeof location !== 'string') return '';
+  const parts = location
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const raw = parts.length ? parts[parts.length - 1] : location.trim();
+  const candidate =
+    /^(viet nam|vietnam)$/i.test(raw) && parts.length >= 2 ? parts[parts.length - 2] : raw;
+
+  return candidate.replace(/^thanh pho\s+/i, '').replace(/^tp\.?\s*/i, '').trim();
+};
+
+const toDayRange = (date) => {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return { $gte: start, $lte: end };
+};
+
+const resolvePresetRange = (preset) => {
+  const now = new Date();
+  if (preset === 'today') return toDayRange(now);
+
+  if (preset === 'tomorrow') {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    return toDayRange(tomorrow);
+  }
+
+  if (preset === 'this-weekend') {
+    const start = new Date(now);
+    const day = start.getDay();
+    const daysUntilSaturday = (6 - day + 7) % 7;
+    start.setDate(start.getDate() + daysUntilSaturday);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
+    end.setHours(23, 59, 59, 999);
+    return { $gte: start, $lte: end };
+  }
+
+  if (preset === 'this-month') {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return { $gte: start, $lte: end };
+  }
+
+  return null;
+};
+
+const getDynamicPerUserLimit = (eventAvailableTickets) => {
+  const total = Math.max(0, Number(eventAvailableTickets) || 0);
+  if (total <= 20) return 3;
+  if (total <= 40) return 4;
+  if (total <= 80) return 5;
+  if (total <= 150) return 6;
+  if (total <= 250) return 7;
+  if (total <= 400) return 8;
+  if (total <= 700) return 9;
+  return 10;
+};
+
+const hasCompleteBookingProfile = (user) => {
+  if (!user) return false;
+  const hasName = typeof user.name === 'string' && user.name.trim().length >= 2;
+  const hasPhone = typeof user.phone === 'string' && user.phone.replace(/\D/g, '').length >= 10;
+  const hasAddress = typeof user.address === 'string' && user.address.trim().length >= 10;
+  return hasName && hasPhone && hasAddress;
+};
+
+const escapeRegExp = (value = '') => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const normalizeText = (value = '') =>
+  String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const STOP_WORDS = new Set([
+  'va',
+  'voi',
+  'cung',
+  'cho',
+  'tai',
+  'tren',
+  'duoc',
+  'dang',
+  'se',
+  'dem',
+  'show',
+  'live',
+  'tour',
+  'music',
+  'event',
+  'su',
+  'kien',
+  'chuong',
+  'trinh',
+  'tham',
+  'gia',
+  'nam',
+  '2024',
+  '2025',
+  '2026'
+]);
+
+const extractMeaningfulTokens = (value = '', minLength = 2) => {
+  const normalized = normalizeText(value);
+  if (!normalized) return [];
+
+  return [
+    ...new Set(
+      normalized
+        .split(' ')
+        .map((token) => token.trim())
+        .filter((token) => token.length >= minLength && !STOP_WORDS.has(token))
+    )
+  ];
+};
+
+const getEventMinPrice = (event = {}) => {
+  const ticketTypes = Array.isArray(event.ticketTypes) ? event.ticketTypes : [];
+  if (!ticketTypes.length) return null;
+
+  const prices = ticketTypes
+    .map((ticket) => Number(ticket?.price))
+    .filter((price) => Number.isFinite(price));
+
+  return prices.length ? Math.min(...prices) : null;
+};
+
+const getEventKeywordProfile = (event = {}) => {
+  const nameTokens = extractMeaningfulTokens(event.name, 2);
+  const descTokens = extractMeaningfulTokens(event.description, 4);
+  const categoryTokens = extractMeaningfulTokens(event.category, 2);
+  const provinceTokens = extractMeaningfulTokens(extractProvince(event.location), 2);
+  const locationTokens = extractMeaningfulTokens(event.location, 3);
+
+  return {
+    nameTokens,
+    descTokens,
+    categoryTokens,
+    provinceTokens,
+    locationTokens,
+    combinedTokens: [
+      ...new Set([
+        ...nameTokens,
+        ...descTokens.slice(0, 10),
+        ...categoryTokens,
+        ...provinceTokens,
+        ...locationTokens.slice(0, 6)
+      ])
+    ]
+  };
+};
+
+const countSharedTokens = (sourceTokens = [], targetTokens = []) => {
+  if (!sourceTokens.length || !targetTokens.length) return 0;
+  const targetSet = new Set(targetTokens);
+  return sourceTokens.filter((token) => targetSet.has(token)).length;
+};
+
+const getRelatedEventScore = (currentEvent, candidateEvent) => {
+  const currentProvince = normalizeText(extractProvince(currentEvent.location));
+  const candidateProvince = normalizeText(extractProvince(candidateEvent.location));
+  const currentLocation = normalizeText(currentEvent.location);
+  const candidateLocation = normalizeText(candidateEvent.location);
+  const currentCategory = normalizeText(currentEvent.category);
+  const candidateCategory = normalizeText(candidateEvent.category);
+  const currentKeywords = getEventKeywordProfile(currentEvent);
+  const candidateKeywords = getEventKeywordProfile(candidateEvent);
+
+  let score = 0;
+
+  if (currentCategory && candidateCategory && currentCategory === candidateCategory) score += 35;
+  if (currentProvince && candidateProvince && currentProvince === candidateProvince) score += 25;
+
+  if (currentLocation && candidateLocation) {
+    if (currentLocation === candidateLocation) score += 20;
+    else if (currentLocation.includes(candidateLocation) || candidateLocation.includes(currentLocation)) score += 12;
+  }
+
+  const sharedNameTokens = countSharedTokens(currentKeywords.nameTokens, candidateKeywords.nameTokens);
+  const sharedCombinedTokens = countSharedTokens(
+    currentKeywords.combinedTokens,
+    candidateKeywords.combinedTokens
+  );
+
+  score += Math.min(sharedNameTokens * 12, 36);
+  score += Math.min(sharedCombinedTokens * 5, 25);
+
+  const currentDate = new Date(currentEvent.date);
+  const candidateDate = new Date(candidateEvent.date);
+  if (!Number.isNaN(currentDate.getTime()) && !Number.isNaN(candidateDate.getTime())) {
+    const diffDays = Math.abs(candidateDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays <= 7) score += 10;
+    else if (diffDays <= 30) score += 6;
+    else if (diffDays <= 60) score += 3;
+  }
+
+  score += Math.min(Number(candidateEvent.views) || 0, 20) / 20;
+  return score;
+};
+
+const buildRelatedEventCandidates = async (event, limit = 4) => {
+  const currentProfile = getEventKeywordProfile(event);
+  const candidateQuery = {
+    _id: { $ne: event._id },
+    status: { $in: ['published', 'upcoming', 'ongoing', 'approved'] }
+  };
+
+  const candidateOrConditions = [];
+  if (event.category) {
+    candidateOrConditions.push({ category: new RegExp(`^${escapeRegExp(event.category)}$`, 'i') });
+  }
+
+  const province = extractProvince(event.location);
+  if (province) {
+    candidateOrConditions.push({ location: new RegExp(escapeRegExp(province), 'i') });
+  }
+
+  currentProfile.nameTokens.slice(0, 5).forEach((token) => {
+    const regex = new RegExp(`\\b${escapeRegExp(token)}`, 'i');
+    candidateOrConditions.push({ name: regex });
+    candidateOrConditions.push({ description: regex });
+  });
+
+  if (candidateOrConditions.length) {
+    candidateQuery.$or = candidateOrConditions;
+  }
+
+  const candidates = await Event.find(candidateQuery).sort({ views: -1, date: 1 }).limit(40).lean();
+
+  return candidates
+    .map((candidate) => ({
+      ...candidate,
+      minPrice: getEventMinPrice(candidate),
+      relatedScore: getRelatedEventScore(event, candidate)
+    }))
+    .filter((candidate) => candidate.relatedScore > 0)
+    .sort((a, b) => {
+      if (b.relatedScore !== a.relatedScore) return b.relatedScore - a.relatedScore;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    })
+    .slice(0, limit);
+};
 
 const eventController = {
   detail: [
@@ -17,11 +277,7 @@ const eventController = {
       }
 
       try {
-        const eventId = req.params.id;
-
-        // 1. Lấy thông tin sự kiện
-        const event = await Event.findById(eventId).populate('organizer', 'name').lean();
-
+        const event = await Event.findById(req.params.id).populate('organizer', 'name').lean();
         if (!event) {
           return res.status(404).render('clients/page/error/404', {
             pageTitle: 'Không tìm thấy sự kiện',
@@ -29,29 +285,59 @@ const eventController = {
           });
         }
 
-    
-        const ticketTypes = (event.ticketTypes && event.ticketTypes.length > 0)
-          ? event.ticketTypes
-          : (event.TicketType || []);
+        const ticketTypes = event.ticketTypes || [];
+        const totalAvailable = ticketTypes.reduce(
+          (sum, ticket) => sum + ((ticket.quantity || 0) - (ticket.sold || 0) - (ticket.holded || 0)),
+          0
+        );
+        const perUserTicketLimit = getDynamicPerUserLimit(totalAvailable);
+        let userReservedTickets = 0;
+        const isLoggedIn = Boolean(req.user?._id);
+        const isProfileComplete = hasCompleteBookingProfile(req.user);
+        const verifyProfileRedirect = `/verify-profile?redirect=${encodeURIComponent(req.originalUrl)}`;
 
-        // 3. Tính toán trên mảng ticketTypes vừa lấy được (không phải trên Model)
-        const totalAvailable = ticketTypes.reduce((sum, t) => sum + ((t.quantity || 0) - (t.sold || 0) - (t.holded || 0)), 0);
-        
-        const minPrice = ticketTypes.length > 0
-          ? Math.min(...ticketTypes.map(t => t.price || 0)).toLocaleString('vi-VN')
-          : 'Liên hệ';
+        if (isLoggedIn) {
+          const reservedAgg = await Order.aggregate([
+            {
+              $match: {
+                userId: req.user._id,
+                eventId: event._id,
+                status: { $in: ['PENDING', 'PAID'] }
+              }
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: { $sum: '$items.quantity' } }
+              }
+            }
+          ]);
+          userReservedTickets = Number(reservedAgg[0]?.total || 0);
+        }
 
-        // 4. Render với dữ liệu đã chuẩn bị
-        res.render('clients/page/events/detail', {
+        const minPrice =
+          ticketTypes.length > 0
+            ? Math.min(...ticketTypes.map((ticket) => ticket.price || 0)).toLocaleString('vi-VN')
+            : 'Liên hệ';
+
+        const relatedEvents = await buildRelatedEventCandidates(event, 4);
+
+        return res.render('clients/page/events/detail', {
           pageTitle: `${event.name} - TicketEvent`,
           event,
           ticketTypes,
           available: totalAvailable,
-          minPrice
+          minPrice,
+          perUserTicketLimit,
+          userReservedTickets,
+          isLoggedIn,
+          isProfileComplete,
+          verifyProfileRedirect,
+          relatedEvents
         });
       } catch (err) {
         logger.error('Error in event detail:', err);
-        res.status(500).render('clients/page/error/500', {
+        return res.status(500).render('clients/page/error/500', {
           pageTitle: 'Lỗi máy chủ',
           message: 'Không thể tải thông tin sự kiện. Vui lòng thử lại sau.'
         });
@@ -59,173 +345,134 @@ const eventController = {
     }
   ],
 
-
-getAllWeb: async (req, res) => {
-  try {
-    const categoryQuery = req.query.category;
-    const searchQuery = req.query.search;
-    const role = (req.user?.role || '').toLowerCase();
-    const canSeeInternal = role === 'admin' || role === 'organizer';
-    const internalStatuses = ['pending', 'approved', 'published'];
-    let timeFilter = req.query.time || 'all';
-    const { startDate, endDate } = req.query;
-    if (!canSeeInternal && internalStatuses.includes(timeFilter)) timeFilter = 'all';
-
-    const categoryMap = {
-      'am-nhac': 'Âm nhạc',
-      'am-thuc': 'Ẩm thực',
-      'cong-nghe': 'Công nghệ',
-      'giai-tri': 'Giải trí',
-      'kinh-doanh': 'Kinh doanh',
-      'nghe-thuat': 'Nghệ thuật',
-      'the-thao': 'Thể thao',
-      'workshop': 'Workshop',
-      'khac': 'Khác'
-    };
-    const categorySlug = categoryQuery ? categoryQuery.toLowerCase() : '';
-    const categoryName = categoryMap[categorySlug] || categoryQuery;
-
-    // Xử lý active category cho filter button
-    const activeCategory = categorySlug || 'tất cả';
-
-    // Xây dựng query lọc
-    let matchStage = {};
-
-    // Lọc category (nếu không phải 'tất cả')
-    if (categoryQuery && categoryQuery !== 'tất cả') {
-      matchStage.category = new RegExp(`^${categoryName}$`, 'i');
-    }
-
-    // Lọc search (tên, mô tả, địa điểm)
-    if (searchQuery) {
-      matchStage.$or = [
-        { name: new RegExp(searchQuery, 'i') },
-        { description: new RegExp(searchQuery, 'i') },
-        { location: new RegExp(searchQuery, 'i') }
-      ];
-    }
-
-    if (startDate || endDate) {
-      matchStage.date = {};
-      if (startDate) matchStage.date.$gte = new Date(startDate);
-      if (endDate) matchStage.date.$lte = new Date(endDate);
-    }
-    if (timeFilter && timeFilter !== 'all') {
-      matchStage.status = timeFilter;
-    }
-
-    const events = await Event.aggregate([
-      {
-        $lookup: {
-          from: 'tickettypes',
-          localField: '_id',
-          foreignField: 'eventId',
-          as: 'tickets'
-        }
-      },
-      {
-        $addFields: {
-          minPrice: { $min: "$tickets.price" },
-          displayPrice: {
-            $cond: {
-              if: { $gt: [{ $size: "$tickets" }, 0] },
-              then: { $concat: [{ $toString: { $min: "$tickets.price" } }, "đ"] },
-              else: "Liên hệ"
-            }
-          }
-        }
-      },
-      { $match: matchStage },  // ← Đưa $match lên đây để lọc trước sort
-      { $sort: { date: 1 } },
-      { $limit: 20 }  // Giới hạn để load nhanh
-    ]);
-
-    // Truyền dữ liệu cho Pug
-    res.render('clients/page/events/index', { 
-      pageTitle: 'Danh sách sự kiện',
-      events,
-      categories: [
-        { name: 'Âm nhạc', slug: 'am-nhac', icon: 'fa-music' },
-        { name: 'Ẩm thực', slug: 'am-thuc', icon: 'fa-utensils' },
-        { name: 'Công nghệ', slug: 'cong-nghe', icon: 'fa-robot' },
-        { name: 'Giải trí', slug: 'giai-tri', icon: 'fa-grin-stars' },
-        { name: 'Kinh doanh', slug: 'kinh-doanh', icon: 'fa-briefcase' },
-        { name: 'Nghệ thuật', slug: 'nghe-thuat', icon: 'fa-palette' },
-        { name: 'Thể thao', slug: 'the-thao', icon: 'fa-running' },
-        { name: 'Workshop', slug: 'workshop', icon: 'fa-graduation-cap' },
-        { name: 'Khác', slug: 'khac', icon: 'fa-ellipsis-h' }
-      ],
-      activeCategory,
-      searchQuery: searchQuery || '',
-      startDate: startDate || '',
-      endDate: endDate || '',
-      timeFilter,
-      canSeeInternal,
-      user: req.user || null
-    });
-  } catch (err) {
-    logger.error('Lỗi render trang sự kiện:', err);
-    res.status(500).render('clients/page/error/500');
-  }
-},
-
-  // --- PHẦN DÀNH CHO API (TRẢ VỀ JSON) ---
-  getAllApi: async (req, res) => {
+  getAllWeb: async (req, res) => {
     try {
-      const { category, search, time, startDate, endDate } = req.query;
-      const role = (req.user?.role || '').toLowerCase();
-      const canSeeInternal = role === 'admin' || role === 'organizer';
-      const internalStatuses = ['pending', 'approved', 'published'];
-      const safeTime = (!canSeeInternal && internalStatuses.includes(time)) ? 'all' : time;
-      const query = {};
-      if (category) query.category = category;
-      if (search) query.name = { $regex: search, $options: 'i' };
-      if (safeTime && safeTime !== 'all') query.status = safeTime;
-      if (startDate || endDate) {
-        query.date = {};
-        if (startDate) query.date.$gte = new Date(startDate);
-        if (endDate) query.date.$lte = new Date(endDate);
+      const categoryQuery = req.query.category;
+      const searchQuery = (req.query.search || '').trim();
+      const province = (req.query.province || '').trim();
+      const { startDate, endDate } = req.query;
+      const freeOnly = req.query.free === '1';
+      const allowedDayPresets = ['all', 'today', 'tomorrow', 'this-weekend', 'this-month'];
+      const allowedTimeFilters = ['all', 'ongoing', 'upcoming', 'published'];
+      const dayPreset = allowedDayPresets.includes(req.query.dayPreset) ? req.query.dayPreset : 'all';
+      const timeFilter = allowedTimeFilters.includes(req.query.time) ? req.query.time : 'all';
+
+      const categorySlug = categoryQuery ? toSlugLike(categoryQuery) : '';
+      const categoryName = CATEGORY_MAP[categorySlug] || categoryQuery;
+      const activeCategory = categorySlug || 'tat-ca';
+      const matchStage = {};
+
+      if (categoryQuery && categorySlug !== 'tat-ca') {
+        matchStage.category = new RegExp(`^${categoryName}$`, 'i');
       }
 
-      const events = await Event.find(query).sort({ date: 1 });
-      
-      // Trả về đúng định dạng mảng, không bọc object dư thừa nếu không cần thiết
-      res.status(200).json(events.map(event => ({
-        ...event.toObject(),
-        image: event.image || '/events/images/placeholder.jpg'
-      })));
+      if (searchQuery) {
+        matchStage.$or = [
+          { name: new RegExp(searchQuery, 'i') },
+          { description: new RegExp(searchQuery, 'i') },
+          { location: new RegExp(searchQuery, 'i') }
+        ];
+      }
+
+      if (province) {
+        matchStage.location = new RegExp(province, 'i');
+      }
+
+      if (startDate || endDate) {
+        matchStage.date = {};
+        if (startDate) matchStage.date.$gte = new Date(startDate);
+        if (endDate) matchStage.date.$lte = new Date(endDate);
+      } else {
+        const presetRange = resolvePresetRange(dayPreset);
+        if (presetRange) matchStage.date = presetRange;
+      }
+
+      matchStage.status = timeFilter === 'all' ? { $in: ['ongoing', 'upcoming', 'published'] } : timeFilter;
+      if (freeOnly) {
+        matchStage['ticketTypes.price'] = 0;
+      }
+
+      const events = await Event.find(matchStage).sort({ date: 1 }).limit(50).lean();
+      const allLocations = await Event.distinct('location');
+      const provinceOptions = [...new Set(allLocations.map(extractProvince).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, 'vi')
+      );
+
+      return res.render('clients/page/events/index', {
+        pageTitle: 'Danh sách sự kiện',
+        events,
+        categories: CATEGORY_OPTIONS,
+        activeCategory,
+        searchQuery,
+        startDate: startDate || '',
+        endDate: endDate || '',
+        dayPreset,
+        timeFilter,
+        freeOnly,
+        selectedProvince: province,
+        provinceOptions,
+        user: req.user || null
+      });
     } catch (err) {
-      res.status(500).json({ success: false, message: 'Lỗi server API' });
+      logger.error('Lỗi render trang sự kiện:', err);
+      return res.status(500).render('clients/page/error/500');
     }
   },
 
+  getAllApi: async (req, res) => {
+    try {
+      const { category, search, time, startDate, endDate, province } = req.query;
+      const freeOnly = req.query.free === '1';
+      const allowedDayPresets = ['all', 'today', 'tomorrow', 'this-weekend', 'this-month'];
+      const dayPreset = allowedDayPresets.includes(req.query.dayPreset) ? req.query.dayPreset : 'all';
+      const queryFilter = {};
+
+      if (category) queryFilter.category = CATEGORY_MAP[toSlugLike(category)] || category;
+      if (search) queryFilter.name = { $regex: search, $options: 'i' };
+      if (province) queryFilter.location = { $regex: province, $options: 'i' };
+
+      const safeTime = ['all', 'ongoing', 'upcoming', 'published'].includes(time) ? time : 'all';
+      queryFilter.status = safeTime === 'all' ? { $in: ['ongoing', 'upcoming', 'published'] } : safeTime;
+
+      if (startDate || endDate) {
+        queryFilter.date = {};
+        if (startDate) queryFilter.date.$gte = new Date(startDate);
+        if (endDate) queryFilter.date.$lte = new Date(endDate);
+      } else {
+        const presetRange = resolvePresetRange(dayPreset);
+        if (presetRange) queryFilter.date = presetRange;
+      }
+
+      if (freeOnly) {
+        queryFilter['ticketTypes.price'] = 0;
+      }
+
+      const events = await Event.find(queryFilter).sort({ date: 1 });
+      return res.status(200).json(
+        events.map((event) => ({
+          ...event.toObject(),
+          image: event.image || '/events/images/placeholder.jpg'
+        }))
+      );
+    } catch (err) {
+      return res.status(500).json({ success: false, message: 'Lỗi server API' });
+    }
+  },
 
   category: [
     query('slug').optional().isString(),
     async (req, res) => {
       try {
         const slug = req.params.slug || req.query.slug;
-        const categoryMap = {
-          'am-nhac': 'Âm nhạc',
-          'the-thao': 'Thể thao',
-          'workshop': 'Workshop',
-          'khac': 'Khác'
-          // thêm các category khác nếu cần
-        };
-        const categoryName = categoryMap[slug] || 'Tất cả';
-
-        const page = Number.parseInt(req.query.page) || 1;
+        const categoryName = CATEGORY_MAP[slug] || 'Tất cả';
+        const page = Number.parseInt(req.query.page, 10) || 1;
         const limit = 10;
         const skip = (page - 1) * limit;
 
-        const events = await Event.find({ category: categoryName })
-          .skip(skip)
-          .limit(limit)
-          .sort({ date: 1 });
-
+        const events = await Event.find({ category: categoryName }).skip(skip).limit(limit).sort({ date: 1 });
         const total = await Event.countDocuments({ category: categoryName });
 
-        res.render('clients/page/event/category', {
+        return res.render('clients/page/event/category', {
           pageTitle: `${categoryName} - TicketEvent`,
           categoryName,
           events,
@@ -233,7 +480,7 @@ getAllWeb: async (req, res) => {
         });
       } catch (err) {
         logger.error('Error in event category:', err);
-        res.status(500).send('Lỗi Server');
+        return res.status(500).send('Lỗi Server');
       }
     }
   ],
@@ -242,97 +489,62 @@ getAllWeb: async (req, res) => {
     authMiddleware,
     async (req, res) => {
       try {
-        const { name, description, date, location, category, TicketType } = req.body;
-
-        let imageUrl = '';
-        if (req.file) {
-          imageUrl = `/events/images/${req.file.filename}`;
-        }
-
-        // Chuyển TicketType từ string JSON sang array object
-        let parsedTicketTypes = [];
-        try {
-          parsedTicketTypes = JSON.parse(TicketType);
-        } catch (e) {
-           return res.status(400).json({
-            success: false,
-            message: 'TicketType không đúng định dạng JSON'
-          });
-        }
-
-        const event = new Event({
-          name,
-          description,
-          date: new Date(date),
-          location,
-          category,
-          TicketType: parsedTicketTypes,
-          image: imageUrl,
-          organizer: req.user.id // từ authMiddleware
+        const event = await createUnifiedEvent({
+          body: req.body,
+          organizerId: req.user.id,
+          status: 'pending',
+          file: req.file
         });
 
-        await event.save();
-
-        res.status(201).json({
+        return res.status(201).json({
           success: true,
           message: 'Tạo sự kiện thành công',
           event
         });
       } catch (err) {
         logger.error('Error creating event:', err);
-        res.status(500).json({ success: false, message: 'Lỗi server' });
+        return res.status(err.status || 500).json({
+          success: false,
+          message: err.message || 'Lỗi server'
+        });
       }
     }
   ],
 
   booking: [
     authMiddleware,
-    async (req, res) => {
-      res.render('clients/page/event/booking', { pageTitle: 'Đặt vé' });
-    }
+    async (req, res) => res.render('clients/page/event/booking', { pageTitle: 'Đặt vé' })
   ],
 
   confirmBooking: [
     authMiddleware,
-    async (req, res) => {
-      res.render('clients/page/event/confirm', { pageTitle: 'Xác nhận đặt vé' });
-    }
+    async (req, res) => res.render('clients/page/event/confirm', { pageTitle: 'Xác nhận đặt vé' })
   ],
 
- getDashboardEvents :[ async (req, res) => {
-  try {
-    const events = await Event.find({}).sort({ date: 1 });
+  getDashboardEvents: [
+    async (req, res) => {
+      try {
+        const events = await Event.find({}).sort({ date: 1 });
+        const now = new Date();
+        const processedEvents = events.map((event) => {
+          const eventDate = new Date(event.date);
+          const status = eventDate < now ? 'ended' : 'upcoming';
+          return {
+            ...event.toObject(),
+            status
+          };
+        });
 
-    // Thêm logic tính toán trạng thái cho từng event
-    const now = new Date();
-    const processedEvents = events.map(event => {
-      let status = 'upcoming';
-      const eventDate = new Date(event.date);
-      if (eventDate < now) {
-        status = 'ended';
-      } else {
-        status = 'upcoming';
+        return res.render('admin/dashboard/events', {
+          pageTitle: 'Quản lý sự kiện',
+          events: processedEvents
+        });
+      } catch (err) {
+        logger.error('Lỗi lấy danh sách sự kiện:', err);
+        return res.status(500).send('Lỗi Server');
       }
-
-      return {
-        ...event.toObject(),
-        status: status
-      };
-    });
-
-    res.render('admin/dashboard/events', { 
-      pageTitle: 'Quản lý sự kiện',
-      events: processedEvents 
-    });
-  } catch (err) {
-    logger.error('Lỗi lấy danh sách sự kiện:', err);
-    res.status(500).send('Lỗi Server');
-  }
-}
- ]
-
+    }
+  ]
 };
-
-
 
 export default eventController;

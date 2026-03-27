@@ -1,0 +1,115 @@
+extends ../../../layout
+
+block content
+  section.py-5.bg-light.min-vh-100
+    div.container
+      div.row.justify-content-center
+        div.col-lg-8
+          div.card.border-0.shadow-lg.rounded-4
+            div.card-body.p-5
+              div.text-center.mb-4
+                div.rounded-circle.bg-warning.bg-opacity-10.d-inline-flex.p-4.mb-3
+                  i.fas.fa-user-check.fs-1.text-warning
+                h3.fw-bold Xác minh thông tin
+                p.text-muted Để hoàn tất đặt vé, vui lòng cập nhật đầy đủ thông tin cá nhân
+
+              form#verifyForm
+                input(type="hidden" name="redirectUrl" value=redirectUrl || '')
+                input(type="hidden" name="bookingData" value=bookingData || '')
+
+                .alert.alert-info
+                  i.fas.fa-info-circle.me-2
+                  strong Thông tin cần thiết:
+                  ul.mb-0.mt-2
+                    li Họ và tên
+                    li Số điện thoại
+                    li Địa chỉ
+
+                .row.g-4
+                  .col-md-6
+                    label.form-label.fw-semibold Họ và tên *
+                    input.form-control.input-brand(type="text" name="name" value=user.name || '' placeholder="Nhập họ và tên" required)
+                    invalid-feedback Vui lòng nhập họ và tên
+
+                  .col-md-6
+                    label.form-label.fw-semibold Số điện thoại *
+                    input.form-control.input-brand(type="tel" name="phone" value=user.phone || '' placeholder="0xxx xxx xxx" required)
+                    .form-text Ít nhất 10 ký tự
+
+                  .col-12
+                    label.form-label.fw-semibold Địa chỉ *
+                    input.form-control.input-brand(type="text" name="address" value=user.address || '' placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố" required)
+
+                .d-grid.gap-2.d-md-flex.justify-content-md-end.mt-4
+                  a.btn.btn-outline-secondary(href=redirectUrl || '/events') Hủy
+                  button.btn.btn-primary.px-5(type="submit")
+                    i.fas fa-check-circle.me-2
+                    | Xác nhận và tiếp tục đặt vé
+
+block append scripts
+  script.
+    document.getElementById('verifyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData);
+
+      // Validate
+      if (!data.name || data.name.trim().length < 2) {
+        return alert('Vui lòng nhập họ và tên hợp lệ');
+      }
+      if (!data.phone || data.phone.replace(/\D/g, '').length < 10) {
+        return alert('Vui lòng nhập số điện thoại hợp lệ (ít nhất 10 số)');
+      }
+      if (!data.address || data.address.trim().length < 10) {
+        return alert('Vui lòng nhập địa chỉ đầy đủ');
+      }
+
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Đang xử lý...';
+
+      try {
+        // 1. Update profile
+        const profileRes = await fetch('/profile/update', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: data.name,
+            phone: data.phone,
+            address: data.address
+          })
+        });
+
+        if (!profileRes.ok) {
+          throw new Error('Không thể cập nhật thông tin');
+        }
+
+        // 2. If there's booking data, submit the order
+        if (data.bookingData) {
+          const booking = JSON.parse(decodeURIComponent(data.bookingData));
+          const orderRes = await fetch('/api/orders/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(booking)
+          });
+
+          const orderData = await orderRes.json();
+          if (orderData.success) {
+            window.location.href = `/checkout/${orderData.orderId}`;
+          } else {
+            alert(orderData.message || 'Lỗi khi tạo đơn hàng');
+            submitBtn.disabled = false;
+          }
+        } else {
+          // No booking data, just redirect back
+          window.location.href = data.redirectUrl || '/events';
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Có lỗi xảy ra: ' + err.message);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Xác nhận và tiếp tục đặt vé';
+      }
+    });

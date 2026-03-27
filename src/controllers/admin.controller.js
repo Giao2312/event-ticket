@@ -2,60 +2,109 @@
 import roleMiddleware from '../middlewares/role.middleware.js';
 import Event from '../models/event.models.js';
 import Order from '../models/order.models.js';
+import Ticket from '../models/ticket.models.js';
 import User from '../models/user.models.js';
-import mongoose from 'mongoose';
+import AuditLog from '../models/auditlog.models.js';
+import EventReview from '../models/EventReview.models.js';
+import UserFavoriteEvent from '../models/UserFavoriteEvent.models.js';
+import Notification from '../models/notification.models.js';
 import logger from '../utils/logger.js';
+import {
+  createUnifiedEvent,
+  publishEvent,
+  rejectEventByAdmin
+} from '../services/event.service.js';
 
+const buildLast14Days = () => {
+  const now = new Date();
+  const startDay = new Date(now);
+  startDay.setDate(now.getDate() - 13);
+  startDay.setHours(0, 0, 0, 0);
+
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(startDay);
+    d.setDate(startDay.getDate() + i);
+    return d;
+  });
+
+  const labels = days.map((d) => d.toISOString().slice(0, 10));
+  return { startDay, labels };
+};
+
+const getLowSalesAlert = (event, totalSold, totalCapacity) => {
+  const now = new Date();
+  const eventDate = new Date(event.date);
+  const diffDays = Math.ceil((eventDate - now) / (24 * 60 * 60 * 1000));
+  const fillRate = totalCapacity > 0 ? Math.round((totalSold / totalCapacity) * 100) : 0;
+
+  if (['ended', 'cancelled', 'rejected', 'draft'].includes(event.status)) {
+    return null;
+  }
+
+  let expectedFillRate = 15;
+  if (diffDays <= 3) expectedFillRate = 60;
+  else if (diffDays <= 7) expectedFillRate = 40;
+  else if (diffDays <= 14) expectedFillRate = 25;
+
+  if (fillRate >= expectedFillRate) {
+    return null;
+  }
+
+  return {
+    isLow: true,
+    expectedFillRate,
+    actualFillRate: fillRate,
+    severity: fillRate < Math.max(5, expectedFillRate / 2) ? 'danger' : 'warning',
+    message:
+      diffDays > 0
+        ? `Sự kiện còn ${diffDays} ngày nữa diễn ra nhưng mới đạt ${fillRate}% sức chứa. Nên gửi nhắc nhở cho nhà tổ chức để thúc đẩy bán vé.`
+        : `Sự kiện đang diễn ra nhưng mới đạt ${fillRate}% sức chứa. Cần cảnh báo nhà tổ chức ngay.`
+  };
+};
 
 const AdminController = {
-  createEventByAdmin : [
-
-    body('name').trim().isLength({ min: 5 }),
-    body('organizer').isMongoId().withMessage('Pháº£i chá»n organizer há»£p lá»‡'),   
-    body('date').isISO8601(),
-    body('location').notEmpty(),
-    body('capacity').isInt({ min: 1 }),
+  createEventByAdmin: [
+    body('name').trim().isLength({ min: 5 }).withMessage('Tên sự kiện phải ít nhất 5 ký tự'),
+    body('organizer').isMongoId().withMessage('Phải chọn nhà tổ chức (organizer) hợp lệ'),
+    body('date').isISO8601().withMessage('Ngày tổ chức không đúng định dạng'),
+    body('location').notEmpty().withMessage('Địa điểm không được để trống'),
 
     async (req, res) => {
       const errors = validationResult(req);
       if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
       try {
-        // === PHáº¦N KHÃC BIá»†T Lá»šN NHáº¤T ===
-        const adminId = req.user._id;
-        const targetOrganizerId = req.body.organizer;        // â† Admin chá»n organizer khÃ¡c
-
-        // Kiá»ƒm tra admin
-        if (!req.user.isAdmin) {
-          return res.status(403).json({ success: false, message: 'Chá»‰ admin má»›i Ä‘Æ°á»£c táº¡o sá»± kiá»‡n cho ngÆ°á»i khÃ¡c' });
+        const isAdminUser = (req.user?.role || '').toLowerCase() === 'admin';
+        if (!isAdminUser) {
+          return res.status(403).json({ success: false, message: 'Chỉ admin mới được tạo sự kiện cho người khác' });
         }
 
-        // Kiá»ƒm tra organizer tá»“n táº¡i
+        const targetOrganizerId = req.body.organizer;
         const organizerExists = await User.findById(targetOrganizerId);
-        if (organizerExists?.role !== 'organizer') {
-          return res.status(400).json({ success: false, message: 'Organizer khÃ´ng tá»“n táº¡i hoáº·c khÃ´ng há»£p lá»‡' });
+        const organizerRole = (organizerExists?.role || '').toLowerCase();
+        if (!organizerExists || organizerRole !== 'organizer') {
+          return res.status(400).json({ success: false, message: 'Nhà tổ chức không tồn tại hoặc vai trò không hợp lệ' });
         }
 
-        const eventData = {
-          ...req.body,
-          organizer: targetOrganizerId,                      // â† KhÃ´ng pháº£i req.user
-          createdBy: adminId,                                // lÆ°u láº¡i admin nÃ o táº¡o
+        // Route through eventService so ticketTypes, seating, slug, and lifecycle are correct.
+        // Admin-created events start as 'draft' so they must go through approval before becoming published.
+        const newEvent = await createUnifiedEvent({
+          body: req.body,
+          organizerId: targetOrganizerId,
           status: req.body.status || 'draft',
-          slug: slugify(req.body.name, { lower: true })
-        };
+          files: req.files
+        });
 
-        const newEvent = await Event.create(eventData);
-
-        logger.info(`Admin ${req.user.name} Ä‘Ã£ táº¡o sá»± kiá»‡n "${newEvent.name}" cho organizer ${targetOrganizerId}`);
+        logger.info(`Admin ${req.user.name} đã tạo sự kiện "${newEvent.name}" cho organizer ${targetOrganizerId}`);
 
         res.status(201).json({
           success: true,
-          message: `Táº¡o sá»± kiá»‡n thÃ nh cÃ´ng cho organizer ${organizerExists.name}`,
+          message: `Tạo sự kiện thành công cho nhà tổ chức ${organizerExists.name}`,
           event: newEvent
         });
       } catch (err) {
         logger.error('Admin createEvent error:', err);
-        res.status(500).json({ success: false, message: 'Lá»—i server' });
+        res.status(err.status || 500).json({ success: false, message: err.message || 'Lỗi máy chủ khi tạo sự kiện' });
       }
     }
   ],
@@ -70,23 +119,11 @@ const AdminController = {
         startDay.setHours(0, 0, 0, 0);
 
         const [
-          totalEvents,
-          totalUsers,
-          totalRevenueData,
-          ticketsSoldData,
-          capacityData,
-          trafficData,
-          paidOrdersCount,
-          recentEvents,
-          revenueByDayData,
-          ticketsByDayData,
-          revenueByPaymentData,
-          recentOrders,
-          pendingCount,
-          rejectedCount,
-          upcomingCount,
-          ongoingCount,
-          endedCount
+          totalEvents, totalUsers, totalRevenueData, ticketsSoldData,
+          capacityData, trafficData, paidOrdersCount, recentEvents,
+          revenueByDayData, ticketsByDayData, revenueByPaymentData,
+          recentOrders, pendingCount, rejectedCount, upcomingCount,
+          ongoingCount, endedCount
         ] = await Promise.all([
           Event.countDocuments({}),
           User.countDocuments({}),
@@ -107,11 +144,7 @@ const AdminController = {
             { $group: { _id: null, totalViews: { $sum: { $ifNull: ['$views', 0] } } } }
           ]),
           Order.countDocuments({ status: 'PAID' }),
-          Event.find({})
-            .sort({ createdAt: -1 })
-            .limit(10)
-            .populate('organizer', 'name')
-            .lean(),
+          Event.find({}).sort({ createdAt: -1 }).limit(10).populate('organizer', 'name').lean(),
           Order.aggregate([
             { $match: { status: 'PAID', createdAt: { $gte: startDay } } },
             { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, revenue: { $sum: '$totalAmount' } } },
@@ -128,11 +161,7 @@ const AdminController = {
             { $group: { _id: '$paymentMethod', total: { $sum: '$totalAmount' } } },
             { $sort: { total: -1 } }
           ]),
-          Order.find({})
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .populate('userId', 'name')
-            .lean(),
+          Order.find({}).sort({ createdAt: -1 }).limit(5).populate('userId', 'name').lean(),
           Event.countDocuments({ status: 'pending' }),
           Event.countDocuments({ status: 'rejected' }),
           Event.countDocuments({ status: 'upcoming' }),
@@ -153,115 +182,119 @@ const AdminController = {
           d.setDate(startDay.getDate() + i);
           return d;
         });
+
         const revenueMap = new Map(revenueByDayData.map(d => [d._id, d.revenue]));
         const ticketsMap = new Map(ticketsByDayData.map(d => [d._id, d.tickets]));
         const lineLabels = days.map(d => formatDate(d));
         const lineRevenue = lineLabels.map(l => revenueMap.get(l) || 0);
         const lineTickets = lineLabels.map(l => ticketsMap.get(l) || 0);
 
-        const pieLabels = (revenueByPaymentData || []).map(p => p._id || 'unknown');
+        const pieLabels = (revenueByPaymentData || []).map(p => p._id || 'Không xác định');
         const pieValues = (revenueByPaymentData || []).map(p => p.total || 0);
 
-        const stats = {
-          totalEvents,
-          totalUsers,
-          totalRevenue,
-          ticketsSold,
-          totalCapacity,
-          fillRate,
-          traffic,
-          conversionRate
-        };
-
         res.render('admin/dashboard/index', {
-          pageTitle: 'Dashboard Quản trị',
+          pageTitle: 'Bảng điều khiển quản trị',
           events: recentEvents || [],
-          pendingCount,
-          rejectedCount,
-          upcomingCount,
-          ongoingCount,
-          endedCount,
+          pendingCount, rejectedCount, upcomingCount, ongoingCount, endedCount,
           user: req.user,
-          stats,
+          stats: { totalEvents, totalUsers, totalRevenue, ticketsSold, totalCapacity, fillRate, traffic, conversionRate },
           recentOrders: recentOrders || [],
           lineChart: { labels: lineLabels, revenue: lineRevenue, tickets: lineTickets },
           pieChart: { labels: pieLabels, values: pieValues }
         });
       } catch (err) {
         logger.error('Admin Dashboard Error:', err);
-        console.error(err);
-
         res.render('admin/dashboard/index', {
-          pageTitle: 'Dashboard Quản trị',
+          pageTitle: 'Bảng điều khiển quản trị',
           user: req.user,
-          stats: {
-            totalEvents: 0,
-            totalUsers: 0,
-            totalRevenue: 0,
-            ticketsSold: 0,
-            totalCapacity: 0,
-            fillRate: 0,
-            traffic: 0,
-            conversionRate: 0
-          },
-          events: [],
-          recentOrders: [],
+          stats: { totalEvents: 0, totalUsers: 0, totalRevenue: 0, ticketsSold: 0, totalCapacity: 0, fillRate: 0, traffic: 0, conversionRate: 0 },
+          events: [], recentOrders: [],
           lineChart: { labels: [], revenue: [], tickets: [] },
           pieChart: { labels: [], values: [] },
-          errorMessage: 'Không thể tải dữ liệu dashboard'
+          errorMessage: 'Không thể tải dữ liệu thống kê'
         });
       }
     }
   ],
-   manageOrders: [
+
+  manageEvents: [
     roleMiddleware('admin'),
     async (req, res) => {
       try {
-        const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+        const events = await Event.find({})
+          .sort({ createdAt: -1 })
+          .populate('organizer', 'name email')
+          .lean();
+
+        const [pendingCount, rejectedCount, upcomingCount, ongoingCount, endedCount] = await Promise.all([
+          Event.countDocuments({ status: 'pending' }),
+          Event.countDocuments({ status: 'rejected' }),
+          Event.countDocuments({ status: 'upcoming' }),
+          Event.countDocuments({ status: 'ongoing' }),
+          Event.countDocuments({ status: 'ended' })
+        ]);
+
+        res.render('admin/dashboard/events', {
+          pageTitle: 'Quản lý sự kiện',
+          events: events || [],
+          pendingCount, rejectedCount, upcomingCount, ongoingCount, endedCount,
+          user: req.user
+        });
+      } catch (err) {
+        logger.error('Lỗi tải danh sách sự kiện admin:', err);
+        res.render('admin/dashboard/events', {
+          pageTitle: 'Quản lý sự kiện',
+          events: [],
+          pendingCount: 0, rejectedCount: 0, upcomingCount: 0, ongoingCount: 0, endedCount: 0,
+          user: req.user,
+          errorMessage: 'Không thể tải danh sách sự kiện'
+        });
+      }
+    }
+  ],
+
+  manageOrders: [
+    roleMiddleware('admin'),
+    async (req, res) => {
+      try {
+        const page = Number.parseInt(req.query.page, 10) || 1;
         const limit = 10;
-        const skip = (page - 1) * limit;
-        const statusRaw = (req.query.status || '').toString().trim();
-        const status = statusRaw ? statusRaw.toUpperCase() : '';
-        const q = (req.query.q || '').toString().trim();
+        const status = (req.query.status || '').trim();
+        const q = (req.query.q || '').trim().toLowerCase();
 
-        const match = {};
-        if (status) match.status = status;
+        const dbQuery = {};
+        if (status) dbQuery.status = status;
 
-        const pipeline = [
-          { $match: match },
-          { $addFields: { totalItems: { $sum: '$items.quantity' } } },
-          { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
-          { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
-          { $lookup: { from: 'events', localField: 'eventId', foreignField: '_id', as: 'event' } },
-          { $unwind: { path: '$event', preserveNullAndEmptyArrays: true } }
-        ];
+        const rawOrders = await Order.find(dbQuery)
+          .sort({ createdAt: -1 })
+          .populate('userId', 'name email')
+          .populate('eventId', 'name')
+          .lean();
 
-        if (q) {
-          const or = [
-            { 'user.name': { $regex: q, $options: 'i' } },
-            { 'user.email': { $regex: q, $options: 'i' } },
-            { 'event.name': { $regex: q, $options: 'i' } }
-          ];
-          if (mongoose.Types.ObjectId.isValid(q)) {
-            or.push({ _id: new mongoose.Types.ObjectId(q) });
-          }
-          pipeline.push({ $match: { $or: or } });
-        }
+        const filteredOrders = q
+          ? rawOrders.filter((o) => {
+              const orderId = String(o._id || '').toLowerCase();
+              const userName = String(o.userId?.name || '').toLowerCase();
+              const userEmail = String(o.userId?.email || '').toLowerCase();
+              const eventName = String(o.eventId?.name || '').toLowerCase();
+              return (
+                orderId.includes(q) ||
+                userName.includes(q) ||
+                userEmail.includes(q) ||
+                eventName.includes(q)
+              );
+            })
+          : rawOrders;
 
-        pipeline.push(
-          { $sort: { createdAt: -1 } },
-          {
-            $facet: {
-              data: [{ $skip: skip }, { $limit: limit }],
-              total: [{ $count: 'count' }]
-            }
-          }
-        );
-
-        const agg = await Order.aggregate(pipeline);
-        const orders = agg[0]?.data || [];
-        const total = agg[0]?.total?.[0]?.count || 0;
-        const totalPages = Math.max(Math.ceil(total / limit), 1);
+        const total = filteredOrders.length;
+        const start = (page - 1) * limit;
+        const end = start + limit;
+        const pagedOrders = filteredOrders.slice(start, end).map((o) => ({
+          ...o,
+          user: o.userId || null,
+          event: o.eventId || null,
+          totalItems: (o.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+        }));
 
         const [paidCount, pendingCount, cancelledCount, expiredCount] = await Promise.all([
           Order.countDocuments({ status: 'PAID' }),
@@ -270,100 +303,46 @@ const AdminController = {
           Order.countDocuments({ status: 'EXPIRED' })
         ]);
 
-        res.render('admin/dashboard/orders', {
+        return res.render('admin/dashboard/orders', {
           pageTitle: 'Quản lý đơn hàng',
-          orders,
-          filters: { status: statusRaw, q },
-          stats: { paidCount, pendingCount, cancelledCount, expiredCount },
-          pagination: { page, totalPages, total }
-        });
-      } catch (err) {
-        logger.error('Admin manageOrders error:', err);
-        res.render('admin/dashboard/orders', {
-          pageTitle: 'Quản lý đơn hàng',
-          orders: [],
-          filters: { status: '', q: '' },
-          stats: { paidCount: 0, pendingCount: 0, cancelledCount: 0, expiredCount: 0 },
-          pagination: { page: 1, totalPages: 1, total: 0 },
-          errorMessage: 'Không tải được danh sách đơn hàng'
-        });
-      }
-    }
-  ],
-manageEvents: [
-  roleMiddleware('admin'),
-    async (req, res) => {
-      try {
-        const events = await Event.find({})
-          .sort({ createdAt: -1 })
-          .populate('organizer', 'name email')  
-          .lean(); 
-
-        // TÃ­nh count cho cÃ¡c banner (náº¿u dÃ¹ng)
-        const pendingCount = await Event.countDocuments({ status: 'pending' });
-        const rejectedCount = await Event.countDocuments({ status: 'rejected' });
-        const upcomingCount = await Event.countDocuments({ status: 'upcoming' });
-        const ongoingCount = await Event.countDocuments({ status: 'ongoing' });
-        const endedCount   = await Event.countDocuments({ status: 'ended' });
-
-        res.render('admin/dashboard/index', {  // â† tÃªn file Pug chÃ­nh xÃ¡c
-          pageTitle: 'Quáº£n lÃ½ sá»± kiá»‡n',
-          events: events || [],                     // â† Báº®T BUá»˜C: luÃ´n truyá»n máº£ng, dÃ¹ rá»—ng
-          pendingCount,
-          rejectedCount,
-          upcomingCount,
-          ongoingCount,
-          endedCount,
-          user: req.user
-        });
-      } catch (err) {
-        console.error('Lá»—i load events admin:', err);
-        res.render('admin/dashboard/events/index', {
-          pageTitle: 'Quáº£n lÃ½ sá»± kiá»‡n',
-          events: [],                               // fallback máº£ng rá»—ng
-          pendingCount: 0,
-          rejectedCount: 0,
-          upcomingCount: 0,
-          ongoingCount: 0,
-          endedCount: 0,
           user: req.user,
-          errorMessage: 'KhÃ´ng táº£i Ä‘Æ°á»£c danh sÃ¡ch sá»± kiá»‡n'
+          orders: pagedOrders,
+          filters: { q: req.query.q || '', status: req.query.status || '' },
+          stats: { paidCount, pendingCount, cancelledCount, expiredCount },
+          pagination: {
+            page,
+            totalPages: Math.max(1, Math.ceil(total / limit))
+          }
+        });
+      } catch (err) {
+        logger.error('Lỗi tải danh sách đơn hàng admin:', err);
+        return res.render('admin/dashboard/orders', {
+          pageTitle: 'Quản lý đơn hàng',
+          user: req.user,
+          orders: [],
+          filters: { q: '', status: '' },
+          stats: { paidCount: 0, pendingCount: 0, cancelledCount: 0, expiredCount: 0 },
+          pagination: { page: 1, totalPages: 1 },
+          errorMessage: 'Không thể tải danh sách đơn hàng'
         });
       }
     }
   ],
-  
-  approveEvent :[
+
+  approveEvent: [
     roleMiddleware('admin'),
     async (req, res) => {
       try {
         const { eventId } = req.params;
-        const { notes } = req.body;  // optional: ghi chÃº
+        const { notes } = req.body;
 
-        const event = await Event.findById(eventId);
-        if (!event) return res.status(404).json({ success: false, message: 'KhÃ´ng tÃ¬m tháº¥y sá»± kiá»‡n' });
+        const event = await publishEvent(eventId, req.user._id, notes);
 
-        if (event.status !== 'pending') {
-          return res.status(400).json({ success: false, message: 'Sá»± kiá»‡n khÃ´ng á»Ÿ tráº¡ng thÃ¡i chá» duyá»‡t' });
-        }
+        logger.info(`Admin ${req.user.name} đã duyệt sự kiện ${eventId}`);
 
-        event.status = 'approved';
-        event.approvedBy = req.user._id;
-        event.approvedAt = new Date();
-        event.approvalNotes = notes || 'ÄÃ£ duyá»‡t tá»± Ä‘á»™ng';
-
-        await event.save();
-
-        // ThÃ´ng bÃ¡o láº¡i cho organizer
-        await sendOrganizerNotification(event.organizer, {
-          type: 'event_approved',
-          eventName: event.name,
-          message: 'Sá»± kiá»‡n cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c duyá»‡t vÃ  cÃ³ thá»ƒ publish.'
-        });
-
-        res.json({ success: true, message: 'Sá»± kiá»‡n Ä‘Ã£ Ä‘Æ°á»£c duyá»‡t', event });
+        res.json({ success: true, message: 'Sự kiện đã được phê duyệt thành công', event });
       } catch (err) {
-        res.status(500).json({ success: false, message: 'Lá»—i khi duyá»‡t sá»± kiá»‡n' });
+        res.status(err.status || 500).json({ success: false, message: err.message || 'Lỗi khi phê duyệt sự kiện' });
       }
     }
   ],
@@ -373,65 +352,319 @@ manageEvents: [
     async (req, res) => {
       try {
         const { eventId } = req.params;
-        const { reason } = req.body;  // báº¯t buá»™c khi reject
+        const { reason } = req.body;
 
-        const event = await Event.findById(eventId);
-        if (!event || event.status !== 'pending') {
-          return res.status(400).json({ success: false, message: 'KhÃ´ng há»£p lá»‡' });
-        }
+        const event = await rejectEventByAdmin(eventId, req.user._id, reason);
 
-        event.status = 'rejected';
-        event.rejectionReason = reason;
-        await event.save();
+        logger.info(`Admin ${req.user.name} đã từ chối sự kiện ${eventId}`);
 
-        // ThÃ´ng bÃ¡o cho organizer lÃ½ do reject
-        await sendOrganizerNotification(event.organizer, {
-          type: 'event_rejected',
-          eventName: event.name,
-          reason
-        });
-
-        res.json({ success: true, message: 'Sá»± kiá»‡n Ä‘Ã£ bá»‹ tá»« chá»‘i' });
+        res.json({ success: true, message: 'Sự kiện đã bị từ chối' });
       } catch (err) {
-        // error
+        res.status(err.status || 500).json({ success: false, message: err.message || 'Lỗi khi từ chối sự kiện' });
       }
     }
   ],
-  // XÃ³a sá»± kiá»‡n vi pháº¡m
+
   deleteEvent: [
     roleMiddleware('admin'),
     async (req, res) => {
-      const session = await mongoose.startSession();
-      session.startTransaction();
       try {
         const { eventId } = req.params;
-        
-        // 1. Kiá»ƒm tra sá»± kiá»‡n
-        const event = await Event.findById(eventId).session(session);
-        if (!event) throw new Error('Sá»± kiá»‡n khÃ´ng tá»“n táº¡i');
+        const event = await Event.findById(eventId);
+        if (!event) {
+          return res.status(404).json({ success: false, message: 'Sự kiện không tồn tại' });
+        }
 
-        // 2. XÃ³a cÃ¡c vÃ© liÃªn quan (Ä‘á»ƒ trÃ¡nh lá»—i dá»¯ liá»‡u má»“ cÃ´i)
-        await Ticket.deleteMany({ eventId }, { session });
-        
-        // 3. XÃ³a chÃ­nh sá»± kiá»‡n
-        await Event.findByIdAndDelete(eventId, { session });
+        await Promise.all([
+          Ticket.deleteMany({ event: eventId }),
+          Order.deleteMany({ eventId }),
+          EventReview.deleteMany({ eventId }),
+          UserFavoriteEvent.deleteMany({ eventId })
+        ]);
 
-        await session.commitTransaction();
-        await logAction(
-            req.user.id,             // ID cá»§a Admin
-            'DELETE_EVENT',          // HÃ nh Ä‘á»™ng
-            eventId,                 // ID sá»± kiá»‡n bá»‹ xÃ³a
-            'Event',                 // Model
-            { eventName: event.name, reason: 'Vi pháº¡m chÃ­nh sÃ¡ch' } // ThÃ´ng tin thÃªm
-          );
-          
-        res.json({ success: true, message: 'ÄÃ£ xÃ³a sá»± kiá»‡n' });
-        res.json({ success: true, message: 'ÄÃ£ xÃ³a sá»± kiá»‡n thÃ nh cÃ´ng' });
+        await Event.findByIdAndDelete(eventId);
+
+        logger.info(`Admin ${req.user?.name || req.user?._id || 'unknown'} đã xóa sự kiện ${eventId}`);
+        res.json({ success: true, message: 'Đã xóa sự kiện thành công' });
       } catch (err) {
-        await session.abortTransaction();
-        res.status(500).json({ success: false, message: err.message });
-      } finally {
-        session.endSession();
+        logger.error('Lỗi xóa sự kiện:', err);
+        res.status(500).json({ success: false, message: err.message || 'Lỗi khi xóa sự kiện' });
+      }
+    }
+  ],
+
+  manageUsers: [
+    roleMiddleware('admin'),
+    async (req, res) => {
+      try {
+        const page = Number.parseInt(req.query.page, 10) || 1;
+        const limit = 10;
+        const role = (req.query.role || '').trim();
+        const status = (req.query.status || '').trim();
+        const q = (req.query.q || '').trim();
+
+        const dbQuery = {};
+
+        if (role) {
+          dbQuery.role = role;
+        }
+
+        if (status === 'active') {
+          dbQuery.isActive = true;
+        } else if (status === 'inactive') {
+          dbQuery.isActive = false;
+        }
+
+        if (q) {
+          dbQuery.$or = [
+            { name: { $regex: q, $options: 'i' } },
+            { email: { $regex: q, $options: 'i' } },
+            { phone: { $regex: q, $options: 'i' } }
+          ];
+        }
+
+        const total = await User.countDocuments(dbQuery);
+        const users = await User.find(dbQuery)
+          .sort({ createdAt: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean();
+
+        const [totalUsers, activeUsers, inactiveUsers, adminCount, organizerCount, userCount] = await Promise.all([
+          User.countDocuments({}),
+          User.countDocuments({ isActive: true }),
+          User.countDocuments({ isActive: false }),
+          User.countDocuments({ role: 'admin' }),
+          User.countDocuments({ role: 'Organizer' }),
+          User.countDocuments({ role: 'user' })
+        ]);
+
+        return res.render('admin/dashboard/users', {
+          pageTitle: 'Quản lý người dùng',
+          user: req.user,
+          users,
+          filters: {
+            q,
+            role,
+            status
+          },
+          stats: {
+            totalUsers,
+            activeUsers,
+            inactiveUsers,
+            adminCount,
+            organizerCount,
+            userCount
+          },
+          pagination: {
+            page,
+            totalPages: Math.max(1, Math.ceil(total / limit))
+          }
+        });
+      } catch (err) {
+        logger.error('Lỗi tải danh sách người dùng admin:', err);
+        return res.render('admin/dashboard/users', {
+          pageTitle: 'Quản lý người dùng',
+          user: req.user,
+          users: [],
+          filters: { q: '', role: '', status: '' },
+          stats: {
+            totalUsers: 0,
+            activeUsers: 0,
+            inactiveUsers: 0,
+            adminCount: 0,
+            organizerCount: 0,
+            userCount: 0
+          },
+          pagination: { page: 1, totalPages: 1 },
+          errorMessage: 'Không thể tải danh sách người dùng'
+        });
+      }
+    }
+  ],
+
+  manageEventDetail: [
+    roleMiddleware('admin'),
+    async (req, res) => {
+      try {
+        const { eventId } = req.params;
+        const event = await Event.findById(eventId).populate('organizer', 'name email phone').lean();
+
+        if (!event) {
+          return res.status(404).render('clients/page/error/404', {
+            pageTitle: 'Không tìm thấy sự kiện',
+            message: 'Sự kiện không tồn tại hoặc đã bị xóa'
+          });
+        }
+
+        const paidOrders = await Order.find({ eventId, status: 'PAID' }).sort({ createdAt: -1 }).lean();
+        const [pendingOrdersCount, cancelledOrdersCount, expiredOrdersCount, recentNotifications] = await Promise.all([
+          Order.countDocuments({ eventId, status: 'PENDING' }),
+          Order.countDocuments({ eventId, status: 'CANCELLED' }),
+          Order.countDocuments({ eventId, status: 'EXPIRED' }),
+          Notification.find({ eventId }).sort({ createdAt: -1 }).limit(8).lean()
+        ]);
+
+        const ticketTypeStats = (event.ticketTypes || []).map((ticketType) => {
+          const quantity = Number(ticketType.quantity || 0);
+          const sold = Number(ticketType.sold || 0);
+          const holded = Number(ticketType.holded || 0);
+          const available = Math.max(0, quantity - sold - holded);
+          const revenue = sold * Number(ticketType.price || 0);
+          const fillRate = quantity > 0 ? Math.round((sold / quantity) * 100) : 0;
+
+          return {
+            _id: ticketType._id,
+            type: ticketType.type,
+            price: Number(ticketType.price || 0),
+            quantity,
+            sold,
+            holded,
+            available,
+            revenue,
+            fillRate
+          };
+        });
+
+        const totalCapacity = ticketTypeStats.reduce((sum, item) => sum + item.quantity, 0);
+        const totalSold = ticketTypeStats.reduce((sum, item) => sum + item.sold, 0);
+        const totalHeld = ticketTypeStats.reduce((sum, item) => sum + item.holded, 0);
+        const totalAvailable = ticketTypeStats.reduce((sum, item) => sum + item.available, 0);
+        const totalRevenue = ticketTypeStats.reduce((sum, item) => sum + item.revenue, 0);
+        const fillRate = totalCapacity > 0 ? Math.round((totalSold / totalCapacity) * 100) : 0;
+
+        const { startDay, labels } = buildLast14Days();
+        const revenueByDayData = await Order.aggregate([
+          { $match: { eventId: event._id, status: 'PAID', createdAt: { $gte: startDay } } },
+          {
+            $group: {
+              _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+              revenue: { $sum: '$totalAmount' }
+            }
+          },
+          { $sort: { _id: 1 } }
+        ]);
+
+        const ticketsByDayData = await Order.aggregate([
+          { $match: { eventId: event._id, status: 'PAID', createdAt: { $gte: startDay } } },
+          { $unwind: '$items' },
+          {
+            $group: {
+              _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+              tickets: { $sum: '$items.quantity' }
+            }
+          },
+          { $sort: { _id: 1 } }
+        ]);
+
+        const revenueMap = new Map(revenueByDayData.map((item) => [item._id, item.revenue]));
+        const ticketsMap = new Map(ticketsByDayData.map((item) => [item._id, item.tickets]));
+        const lowSalesAlert = getLowSalesAlert(event, totalSold, totalCapacity);
+
+        return res.render('admin/dashboard/event-detail', {
+          pageTitle: `Phân tích sự kiện - ${event.name}`,
+          user: req.user,
+          event,
+          stats: {
+            totalCapacity,
+            totalSold,
+            totalHeld,
+            totalAvailable,
+            totalRevenue,
+            fillRate,
+            paidOrdersCount: paidOrders.length,
+            pendingOrdersCount,
+            cancelledOrdersCount,
+            expiredOrdersCount
+          },
+          ticketTypeStats,
+          recentNotifications,
+          recentPaidOrders: paidOrders.slice(0, 8),
+          lowSalesAlert,
+          lineChart: {
+            labels,
+            revenue: labels.map((label) => revenueMap.get(label) || 0),
+            tickets: labels.map((label) => ticketsMap.get(label) || 0)
+          },
+          ticketChart: {
+            labels: ticketTypeStats.map((item) => item.type),
+            sold: ticketTypeStats.map((item) => item.sold),
+            remaining: ticketTypeStats.map((item) => item.available),
+            revenue: ticketTypeStats.map((item) => item.revenue)
+          }
+        });
+      } catch (err) {
+        logger.error('Lỗi tải chi tiết phân tích sự kiện:', err);
+        return res.status(500).render('clients/page/error/500', {
+          pageTitle: 'Lỗi máy chủ',
+          message: 'Không thể tải trang phân tích sự kiện'
+        });
+      }
+    }
+  ],
+
+  notifyOrganizerAboutEvent: [
+    roleMiddleware('admin'),
+    async (req, res) => {
+      try {
+        const { eventId } = req.params;
+        const event = await Event.findById(eventId).populate('organizer', 'name email');
+
+        if (!event) {
+          return res.status(404).json({ success: false, message: 'Không tìm thấy sự kiện' });
+        }
+
+        if (!event.organizer?._id) {
+          return res.status(400).json({ success: false, message: 'Sự kiện chưa có nhà tổ chức hợp lệ' });
+        }
+
+        const ticketTypeStats = (event.ticketTypes || []).map((ticketType) => ({
+          quantity: Number(ticketType.quantity || 0),
+          sold: Number(ticketType.sold || 0),
+          revenue: Number(ticketType.sold || 0) * Number(ticketType.price || 0)
+        }));
+
+        const totalCapacity = ticketTypeStats.reduce((sum, item) => sum + item.quantity, 0);
+        const totalSold = ticketTypeStats.reduce((sum, item) => sum + item.sold, 0);
+        const totalRevenue = ticketTypeStats.reduce((sum, item) => sum + item.revenue, 0);
+        const fillRate = totalCapacity > 0 ? Math.round((totalSold / totalCapacity) * 100) : 0;
+        const lowSalesAlert = getLowSalesAlert(event, totalSold, totalCapacity);
+
+        const title = lowSalesAlert
+          ? `Canh bao ban ve cham - ${event.name}`
+          : `Cap nhat doanh so ve - ${event.name}`;
+        const message = lowSalesAlert
+          ? `Su kien "${event.name}" dang ban cham. Da ban ${totalSold}/${totalCapacity} ve (${fillRate}%). Doanh thu tam tinh ${Number(totalRevenue).toLocaleString('vi-VN')} d.`
+          : `Cap nhat hien tai cho su kien "${event.name}": da ban ${totalSold}/${totalCapacity} ve (${fillRate}%). Doanh thu tam tinh ${Number(totalRevenue).toLocaleString('vi-VN')} d.`;
+
+        const notification = await Notification.create({
+          userId: event.organizer._id,
+          eventId: event._id,
+          type: lowSalesAlert ? 'low_sales_warning' : 'sales_update',
+          title,
+          message,
+          meta: {
+            totalSold,
+            totalCapacity,
+            fillRate,
+            totalRevenue
+          }
+        });
+
+        logger.info(
+          `Admin ${req.user?.name || req.user?._id || 'unknown'} đã gửi thông báo sự kiện ${eventId} cho organizer ${event.organizer._id}`
+        );
+
+        return res.json({
+          success: true,
+          message: lowSalesAlert
+            ? 'Đã gửi cảnh báo bán chậm cho nhà tổ chức'
+            : 'Đã gửi cập nhật doanh số vé cho nhà tổ chức',
+          notification
+        });
+      } catch (err) {
+        logger.error('Lỗi gửi thông báo cho organizer:', err);
+        return res.status(500).json({ success: false, message: 'Không thể gửi thông báo cho nhà tổ chức' });
       }
     }
   ],
@@ -442,15 +675,17 @@ manageEvents: [
       try {
         const { userId } = req.params;
         const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ success: false, message: 'NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i' });
+        if (!user) return res.status(404).json({ success: false, message: 'Người dùng không tồn tại' });
 
-        // Äáº£o ngÆ°á»£c tráº¡ng thÃ¡i isActive
         user.isActive = !user.isActive;
         await user.save();
 
-        res.json({ success: true, message: `ÄÃ£ ${user.isActive ? 'má»Ÿ khÃ³a' : 'khÃ³a'} tÃ i khoáº£n` });
+        res.json({ 
+          success: true, 
+          message: `Đã ${user.isActive ? 'mở khóa' : 'khóa'} tài khoản thành công` 
+        });
       } catch (err) {
-        res.status(500).json({ success: false, message: 'Lá»—i server' });
+        res.status(500).json({ success: false, message: 'Lỗi hệ thống khi cập nhật trạng thái người dùng' });
       }
     }
   ],
@@ -463,7 +698,7 @@ manageEvents: [
         const limit = 20;
         
         const logs = await AuditLog.find({})
-          .populate('adminId', 'name') // Láº¥y tÃªn Admin
+          .populate('adminId', 'name')
           .sort({ createdAt: -1 })
           .skip((page - 1) * limit)
           .limit(limit);
@@ -471,12 +706,12 @@ manageEvents: [
         const total = await AuditLog.countDocuments({});
 
         res.render('admin/logs', { 
-          pageTitle: 'Quáº£n lÃ½ Logs',
+          pageTitle: 'Quản lý Nhật ký hệ thống (Logs)',
           logs,
           pagination: { page, totalPages: Math.ceil(total / limit) }
         });
       } catch (err) {
-        res.status(500).send('Lá»—i láº¥y dá»¯ liá»‡u log');
+        res.status(500).send('Lỗi khi lấy dữ liệu nhật ký');
       }
     }
   ]

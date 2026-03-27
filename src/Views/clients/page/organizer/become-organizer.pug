@@ -1,0 +1,120 @@
+extends ../../../layout
+
+block content
+  section.py-5
+    .container
+      .row.justify-content-center
+        .col-lg-9
+          .card.shadow-sm.border-0
+            .card-body.p-4.p-md-5
+              h1.fw-bold.mb-3 Trở thành nhà tổ chức
+              p.text-muted.mb-4
+                | Đồng hành cùng EventVé để tạo sự kiện, bán vé và quản lý doanh thu dễ dàng.
+
+              .alert.alert-warning.border-0.mb-4
+                h5.fw-bold.mb-2 Lưu ý quan trọng trước khi đăng ký
+                ul.mb-0.ps-3
+                  li Không hiển thị thông tin liên hệ của Ban tổ chức trên banner và nội dung bài đăng.
+                  li Sự kiện không đúng quy định có thể bị từ chối phê duyệt hoặc gỡ bỏ.
+                  li Nội dung vi phạm chính sách nền tảng sẽ bị xử lý theo điều khoản dịch vụ.
+
+              .d-flex.flex-wrap.gap-2
+                a.btn.btn-primary(href="/organizer-terms")
+                  i.fas.fa-file-contract.me-2
+                  | Xem điều khoản nhà tổ chức
+
+                if !user
+                  a.btn.btn-outline-secondary(href="/login")
+                    i.fas.fa-right-to-bracket.me-2
+                    | Đăng nhập để đăng ký
+                else if (user.role || '').toLowerCase() === 'organizer'
+                  a.btn.btn-success(href="/organizer/create-event")
+                    i.fas.fa-calendar-plus.me-2
+                    | Vào trang tạo sự kiện
+                else if (user.role || '').toLowerCase() === 'admin'
+                  button.btn.btn-outline-secondary(type="button" disabled) Tài khoản admin không thể đăng ký
+                else
+                  button#becomeOrganizerBtn.btn.btn-outline-secondary(type="button")
+                    i.fas.fa-user-check.me-2
+                    | Đăng ký làm nhà tổ chức
+
+  .modal.fade#organizerNoticeModal(tabindex="-1" aria-hidden="true")
+    .modal-dialog.modal-dialog-centered.modal-lg
+      .modal-content.border-0.shadow
+        .modal-body.p-4.p-md-5
+          h4.fw-bold.mb-3 LƯU Ý KHI ĐĂNG TẢI SỰ KIỆN
+          ol.ps-3.mb-4
+            li.mb-2
+              | Vui lòng 
+              strong không hiển thị thông tin liên hệ của Ban Tổ Chức
+              |  (số điện thoại, email, website, Facebook...) 
+              strong trên banner và trong nội dung bài đăng.
+            li.mb-2
+              | Trường hợp tạo mới hoặc cập nhật sự kiện không đúng quy định, 
+              strong EventVé có quyền từ chối phê duyệt sự kiện.
+            li
+              | Nếu phát hiện nội dung/hình ảnh vi phạm, 
+              strong EventVé có quyền gỡ bỏ hoặc từ chối cung cấp dịch vụ.
+          .text-center
+            button.btn.btn-outline-secondary.px-4(type="button" data-bs-dismiss="modal") OK
+
+block append scripts
+  script.
+    document.addEventListener('DOMContentLoaded', function () {
+      const modalElement = document.getElementById('organizerNoticeModal');
+      if (modalElement && typeof bootstrap !== 'undefined') {
+        const modal = new bootstrap.Modal(modalElement, {
+          backdrop: 'static',
+          keyboard: false
+        });
+        modal.show();
+      }
+
+      const becomeOrganizerBtn = document.getElementById('becomeOrganizerBtn');
+      if (!becomeOrganizerBtn) return;
+
+      becomeOrganizerBtn.addEventListener('click', async function () {
+        const { isConfirmed } = await Swal.fire({
+          title: 'Xác nhận đăng ký?',
+          text: 'Sau khi xác nhận, tài khoản của bạn sẽ được cập nhật thành Nhà tổ chức.',
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: 'Xác nhận',
+          cancelButtonText: 'Hủy'
+        });
+
+        if (!isConfirmed) return;
+
+        Swal.fire({
+          title: 'Đang xử lý...',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        try {
+          const response = await fetch('/become-organizer/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
+            throw new Error(result.message || 'Không thể đăng ký nhà tổ chức');
+          }
+
+          await Swal.fire({
+            icon: 'success',
+            title: 'Thành công',
+            text: result.message || 'Bạn đã trở thành nhà tổ chức'
+          });
+
+          window.location.href = result.redirect || '/organizer/create-event';
+        } catch (error) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Lỗi',
+            text: error.message || 'Không thể đăng ký nhà tổ chức'
+          });
+        }
+      });
+    });

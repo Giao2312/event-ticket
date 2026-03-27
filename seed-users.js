@@ -1,84 +1,79 @@
-// src/scripts/seed-users.js
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
-
-import User from './src/models/user.models.js'; // Đường dẫn đến model User của bạn
+import User from './src/models/user.models.js';
 import env from './src/config/env.js';
 
-
-// Kết nối MongoDB (sử dụng cùng config với dự án)
 const connectDB = async () => {
   try {
-    await mongoose.connect(env.DB_URL, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log('✅ MongoDB connected for seeding');
+    await mongoose.connect(env.DB_URL);
+    console.log('MongoDB connected for seeding');
   } catch (err) {
-    console.error('❌ MongoDB connection error:', err.message);
+    console.error('MongoDB connection error:', err.message);
     process.exit(1);
   }
 };
 
-// Danh sách tài khoản mẫu
 const seedUsers = [
   {
     name: 'Admin Test',
-    email: 'admin@test.com',
-    password:'admin123',
+    email: 'admin@demo.com',
+    password: 'admin123',
     role: 'admin',
     phone: '0987654321',
-    address: 'Hà Nội',
+    address: 'Ha Noi'
   },
   {
     name: 'Organizer Test',
-    email: 'organizer@test.com',
+    email: 'organizer@demo.com',
     password: 'organizer123',
     role: 'Organizer',
     phone: '0912345678',
-    address: 'TP. Hồ Chí Minh',
+    address: 'TP. Ho Chi Minh'
   },
   {
-    name: 'Khách hàng Test',
-    email: 'user@test.com',
+    name: 'Khach hang Test',
+    email: 'user@demo.com',
     password: 'user123',
-    role: 'user', // hoặc 'customer' tùy model của bạn
+    role: 'user',
     phone: '0909876543',
-    address: 'Đà Nẵng',
-  },
+    address: 'Da Nang'
+  }
 ];
 
-// Hàm hash mật khẩu và tạo user
 const seed = async () => {
   try {
     await connectDB();
 
-    // Xóa user cũ nếu cần (cẩn thận khi dùng trên production!)
-    // await User.deleteMany({ email: { $in: seedUsers.map(u => u.email) } });
-
     for (const userData of seedUsers) {
-      const existingUser = await User.findOne({ email: userData.email });
+      const email = userData.email.toLowerCase();
+      const existingUser = await User.findOne({ email });
+
       if (existingUser) {
-        console.log(`User ${userData.email} đã tồn tại, bỏ qua...`);
+        existingUser.name = userData.name;
+        existingUser.role = userData.role;
+        existingUser.phone = userData.phone;
+        existingUser.address = userData.address;
+        // Set plain password; model pre-save hook hashes exactly once.
+        existingUser.password = userData.password;
+        await existingUser.save();
+        console.log(`Updated: ${email} (${userData.role})`);
         continue;
       }
 
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
-      const password = userData.password;
       const newUser = new User({
         ...userData,
-        password: hashedPassword ,
+        email,
+        // Set plain password; model pre-save hook hashes exactly once.
+        password: userData.password
       });
 
       await newUser.save();
-      console.log(`Đã tạo thành công: ${userData.email} (${userData.role})`);
-      console.log(`Đã tạo thành công: ${userData.password}`);
+      console.log(`Created: ${email} (${userData.role})`);
     }
 
-    console.log('🌱 Seeding hoàn tất!');
+    console.log('Seed users completed');
     process.exit(0);
   } catch (err) {
-    console.error('Lỗi khi seed users:', err.message);
+    console.error('Error while seeding users:', err.message);
     process.exit(1);
   }
 };

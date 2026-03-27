@@ -46,6 +46,75 @@ const ticketTypeSubSchema = new mongoose.Schema({
   }
 });
 
+const seatingSectionSubSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      trim: true,
+      required: true
+    },
+    code: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      required: true
+    },
+    ticketTypeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true
+    },
+    ticketTypeName: {
+      type: String,
+      trim: true,
+      required: true
+    },
+    rows: {
+      type: Number,
+      min: 1,
+      required: true
+    },
+    seatsPerRow: {
+      type: Number,
+      min: 1,
+      required: true
+    },
+    rowLabelType: {
+      type: String,
+      enum: ['letters', 'numbers'],
+      default: 'letters'
+    },
+    seatCount: {
+      type: Number,
+      min: 1,
+      required: true
+    }
+  },
+  { _id: false }
+);
+
+const seatingSubSchema = new mongoose.Schema(
+  {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    mode: {
+      type: String,
+      enum: ['general_admission', 'reserved_seating'],
+      default: 'general_admission'
+    },
+    sections: {
+      type: [seatingSectionSubSchema],
+      default: []
+    },
+    totalSeats: {
+      type: Number,
+      default: 0
+    }
+  },
+  { _id: false }
+);
+
 // Virtual tính vé còn lại cho từng loại vé
 ticketTypeSubSchema.virtual('available').get(function () {
   const holded = this.holded || 0;
@@ -88,8 +157,16 @@ const eventSchema = new mongoose.Schema({
     default: 'khác'
   },
   description: { type: String, trim: true, maxlength: 5000 },
+  endDate: { type: Date },
   date: { type: Date, required: [true, 'Ngày sự kiện là bắt buộc'] },
   location: { type: String, required: [true, 'Địa điểm là bắt buộc'], trim: true },
+  eventMode: {
+    type: String,
+    enum: ['offline', 'online'],
+    default: 'offline'
+  },
+  venueName: { type: String, trim: true, default: '' },
+  onlineLink: { type: String, trim: true, default: '' },
   organizer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   image: { type: String, default: '' },
 
@@ -108,6 +185,10 @@ const eventSchema = new mongoose.Schema({
 
   // Gộp TicketType vào đây (sub-document array)
   ticketTypes: [ticketTypeSubSchema],
+  seating: {
+    type: seatingSubSchema,
+    default: () => ({ enabled: false, mode: 'general_admission', sections: [], totalSeats: 0 })
+  },
 
   views: { type: Number, default: 0 },
   isFeatured: { type: Boolean, default: false },
@@ -150,17 +231,9 @@ eventSchema.pre('save', function (next) {
     this.slug = slugify(this.name, { lower: true, strict: true }) + '-' + Date.now().toString().slice(-6);
   }
 
-  // Cập nhật status theo ngày
-  const now = new Date();
-  if (this.date < now) {
-    this.status = 'ended';
-  } else if (this.status === 'published' || this.status === 'approved') {
-    if (this.date <= new Date(now.getTime() + 24 * 60 * 60 * 1000)) {
-      this.status = 'ongoing';
-    } else {
-      this.status = 'upcoming';
-    }
-  }
+  // Status canonicalization is handled explicitly by canonicalizeEventStatus() in
+  // event.service.js — do NOT duplicate here to avoid double-assignment when the
+  // service calls it before save and the hook runs again.
 
   // Giới hạn sold không vượt quantity
   if (this.ticketTypes) {
@@ -169,6 +242,20 @@ eventSchema.pre('save', function (next) {
         tt.sold = tt.quantity;
       }
     });
+  }
+
+  if (!this.seating?.enabled) {
+    this.seating = {
+      enabled: false,
+      mode: 'general_admission',
+      sections: [],
+      totalSeats: 0
+    };
+  } else {
+    this.seating.totalSeats = (this.seating.sections || []).reduce(
+      (sum, section) => sum + (section.seatCount || 0),
+      0
+    );
   }
 
   next();

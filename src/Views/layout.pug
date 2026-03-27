@@ -11,7 +11,7 @@ html(lang="vi")
     link(href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet")
     link(rel="stylesheet", href="/css/style.css")
 
-  body.d-flex.flex-column.min-vh-100
+  body.d-flex.flex-column.min-vh-100(data-user-role=(user && user.role) ? user.role.toLowerCase() : '')
     include partials/header.pug
 
     main.flex-grow-1

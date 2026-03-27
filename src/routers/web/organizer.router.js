@@ -3,6 +3,7 @@ import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import roleMiddleware from "../../middlewares/role.middleware.js";
 import OrganizerOrderController from "../../controllers/Organizer.controller.js";
 import OrderController from "../../controllers/order.controller.js";
+import { upload } from "../../middlewares/upload.middlewares.js";
 
 const router = express.Router();
 
@@ -43,6 +44,12 @@ router.post(
   "/organizer/create-event",
   authMiddleware,
   roleMiddleware("Organizer"),
+  upload.fields([
+    { name: "coverImage", maxCount: 1 },
+    { name: "galleryImages", maxCount: 5 },
+    { name: "venueProofImage", maxCount: 1 },
+    { name: "onlineProofImage", maxCount: 1 }
+  ]),
   OrganizerOrderController.createEvent
 );
 

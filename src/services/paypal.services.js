@@ -16,7 +16,7 @@ const paypalService = {
       purchase_units: [{
         amount: {
           currency_code: 'USD',
-          value: (amount / 25000).toFixed(2) // Giả định tỉ giá 1 USD = 25,000 VND
+          value: (amount / 25000).toFixed(2) 
         }
       }]
     });

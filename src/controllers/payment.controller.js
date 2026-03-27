@@ -1,282 +1,229 @@
-﻿import crypto from 'node:crypto';
+import crypto from 'node:crypto';
 import axios from 'axios';
-import mongoose from 'mongoose'; // THÃŠM DÃ’NG NÃ€Y
+import mongoose from 'mongoose';
 import env from '../config/env.js';
 import Order from '../models/order.models.js';
-import Ticket from '../models/ticket.models.js';
-import Event from '../models/event.models.js';
-import qrcode from 'qrcode';
+import logger from '../utils/logger.js';
+import { finalizePaidOrder, isTransientMongoError } from '../services/checkout.service.js';
 
 const buildClientRedirect = (path) => {
-    const base = (env.CLIENT_URL || '').trim();
-    return base ? `${base}${path}` : path;
+  const base = (env.CLIENT_URL || '').trim();
+  return base ? `${base}${path}` : path;
+};
+
+const findOrderByMomoReference = async (momoRef) => {
+  if (!momoRef) return null;
+
+  let order = await Order.findOne({ momoOrderId: momoRef });
+  if (order) return order;
+
+  if (typeof momoRef === 'string' && momoRef.length >= 24) {
+    const baseOrderId = momoRef.slice(0, 24);
+    if (mongoose.Types.ObjectId.isValid(baseOrderId)) {
+      order = await Order.findById(baseOrderId);
+    }
+  }
+
+  return order;
+};
+
+// Query MoMo transaction status to verify payment actually succeeded.
+// This is the authoritative source — never trust redirect/callback params alone.
+const queryMomoTransaction = async (orderId) => {
+  try {
+    const requestId = `${orderId}-query-${Date.now()}`;
+    const rawSignature =
+      `accessKey=${env.MOMO_ACCESS_KEY}` +
+      `&orderId=${orderId}` +
+      `&partnerCode=${env.MOMO_PARTNER_CODE}` +
+      `&requestId=${requestId}`;
+
+    const signature = crypto
+      .createHmac('sha256', env.MOMO_SECRET_KEY)
+      .update(rawSignature)
+      .digest('hex');
+
+    const response = await axios.post(env.MOMO_API_URL, {
+      partnerCode: env.MOMO_PARTNER_CODE,
+      requestId,
+      orderId,
+      signature,
+      lang: 'vi'
+    });
+
+    return response.data;
+  } catch (err) {
+    logger.error('MoMo transaction query error:', err?.response?.data || err.message);
+    return null;
+  }
 };
 
 const PaymentController = {
-    createPayment: async (req, res) => {
-        try {
-            if (!req.user || !req.user.id) {
-                return res.status(401).json({ success: false, message: 'Vui long dang nhap de thanh toan' });
-            }
+  createPayment: async (req, res) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập để thanh toán' });
+      }
 
-            const { orderId, method } = req.body;
-            const order = await Order.findById(orderId).populate('eventId');
-            if (!order) return res.status(404).json({ message: 'ÄÆ¡n hÃ ng khÃ´ng tá»“n táº¡i' });
-            if (order.userId?.toString() !== req.user.id.toString()) {
-                return res.status(403).json({ success: false, message: 'Ban khong co quyen thanh toan don hang nay' });
-            }
-            const normalizedMethod = (method || '').toString().toLowerCase();
-            if (normalizedMethod !== 'momo') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Ban demo hien chi ho tro thanh toan MoMo'
-                });
-            }
-            if (order.status !== 'PENDING') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Don hang khong o trang thai cho thanh toan'
-                });
-            }
-            return await PaymentController.handleMomoPayment(req, res, order);
-        } catch (error) {
-            console.error('Payment Error:', error);
-            res.status(500).json({ message: 'Lá»—i server' });
-        }
-    },
+      const { orderId, method } = req.body;
+      const order = await Order.findById(orderId).populate('eventId');
+      if (!order) {
+        return res.status(404).json({ success: false, message: 'Đơn hàng không tồn tại' });
+      }
 
-    handleMomoPayment: async (req, res, order) => {
-      
-    const amount = Number.parseInt(order.totalAmount); 
-    const requestId = order._id + Date.now();
-    const orderIdMomo = order._id + Date.now();
-    const orderInfo = `Thanh toÃ¡n EventPass: ${order.eventId.name}`;
-    
-    // 2. ChÃº Ã½ thá»© tá»± tham sá»‘ theo chuáº©n MoMo v2
-    // accessKey, amount, extraData, ipnUrl, orderId, orderInfo, partnerCode, redirectUrl, requestId, requestType
-    const rawSignature = `accessKey=${env.MOMO_ACCESS_KEY}&amount=${amount}&extraData=&ipnUrl=${env.MOMO_RETURN_URL}&orderId=${orderIdMomo}&orderInfo=${orderInfo}&partnerCode=${env.MOMO_PARTNER_CODE}&redirectUrl=${env.MOMO_RETURN_URL}&requestId=${requestId}&requestType=captureWallet`;
-    
-    const signature = crypto.createHmac('sha256', env.MOMO_SECRET_KEY)
-                            .update(rawSignature)
-                            .digest('hex');
+      if (order.userId?.toString() !== req.user.id.toString()) {
+        return res.status(403).json({ success: false, message: 'Bạn không có quyền thanh toán đơn hàng này' });
+      }
+
+      const normalizedMethod = (method || '').toString().toLowerCase();
+      if (normalizedMethod !== 'momo') {
+        return res.status(400).json({
+          success: false,
+          message: 'Bản demo hiện chỉ hỗ trợ thanh toán MoMo'
+        });
+      }
+
+      if (!['PENDING', 'PAYMENT_FAILED'].includes(order.status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Đơn hàng không ở trạng thái chờ thanh toán'
+        });
+      }
+
+      if (new Date(order.holdUntil) <= new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Đơn hàng đã hết thời gian giữ vé'
+        });
+      }
+
+      return PaymentController.handleMomoPayment(req, res, order);
+    } catch (error) {
+      logger.error('Payment Error:', error);
+      return res.status(500).json({ success: false, message: 'Lỗi server' });
+    }
+  },
+
+  handleMomoPayment: async (req, res, order) => {
+    const amount = Number.parseInt(order.totalAmount, 10);
+    const requestId = `${order._id}-${Date.now()}`;
+    const orderIdMomo = `${order._id}-${Date.now()}`;
+    const orderInfo = `Thanh toan EventPass: ${order.eventId.name}`;
+
+    const rawSignature =
+      `accessKey=${env.MOMO_ACCESS_KEY}` +
+      `&amount=${amount}` +
+      `&extraData=` +
+      `&ipnUrl=${env.MOMO_RETURN_URL}` +
+      `&orderId=${orderIdMomo}` +
+      `&orderInfo=${orderInfo}` +
+      `&partnerCode=${env.MOMO_PARTNER_CODE}` +
+      `&redirectUrl=${env.MOMO_RETURN_URL}` +
+      `&requestId=${requestId}` +
+      `&requestType=captureWallet`;
+
+    const signature = crypto
+      .createHmac('sha256', env.MOMO_SECRET_KEY)
+      .update(rawSignature)
+      .digest('hex');
 
     const response = await axios.post(env.MOMO_API_URL, {
-        partnerCode: env.MOMO_PARTNER_CODE,
-        partnerName: "EventPass", // ThÃªm náº¿u cáº§n thiáº¿t
-        storeId: "MomoTestStore", // ThÃªm náº¿u cáº§n thiáº¿t
-        requestId,
-        amount, // ÄÃ£ lÃ  Number
-        orderId: orderIdMomo,
-        orderInfo,
-        redirectUrl: env.MOMO_RETURN_URL,
-        ipnUrl: env.MOMO_RETURN_URL,
-        signature,
-        requestType: "captureWallet",
-        lang: 'vi',
-        extraData: "" // Äáº£m báº£o trÆ°á»ng nÃ y tá»“n táº¡i
+      partnerCode: env.MOMO_PARTNER_CODE,
+      partnerName: 'EventPass',
+      storeId: 'MomoTestStore',
+      requestId,
+      amount,
+      orderId: orderIdMomo,
+      orderInfo,
+      redirectUrl: env.MOMO_RETURN_URL,
+      ipnUrl: env.MOMO_RETURN_URL,
+      signature,
+      requestType: 'captureWallet',
+      lang: 'vi',
+      extraData: ''
     });
 
     order.paymentMethod = 'momo';
     order.momoOrderId = orderIdMomo;
+    order.paymentError = null;
     await order.save();
 
-    res.json({ success: true, paymentUrl: response.data.payUrl });
-},
+    return res.json({ success: true, paymentUrl: response.data.payUrl });
+  },
 
-    handlePaypalPayment: async (req, res, order) => {
-        return res.status(503).json({
-            success: false,
-            message: 'Ban demo dang tam dung PayPal, vui long dung MoMo'
-        });
-    },
+  handlePaypalPayment: async (req, res) =>
+    res.status(503).json({
+      success: false,
+      message: 'Bản demo đang tạm dừng PayPal, vui lòng dùng MoMo'
+    }),
 
-retryPayment: async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const userId = req.user.id; // Tá»« authMiddleware
+  momoReturn: async (req, res) => {
+    const { resultCode, orderId, requestId, signature } = req.query;
 
-    // 1. TÃ¬m order vÃ  kiá»ƒm tra quyá»n sá»Ÿ há»¯u
-    const order = await Order.findOne({ _id: orderId, userId });
+    try {
+      const normalizedCode = String(resultCode ?? '');
+      const momoRef = orderId || requestId;
 
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng hoáº·c báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p' });
-    }
-
-    // 2. Chá»‰ cho phÃ©p retry khi á»Ÿ tráº¡ng thÃ¡i lá»—i xá»­ lÃ½
-    if (order.status !== 'PROCESSING_ERROR') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Chá»‰ cÃ³ thá»ƒ retry Ä‘Æ¡n hÃ ng Ä‘ang á»Ÿ tráº¡ng thÃ¡i lá»—i xá»­ lÃ½ (PROCESSING_ERROR)' 
-      });
-    }
-
-    // 3. Kiá»ƒm tra thá»i gian hold (náº¿u háº¿t háº¡n â†’ khÃ´ng retry Ä‘Æ°á»£c)
-    if (new Date() > new Date(order.holdUntil)) {
-      // Optional: cáº­p nháº­t tráº¡ng thÃ¡i thÃ nh expired
-      order.status = 'EXPIRED';
-      await order.save();
-      return res.status(400).json({ 
-        success: false, 
-        message: 'ÄÆ¡n hÃ ng Ä‘Ã£ háº¿t thá»i gian giá»¯ vÃ©, khÃ´ng thá»ƒ retry' 
-      });
-    }
-
-    // 4. Retry vá»›i retry logic (trÃ¡nh WriteConflict)
-    const MAX_RETRIES = 3;
-    let attempt = 1;
-
-    while (attempt <= MAX_RETRIES) {
-      const session = await mongoose.startSession();
-      session.startTransaction();
-
-      try {
-        await PaymentController.completeOrderAndGenerateTickets(orderId, { session });
-
-        await session.commitTransaction();
-        await session.endSession();
-
-        // 5. Gá»­i thÃ´ng bÃ¡o (email hoáº·c push notification) â€“ tÃ¹y chá»n
-        // await sendOrderSuccessEmail(order.userId, order._id);
-
-        return res.json({ 
-          success: true, 
-          message: 'ÄÃ£ xá»­ lÃ½ láº¡i Ä‘Æ¡n hÃ ng vÃ  táº¡o vÃ© thÃ nh cÃ´ng',
-          orderId: order._id 
-        });
-
-      } catch (err) {
-        await session.abortTransaction();
-        await session.endSession();
-
-        // Náº¿u lÃ  WriteConflict â†’ retry
-        if (err.code === 112 || err.errorLabels?.includes('TransientTransactionError')) {
-          console.log(`WriteConflict khi retry order ${orderId}, láº§n ${attempt}/${MAX_RETRIES}`);
-          if (attempt === MAX_RETRIES) {
-            throw new Error('Háº¿t lÆ°á»£t thá»­ láº¡i do xung Ä‘á»™t giao dá»‹ch');
-          }
-          attempt++;
-          continue;
-        }
-
-        // Lá»—i khÃ¡c â†’ throw
-        throw err;
-      }
-    }
-
-  } catch (error) {
-    console.error('Retry Payment Error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Retry tháº¥t báº¡i', 
-      error: error.message 
-    });
-  }
-},
-
-    completeOrderAndGenerateTickets: async (orderId) => {
-        const session = await mongoose.startSession();
-        session.startTransaction();
-
-        try {
-            const order = await Order.findById(orderId).session(session);
-
-            if (!order || order.status === 'PAID') {
-                await session.abortTransaction();
-                session.endSession();
-                return order;
-            }
-
-            const event = await Event.findById(order.eventId).session(session);
-            if (!event) {
-                throw new Error('Khong tim thay su kien de xuat ve');
-            }
-
-            const ticketsToCreate = [];
-            for (const item of order.items) {
-                const ticketType = event.ticketTypes.id(item.ticketTypeId);
-                if (!ticketType) {
-                    throw new Error(`Khong tim thay loai ve: ${item.ticketTypeId}`);
-                }
-
-                const holded = ticketType.holded || 0;
-                ticketType.holded = Math.max(0, holded - item.quantity);
-                ticketType.sold = Math.min(ticketType.quantity, (ticketType.sold || 0) + item.quantity);
-
-                for (let i = 0; i < item.quantity; i++) {
-                    const qrData = `Ticket:${order._id}-${item.ticketTypeId}-${Date.now()}-${i}`;
-                    const qrImage = await qrcode.toDataURL(qrData);
-
-                    ticketsToCreate.push({
-                        user: order.userId,
-                        event: order.eventId,
-                        ticketType: ticketType.type || String(item.ticketTypeId),
-                        quantity: 1,
-                        price: item.price,
-                        status: 'paid',
-                        qrCode: qrImage
-                    });
-                }
-            }
-
-            await event.save({ session });
-            const createdTickets = await Ticket.insertMany(ticketsToCreate, { session });
-
-            order.status = 'PAID';
-            order.paidAt = new Date();
-            order.tickets = createdTickets.map(t => t._id);
-            await order.save({ session });
-
-            await session.commitTransaction();
-            console.log('Transaction thÃ nh cÃ´ng cho Ä‘Æ¡n hÃ ng:', orderId);
-
-        } catch (error) {
-            await session.abortTransaction();
-            // Sá»­ dá»¥ng findByIdAndUpdate ngoÃ i session Ä‘á»ƒ ghi log lá»—i
-            await Order.findByIdAndUpdate(orderId, {
-                status: 'PROCESSING_ERROR',
-                errorLog: error.message
-            });
-            console.error('Lá»—i há»‡ thá»‘ng sau khi khÃ¡ch Ä‘Ã£ tráº£ tiá»n:', error);
-            throw error;
-        } finally {
-            session.endSession();
-        }
-    },
-
-    momoReturn: async (req, res) => {
-        const { resultCode, orderId, requestId } = req.query;
-        try {
-            const normalizedCode = String(resultCode ?? '');
-            const isSuccess = normalizedCode === '0' || normalizedCode === '9000';
-            const momoRef = orderId || requestId;
-
-            if (isSuccess && momoRef) {
-                let order = await Order.findOne({ momoOrderId: momoRef });
-
-                // Fallback cho demo: orderId MoMo co the kem timestamp, lay ObjectId goc
-                if (!order && typeof momoRef === 'string' && momoRef.length >= 24) {
-                    const baseOrderId = momoRef.slice(0, 24);
-                    if (mongoose.Types.ObjectId.isValid(baseOrderId)) {
-                        order = await Order.findById(baseOrderId);
-                    }
-                }
-
-                if (order) {
-                    await PaymentController.completeOrderAndGenerateTickets(order._id);
-                    return res.redirect(buildClientRedirect('/my-tickets?payment=success'));
-                }
-            }
-            res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
-        } catch (err) {
-            console.error('Momo Return Error:', err);
-            res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
-        }
-    },
-
-    paypalReturn: async (req, res) => {
+      // Step 1: Reject failed statuses immediately — no DB writes
+      if (normalizedCode !== '0' && normalizedCode !== '9000') {
         return res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
+      }
+
+      if (!momoRef || !signature) {
+        return res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
+      }
+
+      // Step 2: Verify MoMo signature to prove this callback is genuine
+      const rawSigData =
+        `accessKey=${env.MOMO_ACCESS_KEY}` +
+        `&amount=${req.query.amount || ''}` +
+        `&extraData=${req.query.extraData || ''}` +
+        `&message=${req.query.message || ''}` +
+        `&orderId=${momoRef}` +
+        `&orderInfo=Thanh toan EventPass` +
+        `&partnerCode=${env.MOMO_PARTNER_CODE}` +
+        `&redirectUrl=${env.MOMO_RETURN_URL}` +
+        `&requestId=${requestId || momoRef}` +
+        `&responseTime=${req.query.responseTime || ''}` +
+        `&transId=${req.query.transId || ''}`;
+
+      const expectedSig = crypto
+        .createHmac('sha256', env.MOMO_SECRET_KEY)
+        .update(rawSigData)
+        .digest('hex');
+
+      if (signature !== expectedSig) {
+        logger.warn(`MoMo signature mismatch for momoRef=${momoRef}`);
+        return res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
+      }
+
+      // Step 3: Query MoMo transaction status API to confirm payment really succeeded
+      // This is the authoritative check — never trust callback params alone
+      const transStatus = await queryMomoTransaction(momoRef);
+      if (!transStatus || transStatus.resultCode !== '0') {
+        logger.warn(`MoMo trans status check failed: ${JSON.stringify(transStatus)}`);
+        return res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
+      }
+
+      // Step 4: Find and finalize the order
+      const order = await findOrderByMomoReference(momoRef);
+      if (order) {
+        await finalizePaidOrder({
+          orderId: order._id,
+          allowedStatuses: ['PENDING', 'PAYMENT_FAILED']
+        });
+        return res.redirect(buildClientRedirect('/my-tickets?payment=success'));
+      }
+
+      return res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
+    } catch (err) {
+      logger.error('Momo Return Error:', err);
+      return res.redirect(buildClientRedirect('/my-tickets?payment=failed'));
     }
+  },
+
+  paypalReturn: async (req, res) =>
+    res.redirect(buildClientRedirect('/my-tickets?payment=failed'))
 };
 
 export default PaymentController;
-

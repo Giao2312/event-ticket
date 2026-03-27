@@ -1,0 +1,286 @@
+extends ../../layout
+
+block content
+  section.py-5.bg-light
+    .container
+      .d-flex.justify-content-between.align-items-start.mb-4.flex-wrap.gap-3
+        div
+          h2.fw-bold.mb-1= event.name
+          p.text-muted.mb-1
+            i.fas.fa-calendar-alt.me-2
+            | #{new Date(event.date).toLocaleString('vi-VN')}
+          p.text-muted.mb-0
+            i.fas.fa-map-marker-alt.me-2
+            | #{event.location || 'Chưa xác định'}
+        .d-flex.gap-2.flex-wrap
+          a.btn.btn-outline-secondary(href="/admin/dashboard/events") Quay lại danh sách
+          button.btn.btn-primary(type="button" onclick=`sendOrganizerNotification('${event._id}')`) Gửi cập nhật cho nhà tổ chức
+
+      .row.g-4.mb-4
+        .col-lg-8
+          .card.border-0.shadow-sm.h-100
+            .card-body
+              .row.g-3.align-items-center
+                .col-md-4
+                  img.img-fluid.rounded-4.shadow-sm(src=event.image || '/images/placeholder.jpg' alt=event.name style='width:100%; max-height:240px; object-fit:cover;')
+                .col-md-8
+                  .d-flex.flex-wrap.gap-2.mb-3
+                    span.badge.bg-primary= event.status || 'N/A'
+                    if event.organizer
+                      span.badge.bg-dark Organizer: #{event.organizer.name || event.organizer.email}
+                  if lowSalesAlert
+                    .alert(class=lowSalesAlert.severity === 'danger' ? 'alert-danger' : 'alert-warning')
+                      h6.fw-bold.mb-1 Cảnh báo bán vé
+                      p.mb-0= lowSalesAlert.message
+                  else
+                    .alert.alert-success
+                      h6.fw-bold.mb-1 Hiệu suất ổn định
+                      p.mb-0 Sự kiện đang đạt tiến độ bán vé phù hợp với thời gian diễn ra hiện tại.
+                  p.text-muted.mb-2
+                    strong Nhà tổ chức:
+                    = ` ${event.organizer && event.organizer.name ? event.organizer.name : 'Không rõ'}`
+                  p.text-muted.mb-2
+                    strong Email:
+                    = ` ${event.organizer && event.organizer.email ? event.organizer.email : 'Không rõ'}`
+                  p.text-muted.mb-0
+                    strong Sức chứa:
+                    |  #{stats.totalSold || 0}/#{stats.totalCapacity || 0} vé (#{stats.fillRate || 0}%)
+        .col-lg-4
+          .card.border-0.shadow-sm.h-100
+            .card-body
+              h5.fw-bold.mb-3 Tình trạng đơn hàng
+              .d-flex.justify-content-between.py-2.border-bottom
+                span Đã thanh toán
+                strong.text-success= stats.paidOrdersCount || 0
+              .d-flex.justify-content-between.py-2.border-bottom
+                span Chờ thanh toán
+                strong.text-warning= stats.pendingOrdersCount || 0
+              .d-flex.justify-content-between.py-2.border-bottom
+                span Đã hủy
+                strong.text-danger= stats.cancelledOrdersCount || 0
+              .d-flex.justify-content-between.py-2
+                span Hết hạn
+                strong.text-secondary= stats.expiredOrdersCount || 0
+
+      .row.g-4.mb-4
+        .col-md-3
+          .card.border-0.shadow-sm.text-center.h-100
+            .card-body
+              h6.text-muted.mb-1 Doanh thu
+              h3.fw-bold.text-success #{Number(stats.totalRevenue || 0).toLocaleString('vi-VN')} đ
+        .col-md-3
+          .card.border-0.shadow-sm.text-center.h-100
+            .card-body
+              h6.text-muted.mb-1 Vé đã bán
+              h3.fw-bold= stats.totalSold || 0
+        .col-md-3
+          .card.border-0.shadow-sm.text-center.h-100
+            .card-body
+              h6.text-muted.mb-1 Vé đang giữ
+              h3.fw-bold.text-warning= stats.totalHeld || 0
+        .col-md-3
+          .card.border-0.shadow-sm.text-center.h-100
+            .card-body
+              h6.text-muted.mb-1 Vé còn lại
+              h3.fw-bold.text-primary= stats.totalAvailable || 0
+
+      .row.g-4.mb-4
+        .col-lg-8
+          .card.border-0.shadow-sm.h-100
+            .card-body
+              h5.fw-bold.mb-3 Tốc độ bán vé và doanh thu 14 ngày
+              canvas#lineChart(height='120')
+        .col-lg-4
+          .card.border-0.shadow-sm.h-100
+            .card-body
+              h5.fw-bold.mb-3 Doanh thu theo loại vé
+              canvas#revenueChart(height='220')
+
+      .row.g-4.mb-4
+        .col-lg-7
+          .card.border-0.shadow-sm.h-100
+            .card-body
+              h5.fw-bold.mb-3 Cơ cấu vé theo từng loại
+              canvas#ticketBarChart(height='140')
+        .col-lg-5
+          .card.border-0.shadow-sm.h-100
+            .card-body
+              h5.fw-bold.mb-3 Loại vé
+              .table-responsive
+                table.table.table-hover.align-middle
+                  thead.table-light
+                    tr
+                      th Loại vé
+                      th Giá
+                      th Đã bán
+                      th Còn lại
+                      th Tỷ lệ
+                  tbody
+                    if ticketTypeStats && ticketTypeStats.length > 0
+                      each item in ticketTypeStats
+                        tr
+                          td.fw-semibold= item.type
+                          td #{Number(item.price || 0).toLocaleString('vi-VN')} đ
+                          td= item.sold
+                          td= item.available
+                          td
+                            span.badge(class=item.fillRate >= 60 ? 'bg-success' : item.fillRate >= 30 ? 'bg-warning text-dark' : 'bg-danger') #{item.fillRate}%
+                    else
+                      tr
+                        td.text-center(colspan='5') Chưa có loại vé nào
+
+      .row.g-4
+        .col-lg-6
+          .card.border-0.shadow-sm.h-100
+            .card-body
+              h5.fw-bold.mb-3 Đơn hàng thanh toán gần đây
+              .table-responsive
+                table.table.table-sm.align-middle
+                  thead.table-light
+                    tr
+                      th Mã đơn
+                      th Tổng tiền
+                      th Ngày
+                  tbody
+                    if recentPaidOrders && recentPaidOrders.length > 0
+                      each order in recentPaidOrders
+                        tr
+                          td= order._id
+                          td.text-success #{Number(order.totalAmount || 0).toLocaleString('vi-VN')} đ
+                          td= new Date(order.createdAt).toLocaleString('vi-VN')
+                    else
+                      tr
+                        td.text-center(colspan='3') Chưa có đơn hàng đã thanh toán
+        .col-lg-6
+          .card.border-0.shadow-sm.h-100
+            .card-body
+              h5.fw-bold.mb-3 Lịch sử thông báo cho organizer
+              if recentNotifications && recentNotifications.length > 0
+                .d-flex.flex-column.gap-3
+                  each item in recentNotifications
+                    .border.rounded-3.p-3(class=item.type === 'low_sales_warning' ? 'border-danger-subtle bg-danger-subtle' : 'border-primary-subtle bg-white')
+                      .d-flex.justify-content-between.align-items-start.gap-2
+                        div
+                          h6.fw-bold.mb-1= item.title
+                          p.mb-1.small= item.message
+                        span.badge(class=item.type === 'low_sales_warning' ? 'bg-danger' : 'bg-primary')= item.type === 'low_sales_warning' ? 'Cảnh báo' : 'Cập nhật'
+                      small.text-muted= new Date(item.createdAt).toLocaleString('vi-VN')
+              else
+                p.text-muted.mb-0 Chưa có thông báo nào được gửi cho nhà tổ chức.
+
+block append scripts
+  script(src='https://cdn.jsdelivr.net/npm/chart.js')
+  script.
+    const lineLabels = !{JSON.stringify(lineChart && lineChart.labels || [])};
+    const lineRevenue = !{JSON.stringify(lineChart && lineChart.revenue || [])};
+    const lineTickets = !{JSON.stringify(lineChart && lineChart.tickets || [])};
+    const ticketLabels = !{JSON.stringify(ticketChart && ticketChart.labels || [])};
+    const ticketSold = !{JSON.stringify(ticketChart && ticketChart.sold || [])};
+    const ticketRemaining = !{JSON.stringify(ticketChart && ticketChart.remaining || [])};
+    const ticketRevenue = !{JSON.stringify(ticketChart && ticketChart.revenue || [])};
+
+    const lineCanvas = document.getElementById('lineChart');
+    if (lineCanvas && lineLabels.length) {
+      new Chart(lineCanvas, {
+        type: 'line',
+        data: {
+          labels: lineLabels,
+          datasets: [
+            {
+              label: 'Doanh thu',
+              data: lineRevenue,
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37, 99, 235, 0.15)',
+              tension: 0.3,
+              fill: true,
+              yAxisID: 'y'
+            },
+            {
+              label: 'Vé bán',
+              data: lineTickets,
+              borderColor: '#16a34a',
+              backgroundColor: 'rgba(22, 163, 74, 0.15)',
+              tension: 0.3,
+              fill: true,
+              yAxisID: 'y1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'bottom' } },
+          scales: {
+            y: { beginAtZero: true, position: 'left' },
+            y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+          }
+        }
+      });
+    }
+
+    const revenueCanvas = document.getElementById('revenueChart');
+    if (revenueCanvas && ticketLabels.length) {
+      new Chart(revenueCanvas, {
+        type: 'doughnut',
+        data: {
+          labels: ticketLabels,
+          datasets: [{
+            data: ticketRevenue,
+            backgroundColor: ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0f766e'],
+            borderWidth: 2,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+    }
+
+    const ticketBarCanvas = document.getElementById('ticketBarChart');
+    if (ticketBarCanvas && ticketLabels.length) {
+      new Chart(ticketBarCanvas, {
+        type: 'bar',
+        data: {
+          labels: ticketLabels,
+          datasets: [
+            {
+              label: 'Đã bán',
+              data: ticketSold,
+              backgroundColor: '#16a34a'
+            },
+            {
+              label: 'Còn lại',
+              data: ticketRemaining,
+              backgroundColor: '#cbd5e1'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'bottom' } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    async function sendOrganizerNotification(eventId) {
+      if (!confirm('Gửi cập nhật doanh số và cảnh báo hiện tại cho nhà tổ chức?')) return;
+
+      try {
+        const res = await fetch(`/admin/events/${eventId}/notify-organizer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(data.message || 'Đã gửi thông báo');
+          location.reload();
+        } else {
+          alert(data.message || 'Không thể gửi thông báo');
+        }
+      } catch (err) {
+        alert('Lỗi kết nối: ' + err.message);
+      }
+    }

@@ -14,11 +14,11 @@ block content
       return 'upcoming';
     };
     const calcTotalTickets = (ev) => {
-      if (ev?.totalTickets != null) return ev.totalTickets;
+      if (ev && ev.totalTickets != null) return ev.totalTickets;
       return (ev.ticketTypes || []).reduce((sum, t) => sum + (t.quantity || 0), 0);
     };
     const calcSoldTickets = (ev) => {
-      if (ev?.totalSold != null) return ev.totalSold;
+      if (ev && ev.totalSold != null) return ev.totalSold;
       return (ev.ticketTypes || []).reduce((sum, t) => sum + (t.sold || 0), 0);
     };
     const pendingEvents = eventsList.filter(e => getStatus(e) === 'pending');
@@ -55,6 +55,22 @@ block content
             div.alert.alert-success.d-flex.align-items-center(role="alert")
               i.fas.fa-check-circle.me-2
               | Đã gửi yêu cầu tạo sự kiện cho admin duyệt. Sự kiện của bạn đang ở trạng thái chờ duyệt.
+
+          if notifications && notifications.length > 0
+            .card.border-0.shadow-sm.mb-4
+              .card-body
+                h5.fw-bold.mb-3 Thông báo từ hệ thống / admin
+                .d-flex.flex-column.gap-3
+                  each item in notifications
+                    .border.rounded-3.p-3(class=item.type === 'low_sales_warning' ? 'border-danger-subtle bg-danger-subtle' : 'border-primary-subtle bg-light')
+                      .d-flex.justify-content-between.align-items-start.gap-2
+                        div
+                          h6.fw-bold.mb-1= item.title
+                          p.mb-1.small= item.message
+                          if item.eventId && item.eventId.name
+                            small.text-muted Sự kiện: #{item.eventId.name}
+                        span.badge(class=item.type === 'low_sales_warning' ? 'bg-danger' : 'bg-primary')= item.type === 'low_sales_warning' ? 'Cảnh báo' : 'Cập nhật'
+                      small.text-muted= new Date(item.createdAt).toLocaleString('vi-VN')
 
           div.d-flex.justify-content-between.align-items-center.mb-4
             h2.fw-bold Sự kiện của tôi

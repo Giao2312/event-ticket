@@ -1,89 +1,95 @@
-﻿extends ../../layout
+extends ../../layout
 
 block content
-  section.py-5.bg-light
-    div.container
-      //- Header
-      div.d-flex.justify-content-between.align-items-center.mb-4
-        h2.fw-bold.text-dark Quản lý sự kiện toàn hệ thống
-        div.d-flex.gap-2
-          a.btn.btn-outline-primary.px-4.py-2.rounded-pill(href="/admin/dashboard/orders")
+  section.py-5.admin-dashboard
+    .container
+      .d-flex.justify-content-between.align-items-center.mb-4.flex-wrap.gap-2
+        div
+          h2.app-section-title.mb-1 Quản lý sự kiện toàn hệ thống
+          p.app-section-subtitle.mb-0 Theo dõi doanh thu, trạng thái và duyệt sự kiện tập trung.
+        .d-flex.gap-2
+          a.btn.btn-brand-secondary.px-4.py-2(href="/admin/dashboard/orders")
             i.fas.fa-receipt.me-2
             | Quản lý đơn hàng
-          a.btn.btn-gradient.px-5.py-3.rounded-pill.shadow-sm(href="/admin/events/create")
+          a.btn.btn-brand-primary.px-4.py-2(href="/admin/events/create")
             i.fas.fa-plus.me-2
-            | Tạo sự kiện mới (Admin)
+            | Tạo sự kiện mới
 
-      //- Tổng quan KPI
-      div.row.g-4.mb-4
-        div.col-md-3
-          div.card.border-0.shadow-sm
-            div.card-body
-              h6.text-muted.mb-1 Tổng doanh thu
+      .row.g-4.mb-4
+        .col-md-3
+          .card.app-card.h-100
+            .card-body
+              h6.card-title-muted.mb-1 Tổng doanh thu
               h3.fw-bold.text-success #{(stats && stats.totalRevenue || 0).toLocaleString('vi-VN')} đ
               small.text-muted Doanh thu sau chiết khấu
 
-        div.col-md-3
-          div.card.border-0.shadow-sm
-            div.card-body
-              h6.text-muted.mb-1 Vé đã bán
+        .col-md-3
+          .card.app-card.h-100
+            .card-body
+              h6.card-title-muted.mb-1 Vé đã bán
               h3.fw-bold #{stats && stats.ticketsSold || 0}
               small.text-muted #{stats && stats.ticketsSold || 0}/#{stats && stats.totalCapacity || 0} vé (#{stats && stats.fillRate || 0}%)
 
-        div.col-md-3
-          div.card.border-0.shadow-sm
-            div.card-body
-              h6.text-muted.mb-1 Lưu lượng truy cập
+        .col-md-3
+          .card.app-card.h-100
+            .card-body
+              h6.card-title-muted.mb-1 Lưu lượng truy cập
               h3.fw-bold.text-primary #{stats && stats.traffic || 0}
               small.text-muted Tổng lượt xem
 
-        div.col-md-3
-          div.card.border-0.shadow-sm
-            div.card-body
-              h6.text-muted.mb-1 Tỷ lệ chuyển đổi
+        .col-md-3
+          .card.app-card.h-100
+            .card-body
+              h6.card-title-muted.mb-1 Tỷ lệ chuyển đổi
               h3.fw-bold.text-warning #{stats && stats.conversionRate || 0}%
               small.text-muted Đơn hàng/traffic
 
-      //- Biểu đồ
-      div.row.g-4.mb-5
-        div.col-lg-8
-          div.card.border-0.shadow-sm.h-100
-            div.card-body
+      .row.g-4.mb-5
+        .col-lg-8
+          .card.app-card.h-100
+            .card-body
               h5.fw-bold.mb-3 Tốc độ bán vé (14 ngày)
               canvas#lineChart(height="120")
-        div.col-lg-4
-          div.card.border-0.shadow-sm.h-100
-            div.card-body
+        .col-lg-4
+          .card.app-card.h-100
+            .card-body
               h5.fw-bold.mb-3 Doanh thu theo phương thức
               canvas#pieChart(height="140")
 
-      div.row.g-4.mb-5
-        div.col-md-3
-          div.card.border-0.shadow-sm.text-center
-            div.card-body
+      .row.g-4.mb-5
+        .col-md-3
+          .card.app-card.status-card.text-center.h-100
+            .card-body
+              .status-icon.pending.mx-auto
+                i.fas.fa-hourglass-half
               h5.text-primary Chờ duyệt
               h2.fw-bold.text-warning #{pendingCount || 0}
               small.text-muted Sự kiện mới cần kiểm tra
 
-        div.col-md-3
-          div.card.border-0.shadow-sm.text-center
-            div.card-body
+        .col-md-3
+          .card.app-card.status-card.text-center.h-100
+            .card-body
+              .status-icon.upcoming.mx-auto
+                i.fas.fa-calendar-check
               h5.text-success Sắp diễn ra
               h2.fw-bold #{upcomingCount || 0}
 
-        div.col-md-3
-          div.card.border-0.shadow-sm.text-center
-            div.card-body
+        .col-md-3
+          .card.app-card.status-card.text-center.h-100
+            .card-body
+              .status-icon.ongoing.mx-auto
+                i.fas.fa-play-circle
               h5.text-info Đang diễn ra
               h2.fw-bold #{ongoingCount || 0}
 
-        div.col-md-3
-          div.card.border-0.shadow-sm.text-center
-            div.card-body
+        .col-md-3
+          .card.app-card.status-card.text-center.h-100
+            .card-body
+              .status-icon.ended.mx-auto
+                i.fas.fa-check-circle
               h5.text-danger Đã kết thúc
               h2.fw-bold #{endedCount || 0}
 
-      //- Tabs
       ul.nav.nav-tabs.mb-4#eventTabs
         li.nav-item
           a.nav-link.active(data-bs-toggle="tab" href="#tab-pending") Chờ duyệt (#{pendingCount + rejectedCount})
@@ -94,76 +100,81 @@ block content
         li.nav-item
           a.nav-link(data-bs-toggle="tab" href="#tab-ended") Đã kết thúc
 
-      div.tab-content
-        div.tab-pane.fade.show.active#tab-pending
+      .tab-content
+        .tab-pane.fade.show.active#tab-pending
           if events && events.length > 0
-            div.row.g-4
+            .row.g-4
               each event in events
                 if event.status === 'pending' || event.status === 'rejected'
-                  div.col-12.col-md-6.col-lg-4
-                    div.card.border-0.shadow-sm.h-100
+                  .col-12.col-md-6.col-lg-4
+                    .card.app-card.h-100
                       img.card-img-top(src=event.image || 'events/images/placeholder.jpg' style="height: 180px; object-fit: cover;")
-                      div.card-body
-                        h5.card-title= event.name
+                      .card-body
+                        h5.card-title.fw-bold= event.name
                         p.text-muted.small
                           i.fas.fa-calendar-alt.me-1
                           = new Date(event.date).toLocaleDateString('vi-VN')
                         if event.status === 'rejected'
-                          div.alert.alert-danger.py-2.small
-                            strong Lý do từ chối: 
+                          .alert.alert-danger.py-2.small
+                            strong Lý do từ chối:
                             = event.rejectionReason || 'Không rõ'
-                        div.mt-3
+                        .mt-3
                           if event.status === 'pending'
-                            button.btn.btn-success.btn-sm.me-2(onclick=`approveEvent('${event._id}')`) Duyệt
-                            button.btn.btn-danger.btn-sm(onclick=`rejectEvent('${event._id}')`) Từ chối 
+                            button.btn.btn-sm.btn-success.me-2(onclick=`approveEvent('${event._id}')`) Duyệt
+                            button.btn.btn-sm.btn-brand-danger(onclick=`rejectEvent('${event._id}')`) Từ chối
                           else
-                            button.btn.btn-primary.btn-sm.me-2(onclick=`approveEvent('${event._id}')`) Duyệt lại
-                            button.btn.btn-outline-danger.btn-sm(onclick=`deleteEvent('${event._id}')`) Xóa
+                            button.btn.btn-sm.btn-primary.me-2(onclick=`approveEvent('${event._id}')`) Duyệt lại
+                            button.btn.btn-sm.btn-brand-danger(onclick=`deleteEvent('${event._id}')`) Xóa
+                        .mt-2
+                          a.btn.btn-sm.btn-outline-primary(href=`/admin/dashboard/events/${event._id}`) Xem phân tích
 
-        //- Tab 2: Sắp diễn ra
-        div.tab-pane.fade#tab-upcoming
+        .tab-pane.fade#tab-upcoming
           if events && events.length > 0
-            div.row.g-4
+            .row.g-4
               each event in events
                 if event.status === 'upcoming'
-                  div.col-12.col-md-6.col-lg-4
-                    div.card.border-0.shadow-sm.h-100
+                  .col-12.col-md-6.col-lg-4
+                    .card.app-card.h-100
                       img.card-img-top(src=event.image || 'events/images/placeholder.jpg' style="height: 180px; object-fit: cover;")
-                      div.card-body
-                        h5.card-title= event.name
+                      .card-body
+                        h5.card-title.fw-bold= event.name
                         p.text-muted.small
                           i.fas.fa-calendar-alt.me-1
                           = new Date(event.date).toLocaleDateString('vi-VN')
+                        .mt-2
+                          a.btn.btn-sm.btn-outline-primary(href=`/admin/dashboard/events/${event._id}`) Xem phân tích
 
-        //- Tab 3: Đang diễn ra
-        div.tab-pane.fade#tab-ongoing
+        .tab-pane.fade#tab-ongoing
           if events && events.length > 0
-            div.row.g-4
+            .row.g-4
               each event in events
                 if event.status === 'ongoing'
-                  div.col-12.col-md-6.col-lg-4
-                    div.card.border-0.shadow-sm.h-100
+                  .col-12.col-md-6.col-lg-4
+                    .card.app-card.h-100
                       img.card-img-top(src=event.image || 'events/images/placeholder.jpg' style="height: 180px; object-fit: cover;")
-                      div.card-body
-                        h5.card-title= event.name
+                      .card-body
+                        h5.card-title.fw-bold= event.name
                         p.text-muted.small
                           i.fas.fa-calendar-alt.me-1
                           = new Date(event.date).toLocaleDateString('vi-VN')
+                        .mt-2
+                          a.btn.btn-sm.btn-outline-primary(href=`/admin/dashboard/events/${event._id}`) Xem phân tích
 
-        //- Tab 4: Đã kết thúc
-        div.tab-pane.fade#tab-ended
+        .tab-pane.fade#tab-ended
           if events && events.length > 0
-            div.row.g-4
+            .row.g-4
               each event in events
                 if event.status === 'ended'
-                  div.col-12.col-md-6.col-lg-4
-                    div.card.border-0.shadow-sm.h-100
+                  .col-12.col-md-6.col-lg-4
+                    .card.app-card.h-100
                       img.card-img-top(src=event.image || 'events/images/placeholder.jpg' style="height: 180px; object-fit: cover;")
-                      div.card-body
-                        h5.card-title= event.name
+                      .card-body
+                        h5.card-title.fw-bold= event.name
                         p.text-muted.small
                           i.fas.fa-calendar-alt.me-1
                           = new Date(event.date).toLocaleDateString('vi-VN')
+                        .mt-2
+                          a.btn.btn-sm.btn-outline-primary(href=`/admin/dashboard/events/${event._id}`) Xem phân tích
 
 block append scripts
   script(src="https://cdn.jsdelivr.net/npm/chart.js")
@@ -184,16 +195,16 @@ block append scripts
             {
               label: 'Doanh thu',
               data: lineRevenue,
-              borderColor: '#0d6efd',
-              backgroundColor: 'rgba(13, 110, 253, 0.15)',
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37, 99, 235, 0.15)',
               tension: 0.3,
               fill: true
             },
             {
               label: 'Vé bán',
               data: lineTickets,
-              borderColor: '#198754',
-              backgroundColor: 'rgba(25, 135, 84, 0.15)',
+              borderColor: '#16a34a',
+              backgroundColor: 'rgba(22, 163, 74, 0.15)',
               tension: 0.3,
               fill: true
             }
@@ -218,17 +229,24 @@ block append scripts
           labels: pieLabels,
           datasets: [{
             data: pieValues,
-            backgroundColor: ['#0d6efd', '#20c997', '#ffc107', '#dc3545', '#6f42c1', '#0dcaf0']
+            backgroundColor: ['#8b5cf6', '#ec4899', '#2563eb', '#16a34a', '#f59e0b', '#dc2626'],
+            borderColor: '#ffffff',
+            borderWidth: 2
           }]
         },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 12 } }
+          }
+        }
       });
     }
 
     window.approveEvent = async (id) => {
       if (!confirm('Bạn chắc chắn muốn duyệt sự kiện này?')) return;
       try {
-        const res = await fetch(`/admin/events/${id}/approve`, { 
+        const res = await fetch(`/admin/events/${id}/approve`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -280,4 +298,3 @@ block append scripts
         alert('Lỗi kết nối: ' + err.message);
       }
     };
-    

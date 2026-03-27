@@ -1,4 +1,4 @@
-extends ../../../layout
+﻿extends ../../../layout
 
 block content
   section.py-5.bg-light.min-vh-100.d-flex.align-items-center
@@ -32,7 +32,7 @@ block content
                   input.form-control.form-control-lg#confirmPassword(type="password" placeholder="••••••••" required name="confirmPassword")
                   span.position-absolute.top-50.translate-middle-y.end-0.pe-3.cursor-pointer#toggleConfirmPassword
                     i.fas.fa-eye-slash.fs-5.text-muted
-                button.btn.btn-lg.w-100#registerBtn(style="background: linear-gradient(to right, #8b5cf6, #ec4899); color: white; border: none;") Đăng ký
+                button.btn.btn-lg.w-100#registerBtn(type="submit" style="background: linear-gradient(to right, #8b5cf6, #ec4899); color: white; border: none;") Đăng ký
                 div.text-center.mt-4
                   a.text-primary.fw-medium(href="/login") Đã có tài khoản? Đăng nhập
 
@@ -40,7 +40,6 @@ block append scripts
   script.
     document.addEventListener('DOMContentLoaded', () => {
       const registerForm = document.getElementById('registerForm');
-      const registerBtn = document.getElementById('registerBtn');
       const errorDiv = document.getElementById('registerErrors');
       const errorList = document.getElementById('registerErrorList');
       const togglePassword = document.getElementById('togglePassword');
@@ -49,7 +48,7 @@ block append scripts
       const confirmPasswordInput = document.getElementById('confirmPassword');
       const emailInput = registerForm?.querySelector('input[name="email"]');
       const isDemoEmail = (value) => value.toLowerCase().endsWith('@demo');
-
+      const isNormalEmail = (value) =>  /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(value);
 
       if (togglePassword && passwordInput) {
         togglePassword.addEventListener('click', () => {
@@ -74,8 +73,8 @@ block append scripts
       }
 
 
-      if (registerBtn) {
-        registerBtn.addEventListener('click', async (e) => {
+      if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
           e.preventDefault();
 
           errorList.innerHTML = '';
@@ -95,8 +94,8 @@ block append scripts
             return;
           }
 
-          if (!isDemoEmail(data.email)) {
-            errorList.innerHTML = '<li>Email phải có đuôi @demo</li>';
+          if (!isDemoEmail(data.email) && !isNormalEmail(data.email)) {
+            errorList.innerHTML = '<li>Email không hợp lệ</li>';
             errorDiv.classList.remove('d-none');
             return;
           }
@@ -139,3 +138,6 @@ block append scripts
         });
       }
     });
+
+
+

@@ -80,11 +80,13 @@ block append scripts
           if (res.ok) {
             window.location.href = "/";
           } else {
-            console.log(data.message);
+            errorList.innerHTML = `<li>${data.message || 'Email hoặc mật khẩu không đúng'}</li>`;
+            errorDiv.classList.remove('d-none');
           }
 
         } catch (err) {
-          console.error(err);
+          errorList.innerHTML = '<li>Không thể kết nối máy chủ, vui lòng thử lại.</li>';
+          errorDiv.classList.remove('d-none');
         }
       });
       

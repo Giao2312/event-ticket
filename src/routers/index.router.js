@@ -13,24 +13,26 @@ import adminRouter from './web/admin.router.js';
 import dashboardOrganizerRouter from './web/organizer.router.js';
 // API routers (JSON)
 import eventApiRouter from './api/event.api.js';
-import orderApiRouter from './api/oder.api.js'; 
+import orderApiRouter from './api/oder.api.js';
 import paymentApiRouter from './api/payment.api.js';
+import notificationApiRouter from './api/notification.api.js';
 
 export default (app) => {
 
-  app.use('/', authWebRouter);    
-  app.use('/', homeWebRouter);    
-  app.use('/events', eventWebRouter);   
+  app.use('/', authWebRouter);
+  app.use('/', homeWebRouter);
+  app.use('/events', eventWebRouter);
   app.use('/', profileWebRouter);
   app.use('/my-tickets', myTicketsWebRouter);
-  app.use('/', orderWebRouter);          
-  app.use('/', adminRouter); 
+  app.use('/', orderWebRouter);
+  app.use('/', adminRouter);
   app.use('/',dashboardOrganizerRouter);
 
 
   app.use('/api/events', eventApiRouter);
   app.use('/api/orders', orderApiRouter);
   app.use('/api/payment', paymentApiRouter);
+  app.use('/api/notifications', notificationApiRouter);
 
   // Error handling (cuối cùng)
   app.use((req, res) => {

@@ -21,40 +21,26 @@ block hero
             name="search"
             placeholder="Tìm sự kiện, nghệ sĩ, địa điểm..."
           )
-          button.btn.rounded-pill.px-5.py-3.fw-bold.shadow-lg.text-white(type="submit" style="background: linear-gradient(to right, #ec4899, #a855f7);")
+          button.btn.btn-brand-primary.px-5.py-3(type="submit")
             | Tìm kiếm
 
 block content
-  //- Time Filter Section (moved up)
   section.py-4.bg-light
     div.container
       div.d-flex.justify-content-between.align-items-center.mb-3
-        h2.text-dark.fw-bold Sự kiện theo thời gian
+        h2.app-section-title.mb-0 Sự kiện đang diễn ra và sắp đến
         a(href="/events" class="text-primary fw-medium text-decoration-none hover-underline") Xem tất cả →
-
-      form.d-flex.flex-wrap.gap-2.mb-3(method="GET" action="/")
-        select.form-select.w-auto(name="time")
-          option(value="all" selected=(filters && filters.time === 'all')) Tất cả trạng thái
-          option(value="upcoming" selected=(filters && filters.time === 'upcoming')) Sắp diễn ra
-          option(value="ongoing" selected=(filters && filters.time === 'ongoing')) Đang diễn ra
-          option(value="ended" selected=(filters && filters.time === 'ended')) Đã kết thúc
-          if canSeeInternal
-            option(value="pending" selected=(filters && filters.time === 'pending')) Chờ duyệt
-            option(value="approved" selected=(filters && filters.time === 'approved')) Đã duyệt
-            option(value="published" selected=(filters && filters.time === 'published')) Đã xuất bản
-        input.form-control.w-auto(type="date" name="startDate" value=filters && filters.startDate)
-        input.form-control.w-auto(type="date" name="endDate" value=filters && filters.endDate)
-        button.btn.btn-outline-dark(type="submit") Lọc
 
       div.row.g-4
         if events && events.length > 0
           each event in events
             div.col-md-6.col-lg-3
               a.text-decoration-none(href=`/events/${event._id}`)
-                div.card.bg-white.text-dark.border-0.shadow-lg.overflow-hidden.h-100
-                  img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 200px; object-fit: cover;")
+                div.card.app-card.event-card.h-100
+                  .card-img-box
+                    img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name)
+                    span.event-tag.event-tag-primary Sự kiện
                   div.card-body.p-4
-                    span.badge.bg-primary.mb-2.align-self-start Sự kiện
                     h5.card-title.fw-bold.mb-3= event.name
                     p.card-text.small.text-muted.mb-2
                       i.fas.fa-calendar-alt.me-1
@@ -64,16 +50,11 @@ block content
                       | #{event.location || 'TBC'}
                     div.d-flex.justify-content-between.align-items-center
                       span.fw-bold.text-primary= event.displayPrice || 'Liên hệ'
-                      span.btn.btn-sm.btn-outline-dark Chi tiết
-                    if event.ticketTypes && event.ticketTypes.length > 0
-                      ul.list-unstyled.mt-3.mb-0.small.text-muted
-                        each tt in event.ticketTypes.slice(0, 3)
-                          li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
+                      span.btn.btn-sm.btn-brand-secondary Chi tiết
         else
           div.col-12.text-center
             p.text-muted Không có sự kiện phù hợp.
 
-  //- Stats Section
   section.border-bottom.bg-white.py-5
     div.container
       div.row.g-4.text-center.text-dark
@@ -106,11 +87,10 @@ block content
               h3.fw-bold.mb-0 100%
               p.text-muted.small Bảo mật
 
-
   section.py-5.bg-light
     div.container
       div.d-flex.justify-content-between.align-items-center.mb-4
-        h2.text-dark.fw-bold Sự kiện nổi bật
+        h2.app-section-title.mb-0 Sự kiện nổi bật
         a(href="/events" class="text-primary fw-medium text-decoration-none hover-underline") Xem tất cả →
 
       div.row.g-4
@@ -118,15 +98,16 @@ block content
           each event in featuredEvents
             div.col-md-6.col-lg-3
               a.text-decoration-none(href=`/events/${event._id}`)
-                div.card.bg-white.text-dark.border-0.shadow-lg.overflow-hidden.h-100.hover-translate-y
-                  img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 200px; object-fit: cover;")
+                div.card.app-card.event-card.h-100
+                  .card-img-box
+                    img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name)
+                    span.event-tag.event-tag-featured Nổi bật
                   div.card-body.d-flex.flex-column.p-4
-                    span.badge.bg-primary.mb-2.align-self-start Nổi bật
                     h5.card-title.fw-bold.mb-3= event.name
                     p.card-text.small.text-muted.flex-grow-1= event.description ? event.description.substring(0, 80) + '...' : 'Chưa có mô tả.'
                     div.mt-auto.d-flex.justify-content-between.align-items-center
                       span.fw-bold.text-primary= event.displayPrice || 'Liên hệ'
-                      span.btn.btn-sm.btn-outline-dark Chi tiết
+                      span.btn.btn-sm.btn-brand-secondary Chi tiết
                     if event.ticketTypes && event.ticketTypes.length > 0
                       ul.list-unstyled.mt-3.mb-0.small.text-muted
                         each tt in event.ticketTypes.slice(0, 3)
@@ -135,7 +116,6 @@ block content
           div.col-12.text-center
             p.text-muted Hiện chưa có sự kiện nổi bật.
 
-  //- Organizer CTA
   section.py-5.bg-gradient-to-br.from-purple-900.to-pink-900.text-white
     div.container.text-center
       h2.fw-bold.mb-4 Bạn là nhà tổ chức?
@@ -143,12 +123,3 @@ block content
         | Tạo sự kiện, quản lý vé và theo dõi doanh thu dễ dàng trên nền tảng của chúng tôi.
       a.btn.btn-lg.btn-light.px-5.py-3.fw-bold.rounded-pill.shadow-lg(href="/become-organizer")
         | Bắt đầu ngay →
-
-block append scripts
-  script.
-    // Hover animation cho card (tùy chọn)
-    document.querySelectorAll('.hover-translate-y').forEach(card => {
-      card.addEventListener('mouseenter', () => card.style.transform = 'translateY(-8px)');
-      card.addEventListener('mouseleave', () => card.style.transform = 'translateY(0)');
-    });
-    

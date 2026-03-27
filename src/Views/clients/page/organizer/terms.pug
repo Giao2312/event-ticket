@@ -1,0 +1,46 @@
+extends ../../../layout
+
+block content
+  section.py-5
+    .container
+      .row.justify-content-center
+        .col-lg-10
+          .card.border-0.shadow-sm
+            .card-body.p-4.p-md-5
+              h1.fw-bold.mb-3 Điều khoản đăng ký nhà tổ chức
+              p.text-muted.mb-4
+                | Vui lòng đọc kỹ các điều khoản bên dưới trước khi gửi yêu cầu trở thành nhà tổ chức trên EventVé.
+
+              h5.mb-3 1. Quy định về nội dung sự kiện
+              ul.ps-3
+                li Không đăng nội dung vi phạm pháp luật, đạo đức xã hội hoặc thuần phong mỹ tục.
+                li Không đăng thông tin sai lệch, gây hiểu nhầm cho người mua vé.
+                li Hình ảnh, tiêu đề và mô tả phải phản ánh đúng tính chất sự kiện.
+
+              h5.mb-3.mt-4 2. Quy định thông tin liên hệ
+              ul.ps-3
+                li Không chèn số điện thoại, email, website hay mạng xã hội cá nhân trên banner/nội dung.
+                li Chỉ sử dụng kênh liên hệ chính thức được nền tảng cho phép.
+
+              h5.mb-3.mt-4 3. Kiểm duyệt và xử lý vi phạm
+              ul.ps-3
+                li EventVé có quyền từ chối duyệt, gỡ sự kiện hoặc tạm khóa tài khoản khi phát hiện vi phạm.
+                li Vi phạm nghiêm trọng hoặc tái phạm nhiều lần có thể bị từ chối cung cấp dịch vụ lâu dài.
+
+              h5.mb-3.mt-4 4. Trách nhiệm của nhà tổ chức
+              ul.ps-3
+                li Chịu trách nhiệm pháp lý về toàn bộ nội dung và thông tin sự kiện đã đăng.
+                li Đảm bảo tổ chức sự kiện đúng thời gian, địa điểm, quyền lợi vé đã công bố.
+                li Có nghĩa vụ hỗ trợ người mua vé khi có thay đổi hoặc phát sinh.
+
+              h5.mb-3.mt-4 5. Chấp thuận điều khoản
+              p.mb-4
+                | Khi tiếp tục đăng ký, bạn xác nhận đã đọc, hiểu và đồng ý tuân thủ toàn bộ điều khoản dành cho nhà tổ chức.
+
+              .d-flex.flex-wrap.gap-2
+                a.btn.btn-primary(href="/become-organizer")
+                  i.fas.fa-arrow-left.me-2
+                  | Quay lại trang đăng ký
+                a.btn.btn-outline-secondary(href="/")
+                  i.fas.fa-house.me-2
+                  | Về trang chủ

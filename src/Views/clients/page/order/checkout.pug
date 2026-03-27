@@ -4,7 +4,6 @@ block content
   section.py-5.bg-light
     div.container
       div.row.g-4
-   
         div.col-lg-8
           div.card.border-0.shadow-sm.rounded-4
             div.card-body.p-4
@@ -19,10 +18,10 @@ block content
                   )
                   div
                     h5.mb-1= order.eventId.name || 'Sự kiện không xác định'
-                    p.text-muted.small 
+                    p.text-muted.small
                       i.fas.fa-clock.me-1
                       | 15 phút để hoàn tất thanh toán
-              
+
               hr
               table.table.table-borderless
                 thead
@@ -36,14 +35,15 @@ block content
                       td.fw-bold= item.ticketTypeId.type
                       td x#{item.quantity}
                       td= item.price.toLocaleString('vi-VN') + 'đ'
-              
-              div.p-3.bg-warning.bg-opacity-10.border.border-warning.rounded-3.mt-3
-                small.text-warning-emphasis 
-                  i.fas.fa-exclamation-triangle.me-2
-                  | Vé của bạn đang được giữ trong 
-                  span#countdown 15:00
 
-        //- Bên phải: Thanh toán
+              div.p-3.bg-warning.bg-opacity-10.border.border-warning.rounded-3.mt-3
+                small.text-warning-emphasis
+                  i.fas.fa-exclamation-triangle.me-2
+                  | Vé của bạn đang được giữ trong
+                  span#countdown.ms-1 15:00
+                small.d-block.text-muted.mt-2
+                  | Nếu rời khỏi trang này trước khi thanh toán, vé sẽ bị hủy và trả lại kho.
+
         div.col-lg-4
           div.card.border-0.shadow-lg.rounded-4
             div.card-body.p-4
@@ -57,7 +57,6 @@ block content
                       div
                         div.fw-bold Ví MoMo
                         small.text-muted Thanh toán qua ví điện tử MoMo
-      
 
                 div.form-check.p-3.border.rounded-3
                   input.form-check-input.d-none#paypal(type="radio" name="method" value="paypal")
@@ -65,7 +64,7 @@ block content
                     img.ms-2(src="/events/images/paypal-logo.png" height="20")
                     div.d-flex.align-items-center
                       div
-                        div.fw-bold PayPal 
+                        div.fw-bold PayPal
                         small.text-muted Thanh toán qua cổng PayPal
 
                 div.form-check.p-3.border.rounded-3
@@ -76,67 +75,102 @@ block content
                       div
                         div.fw-bold VNPay
                         small.text-muted Thanh toán qua cổng VNPay
-                  
+
               div.d-flex.justify-content-between.mb-4
                 span.text-muted Tổng cộng:
-                h3.text-primary.fw-bold= order.totalAmount.toLocaleString('vi-VN') + 'VNĐ'
-              
+                h3.text-primary.fw-bold= order.totalAmount.toLocaleString('vi-VN') + ' VNĐ'
+
               button.btn.btn-primary.btn-lg.w-100#payNowBtn THANH TOÁN NGAY
 
-  block scripts
-    script.
-      // 1. Đồng hồ đếm ngược dựa trên thời gian server trả về
-      function startCountdown(seconds) {
-        const display = document.getElementById('countdown');
-        let timer = seconds;
-        
-        const interval = setInterval(() => {
-          let minutes = Math.floor(timer / 60);
-          let secondsLeft = timer % 60;
-          display.textContent = `${minutes}:${secondsLeft < 10 ? '0' : ''}${secondsLeft}`;
-          
-          if (--timer < 0) {
-            clearInterval(interval);
-            // Thông báo hết hạn và tự động chuyển về trang chủ hoặc trang giỏ hàng
-            alert('Thời gian giữ vé đã hết!');
-            window.location.href = '/'; 
-          }
-        }, 1000);
-      }
-      
-      // Khởi tạo đếm ngược từ giá trị timeLeft truyền từ controller
-      startCountdown(#{timeLeft}); 
+block scripts
+  script.
+    const payNowBtn = document.getElementById('payNowBtn');
+    const orderId = !{JSON.stringify(String(order._id))};
+    const countdownSeconds = !{JSON.stringify(timeLeft)};
+    const abandonEndpoint = `/api/orders/${orderId}/abandon`;
+    let allowPageExit = false;
+    let abandoningOrder = false;
 
-      // 2. Logic thanh toán
-      payNowBtn.addEventListener('click', async () => {
+    const releaseHeldTickets = () => {
+      if (allowPageExit || abandoningOrder) return;
+      abandoningOrder = true;
+
+      const payload = JSON.stringify({ reason: 'checkout_leave' });
+
+      if (navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon(abandonEndpoint, blob);
+        return;
+      }
+
+      fetch(abandonEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: payload,
+        keepalive: true
+      }).catch(() => {});
+    };
+
+    function startCountdown(seconds) {
+      const display = document.getElementById('countdown');
+      let timer = seconds;
+
+      const interval = setInterval(() => {
+        const minutes = Math.floor(timer / 60);
+        const secondsLeft = timer % 60;
+        display.textContent = `${minutes}:${secondsLeft < 10 ? '0' : ''}${secondsLeft}`;
+
+        if (--timer < 0) {
+          clearInterval(interval);
+          releaseHeldTickets();
+          allowPageExit = true;
+          alert('Thời gian giữ vé đã hết. Vé đã được trả lại kho.');
+          window.location.href = '/events';
+        }
+      }, 1000);
+    }
+
+    startCountdown(countdownSeconds);
+
+    window.addEventListener('beforeunload', (event) => {
+      if (allowPageExit) return;
+      event.preventDefault();
+      event.returnValue = 'Bạn có muốn rời khỏi trang này không? Vé đang giữ sẽ bị hủy và trả lại kho.';
+    });
+
+    window.addEventListener('pagehide', () => {
+      releaseHeldTickets();
+    });
+
+    payNowBtn.addEventListener('click', async () => {
       const selectedMethod = document.querySelector('input[name="method"]:checked');
       if (!selectedMethod) return alert('Vui lòng chọn phương thức thanh toán!');
-      
-      const method = selectedMethod.value; // 'momo' hoặc 'paypal'
-      const orderId = "#{order._id}";
-      
+
+      const method = selectedMethod.value;
+
       payNowBtn.disabled = true;
       payNowBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
 
-      // Gọi chung 1 endpoint, server tự router sang controller tương ứng
       try {
-          const res = await fetch('/api/payment/create', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orderId, method })
-          });
-          
-          const data = await res.json();
-          if (data.success) {
-              window.location.href = data.paymentUrl;
-          } else {
-              alert(data.message || 'Lỗi tạo thanh toán');
-              payNowBtn.disabled = false;
-          }
-        } catch (err) {
-            alert('Lỗi kết nối server');
-            payNowBtn.disabled = false;
-        }
+        const res = await fetch('/api/payment/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, method })
         });
 
-      
+        const data = await res.json();
+        if (data.success) {
+          allowPageExit = true;
+          window.location.href = data.paymentUrl;
+        } else {
+          alert(data.message || 'Lỗi tạo thanh toán');
+          payNowBtn.disabled = false;
+          payNowBtn.textContent = 'THANH TOÁN NGAY';
+        }
+      } catch (err) {
+        alert('Lỗi kết nối server');
+        payNowBtn.disabled = false;
+        payNowBtn.textContent = 'THANH TOÁN NGAY';
+      }
+    });

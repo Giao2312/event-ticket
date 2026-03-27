@@ -19,7 +19,7 @@ aside.sidebar.bg-white.border-end.shadow-sm(style="width: 250px; min-height: 100
       li.nav-itemm 
         a.nav-link(href="/dashboard/admin") Admin Dashboard
       li.nav-item.mt-auto
-        a.nav-link.text-danger(href="/logout")
+        a.nav-link.text-danger(href="#" onclick="handleLogout(); return false;")
           i.fas.fa-sign-out-alt.me-2
-    
+
           | Đăng xuất

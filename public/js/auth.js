@@ -6,7 +6,7 @@
         options.headers = new Headers(options.headers || {});
         const token = localStorage.getItem('token');
         const isAuthUrl = url.includes('/login') || url.includes('/register');
-        
+
         if (token && !isAuthUrl) {
             options.headers.set('Authorization', `Bearer ${token}`);
         }
@@ -21,9 +21,10 @@
 
     async function performLogout() {
         try {
-            await originalFetch('/auth/logout', { method: 'POST' });
+            // Sửa: dùng đường dẫn đúng /api/auth/logout
+            await originalFetch('/api/auth/logout', { method: 'POST' });
         } catch (err) {
-            console.error("Lỗi:", err);
+            console.error("Lỗi logout:", err);
         } finally {
             localStorage.removeItem('token');
             globalThis.location.href = '/login';
@@ -32,5 +33,5 @@
 
     // Gán vào globalThis để gọi từ onclick trong HTML
     globalThis.handleLogout = performLogout;
-    console.log("Auth.js loaded successfully"); // Để debug trong console
+    console.log("Auth.js loaded successfully");
 })();
