@@ -27,7 +27,16 @@ const userSchema = new mongoose.Schema({
   address: { type: String, default: '' },
   avatar: { type: String, default: '' },
   isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  // Số dư cho organizer
+  balance: { type: Number, default: 0 }, // Số dư khả dụng
+  pendingBalance: { type: Number, default: 0 }, // Số dư đang chờ (chưa settlement)
+  // Thông tin tài khoản ngân hàng của organizer
+  bankInfo: {
+    bankName: { type: String, default: '' },
+    accountNumber: { type: String, default: '' },
+    accountName: { type: String, default: '' }
+  }
 });
 
 

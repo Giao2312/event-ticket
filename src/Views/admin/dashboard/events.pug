@@ -1,84 +1,196 @@
-extends ../../layout
+extends ../layout
+
+block admin_config
+  - var adminPage = 'events'
+  - var adminHeading = 'Quản lý sự kiện'
+  - var adminDescription = 'Danh sách sự kiện được tái cấu trúc theo dạng quản trị tập trung, thao tác nhanh và dễ lọc hơn.'
+  - var adminSearchValue = filters && filters.q ? filters.q : ''
+
+block admin_topbar_actions
+  a.btn.admin-secondary-btn(href="/admin/dashboard")
+    i.fas.fa-chart-line
+    span Tổng quan
+  a.btn.admin-primary-btn(href="/admin/dashboard/events/create")
+    i.fas.fa-plus
+    span Tạo sự kiện
 
 block content
-  section.py-5
-    .container
-      .d-flex.justify-content-between.align-items-center.mb-4.flex-wrap.gap-2
+  - const buildEventFilterLink = (status) => { const params = []; if (filters && filters.q) params.push(`q=${encodeURIComponent(filters.q)}`); if (status) params.push(`status=${encodeURIComponent(status)}`); return `/admin/dashboard/events${params.length ? `?${params.join('&')}` : ''}`; };
+  - const eventCounters = [{ label: 'Chờ duyệt', value: pendingCount || 0, status: 'pending' }, { label: 'Bị từ chối', value: rejectedCount || 0, status: 'rejected' }, { label: 'Sắp diễn ra', value: upcomingCount || 0, status: 'upcoming' }, { label: 'Đang diễn ra', value: ongoingCount || 0, status: 'ongoing' }, { label: 'Đã kết thúc', value: endedCount || 0, status: 'ended' }];
+
+  if errorMessage
+    .alert.alert-danger.admin-inline-alert= errorMessage
+
+  .row.g-4.mb-4
+    each item in eventCounters
+      .col-sm-6.col-xl
+        a.admin-mini-stat.admin-panel.text-decoration-none(class=(filters && filters.status) === item.status ? 'is-active' : '' href=buildEventFilterLink(item.status))
+          .admin-panel__body
+            span.admin-mini-stat__label= item.label
+            strong.admin-mini-stat__value= item.value
+    .col-sm-6.col-xl
+      a.admin-mini-stat.admin-panel.text-decoration-none(class=!(filters && filters.status) ? 'is-active' : '' href=buildEventFilterLink(''))
+        .admin-panel__body
+          span.admin-mini-stat__label Tất cả
+          strong.admin-mini-stat__value= events && events.length ? events.length : 0
+
+  .admin-panel.mb-4
+    .admin-panel__body
+      form.row.g-3.align-items-end(method="GET" action="/admin/dashboard/events")
+        .col-lg-6
+          label.admin-field-label(for="eventQuery") Tìm kiếm sự kiện
+          .admin-input-group
+            i.fas.fa-search
+            input#eventQuery.form-control.admin-input(type="text" name="q" placeholder="Tên sự kiện hoặc địa điểm..." value=(filters && filters.q) || '')
+        .col-sm-6.col-lg-3
+          label.admin-field-label(for="eventStatus") Trạng thái
+          select#eventStatus.form-select.admin-select(name="status")
+            option(value="" selected=!(filters && filters.status)) Tất cả trạng thái
+            option(value="pending" selected=(filters && filters.status) === 'pending') Chờ duyệt
+            option(value="rejected" selected=(filters && filters.status) === 'rejected') Bị từ chối
+            option(value="upcoming" selected=(filters && filters.status) === 'upcoming') Sắp diễn ra
+            option(value="ongoing" selected=(filters && filters.status) === 'ongoing') Đang diễn ra
+            option(value="ended" selected=(filters && filters.status) === 'ended') Đã kết thúc
+        .col-sm-6.col-lg-3
+          .d-flex.gap-2
+            button.btn.admin-primary-btn.w-100(type="submit")
+              i.fas.fa-sliders
+              span Lọc
+            a.btn.admin-secondary-btn(href="/admin/dashboard/events")
+              i.fas.fa-rotate-left
+
+  .admin-panel
+    .admin-panel__body
+      .admin-section-heading
         div
-          h2.app-section-title.mb-1 Quản lý sự kiện
-          p.app-section-subtitle.mb-0 Theo dõi, tìm kiếm và thao tác nhanh trên các sự kiện.
-        a.btn.btn-brand-primary.px-4.py-2(href="/create-event")
-          i.fas.fa-plus.me-2
-          | Tạo sự kiện
-
-      .row.mb-5.g-3
-        .col-md-8
-          .input-group
-            span.input-group-text.bg-white.border-end-0
-              i.fas.fa-search
-            input.form-control.input-brand.border-start-0#searchEvent(type="text" placeholder="Tìm kiếm sự kiện...")
-        .col-md-4
-          select.form-select.input-brand#filterStatus
-            option(value="") Tất cả trạng thái
-            option(value="upcoming") Sắp diễn ra
-            option(value="ongoing") Đang diễn ra
-            option(value="ended") Đã kết thúc
-
-      div#eventList.row.g-4
-        if events && events.length > 0
-          each event in events
-            div.col-12.col-md-6.col-lg-4(data-status=event.status)
-              div.card.app-card.h-100
-                img.card-img-top(src=event.image || '/images/placeholder.jpg' alt=event.name style="height: 180px; object-fit: cover;")
-                div.card-body
-                  h5.card-title.fw-bold.mb-2= event.name
-                  p.text-muted.small.mb-3
-                    i.fas.fa-calendar-alt.me-1
-                    | #{new Date(event.date).toLocaleDateString('vi-VN')}
-                  .d-flex.justify-content-between.align-items-center
-                    span.badge(class=event.status === 'upcoming' ? 'bg-success' : event.status === 'ongoing' ? 'bg-warning' : 'bg-secondary')
-                      = event.status === 'upcoming' ? 'Sắp diễn ra' : event.status === 'ongoing' ? 'Đang diễn ra' : 'Đã kết thúc'
-                    .d-flex.gap-2
-                      a.btn.btn-sm.btn-brand-secondary(href=`/admin/dashboard/events/${event._id}`) Phân tích
-                      button.btn.btn-sm.btn-brand-danger(onclick=`deleteEvent('${event._id}')`)
-                        i.fas.fa-trash
-                        | Xóa
-        else
-          div.col-12.text-center.py-5
-            i.fas.fa-calendar-alt.fs-1.text-muted.mb-3
-            h5.text-dark Không tìm thấy sự kiện nào
-            p.text-muted Hãy tạo sự kiện đầu tiên ngay.
-            a.btn.btn-brand-primary.px-5.py-3.mt-3(href="/create-event") + Tạo sự kiện đầu tiên
+          h3 Danh sách sự kiện
+          p Bố cục dạng bảng giúp duyệt, phân tích và xử lý sự kiện nhanh hơn trên nền admin mới.
+      if events && events.length > 0
+        .table-responsive
+          table.table.admin-table.align-middle.mb-0
+            thead
+              tr
+                th Sự kiện
+                th Nhà tổ chức
+                th Lịch
+                th Trạng thái
+                th.text-end Thao tác
+            tbody
+              each event in events
+                - const eventStatus = String(event.status || '').toLowerCase();
+                - const eventStatusLabel = eventStatus === 'pending' ? 'Chờ duyệt' : eventStatus === 'rejected' ? 'Bị từ chối' : eventStatus === 'upcoming' ? 'Sắp diễn ra' : eventStatus === 'ongoing' ? 'Đang diễn ra' : eventStatus === 'ended' ? 'Đã kết thúc' : 'Khác';
+                tr
+                  td
+                    .admin-table-entity
+                      img.admin-thumb(src=event.image || '/images/placeholder.jpg' alt=event.name)
+                      .admin-table-entity__meta
+                        strong= event.name
+                        small= event.location || 'Chưa cập nhật địa điểm'
+                        if eventStatus === 'rejected' && event.rejectionReason
+                          small.text-danger Lý do từ chối: #{event.rejectionReason}
+                  td
+                    strong.d-block= event.organizer && event.organizer.name ? event.organizer.name : 'Chưa có organizer'
+                    small.text-muted= event.organizer && event.organizer.email ? event.organizer.email : 'Không có email'
+                  td
+                    strong.d-block= new Date(event.date).toLocaleDateString('vi-VN')
+                    small.text-muted Tạo lúc #{new Date(event.createdAt).toLocaleString('vi-VN')}
+                  td
+                    span.admin-status-pill(class=`is-${eventStatus}`)= eventStatusLabel
+                  td.text-end
+                    .admin-action-group
+                      a.btn.admin-table-btn(href=`/admin/dashboard/events/${event._id}`)
+                        i.fas.fa-chart-area
+                        span Phân tích
+                      if eventStatus === 'pending'
+                        button.btn.admin-table-btn.is-success(type="button" onclick=`approveEvent('${event._id}')`)
+                          i.fas.fa-check
+                          span Duyệt
+                        button.btn.admin-table-btn.is-danger(type="button" onclick=`rejectEvent('${event._id}')`)
+                          i.fas.fa-xmark
+                          span Từ chối
+                      else if eventStatus === 'rejected'
+                        button.btn.admin-table-btn.is-primary(type="button" onclick=`approveEvent('${event._id}')`)
+                          i.fas.fa-rotate-left
+                          span Duyệt lại
+                        button.btn.admin-table-btn.is-danger(type="button" onclick=`deleteEvent('${event._id}')`)
+                          i.fas.fa-trash
+                          span Xóa
+                      else
+                        button.btn.admin-table-btn.is-danger(type="button" onclick=`deleteEvent('${event._id}')`)
+                          i.fas.fa-trash
+                          span Xóa
+      else
+        .admin-empty-state
+          i.fas.fa-calendar-xmark
+          h4 Không tìm thấy sự kiện nào
+          p Thử đổi bộ lọc hoặc tạo thêm sự kiện mới từ khu vực quản trị.
+          a.btn.admin-primary-btn.mt-2(href="/admin/dashboard/events/create")
+            i.fas.fa-plus
+            span Tạo sự kiện
 
 block append scripts
   script.
-    const searchInput = document.getElementById('searchEvent');
-    const statusFilter = document.getElementById('filterStatus');
-    const cards = document.querySelectorAll('#eventList > div');
+    async function approveEvent(id) {
+      if (!confirm('Bạn chắc chắn muốn duyệt sự kiện này?')) return;
 
-    function filterEvents() {
-      const searchTerm = searchInput.value.toLowerCase();
-      const statusTerm = statusFilter.value;
+      try {
+        const response = await fetch(`/admin/events/${id}/approve`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
 
-      cards.forEach(card => {
-        const title = card.querySelector('.card-title').innerText.toLowerCase();
-        const status = card.getAttribute('data-status');
-        const matchesSearch = title.includes(searchTerm);
-        const matchesStatus = statusTerm === '' || status === statusTerm;
-        card.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
-      });
+        if (data.success) {
+          location.reload();
+          return;
+        }
+
+        alert(data.message || 'Không thể duyệt sự kiện');
+      } catch (error) {
+        alert('Lỗi kết nối: ' + error.message);
+      }
     }
 
-    searchInput.addEventListener('keyup', filterEvents);
-    statusFilter.addEventListener('change', filterEvents);
+    async function rejectEvent(id) {
+      const reason = prompt('Nhập lý do từ chối:');
+      if (!reason || !reason.trim()) {
+        alert('Vui lòng nhập lý do từ chối');
+        return;
+      }
 
-    function deleteEvent(id) {
-      if (confirm('Bạn chắc chắn muốn xóa sự kiện này?')) {
-        fetch(`/admin/events/${id}`, { method: 'DELETE' })
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) location.reload();
-            else alert(data.message);
-          });
+      try {
+        const response = await fetch(`/admin/events/${id}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: reason.trim() })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          location.reload();
+          return;
+        }
+
+        alert(data.message || 'Không thể từ chối sự kiện');
+      } catch (error) {
+        alert('Lỗi kết nối: ' + error.message);
+      }
+    }
+
+    async function deleteEvent(id) {
+      if (!confirm('Bạn chắc chắn muốn xóa sự kiện này?')) return;
+
+      try {
+        const response = await fetch(`/admin/events/${id}`, { method: 'DELETE' });
+        const data = await response.json();
+
+        if (data.success) {
+          location.reload();
+          return;
+        }
+
+        alert(data.message || 'Không thể xóa sự kiện');
+      } catch (error) {
+        alert('Lỗi kết nối: ' + error.message);
       }
     }

@@ -1,172 +1,218 @@
-extends ../../layout
+extends ../layout
+
+block admin_config
+  - var adminPage = 'events'
+  - var adminHeading = event && event.name ? event.name : 'Phân tích sự kiện'
+  - var adminDescription = `${new Date(event.date).toLocaleDateString('vi-VN')} · ${event.location || 'Chưa xác định địa điểm'}`
+
+block admin_topbar_actions
+  a.btn.admin-secondary-btn(href="/admin/dashboard/events")
+    i.fas.fa-arrow-left
+    span Danh sách sự kiện
+  button.btn.admin-primary-btn(type="button" onclick=`sendOrganizerNotification('${event._id}')`)
+    i.fas.fa-paper-plane
+    span Gửi cập nhật
 
 block content
-  section.py-5.bg-light
-    .container
-      .d-flex.justify-content-between.align-items-start.mb-4.flex-wrap.gap-3
-        div
-          h2.fw-bold.mb-1= event.name
-          p.text-muted.mb-1
-            i.fas.fa-calendar-alt.me-2
-            | #{new Date(event.date).toLocaleString('vi-VN')}
-          p.text-muted.mb-0
-            i.fas.fa-map-marker-alt.me-2
-            | #{event.location || 'Chưa xác định'}
-        .d-flex.gap-2.flex-wrap
-          a.btn.btn-outline-secondary(href="/admin/dashboard/events") Quay lại danh sách
-          button.btn.btn-primary(type="button" onclick=`sendOrganizerNotification('${event._id}')`) Gửi cập nhật cho nhà tổ chức
+  - const detailStatus = String((event && event.status) || '').toLowerCase();
+  - const detailStatusLabel = detailStatus === 'pending' ? 'Chờ duyệt' : detailStatus === 'rejected' ? 'Bị từ chối' : detailStatus === 'upcoming' ? 'Sắp diễn ra' : detailStatus === 'ongoing' ? 'Đang diễn ra' : detailStatus === 'ended' ? 'Đã kết thúc' : 'Khác';
+  - const detailStats = [{ label: 'Doanh thu', value: `${Number(stats.totalRevenue || 0).toLocaleString('vi-VN')} đ`, tone: 'is-success', icon: 'fa-sack-dollar' }, { label: 'Vé đã bán', value: stats.totalSold || 0, tone: 'is-primary', icon: 'fa-ticket' }, { label: 'Vé đang giữ', value: stats.totalHeld || 0, tone: 'is-warning', icon: 'fa-clock' }, { label: 'Vé còn lại', value: stats.totalAvailable || 0, tone: 'is-info', icon: 'fa-layer-group' }, { label: 'Tỷ lệ lấp đầy', value: `${stats.fillRate || 0}%`, tone: 'is-neutral', icon: 'fa-chart-pie' }];
 
-      .row.g-4.mb-4
-        .col-lg-8
-          .card.border-0.shadow-sm.h-100
-            .card-body
-              .row.g-3.align-items-center
-                .col-md-4
-                  img.img-fluid.rounded-4.shadow-sm(src=event.image || '/images/placeholder.jpg' alt=event.name style='width:100%; max-height:240px; object-fit:cover;')
-                .col-md-8
-                  .d-flex.flex-wrap.gap-2.mb-3
-                    span.badge.bg-primary= event.status || 'N/A'
-                    if event.organizer
-                      span.badge.bg-dark Organizer: #{event.organizer.name || event.organizer.email}
-                  if lowSalesAlert
-                    .alert(class=lowSalesAlert.severity === 'danger' ? 'alert-danger' : 'alert-warning')
-                      h6.fw-bold.mb-1 Cảnh báo bán vé
-                      p.mb-0= lowSalesAlert.message
-                  else
-                    .alert.alert-success
-                      h6.fw-bold.mb-1 Hiệu suất ổn định
-                      p.mb-0 Sự kiện đang đạt tiến độ bán vé phù hợp với thời gian diễn ra hiện tại.
-                  p.text-muted.mb-2
-                    strong Nhà tổ chức:
-                    = ` ${event.organizer && event.organizer.name ? event.organizer.name : 'Không rõ'}`
-                  p.text-muted.mb-2
-                    strong Email:
-                    = ` ${event.organizer && event.organizer.email ? event.organizer.email : 'Không rõ'}`
-                  p.text-muted.mb-0
-                    strong Sức chứa:
-                    |  #{stats.totalSold || 0}/#{stats.totalCapacity || 0} vé (#{stats.fillRate || 0}%)
-        .col-lg-4
-          .card.border-0.shadow-sm.h-100
-            .card-body
-              h5.fw-bold.mb-3 Tình trạng đơn hàng
-              .d-flex.justify-content-between.py-2.border-bottom
-                span Đã thanh toán
-                strong.text-success= stats.paidOrdersCount || 0
-              .d-flex.justify-content-between.py-2.border-bottom
-                span Chờ thanh toán
-                strong.text-warning= stats.pendingOrdersCount || 0
-              .d-flex.justify-content-between.py-2.border-bottom
-                span Đã hủy
-                strong.text-danger= stats.cancelledOrdersCount || 0
-              .d-flex.justify-content-between.py-2
-                span Hết hạn
-                strong.text-secondary= stats.expiredOrdersCount || 0
+  if lowSalesAlert
+    .admin-insight-banner.is-warning.mb-4
+      i.fas.fa-triangle-exclamation
+      div
+        strong Cảnh báo bán vé
+        p.mb-0= lowSalesAlert.message
+  else
+    .admin-insight-banner.is-success.mb-4
+      i.fas.fa-circle-check
+      div
+        strong Hiệu suất ổn định
+        p.mb-0 Sự kiện đang đạt tiến độ bán vé phù hợp với thời gian diễn ra hiện tại.
 
-      .row.g-4.mb-4
-        .col-md-3
-          .card.border-0.shadow-sm.text-center.h-100
-            .card-body
-              h6.text-muted.mb-1 Doanh thu
-              h3.fw-bold.text-success #{Number(stats.totalRevenue || 0).toLocaleString('vi-VN')} đ
-        .col-md-3
-          .card.border-0.shadow-sm.text-center.h-100
-            .card-body
-              h6.text-muted.mb-1 Vé đã bán
-              h3.fw-bold= stats.totalSold || 0
-        .col-md-3
-          .card.border-0.shadow-sm.text-center.h-100
-            .card-body
-              h6.text-muted.mb-1 Vé đang giữ
-              h3.fw-bold.text-warning= stats.totalHeld || 0
-        .col-md-3
-          .card.border-0.shadow-sm.text-center.h-100
-            .card-body
-              h6.text-muted.mb-1 Vé còn lại
-              h3.fw-bold.text-primary= stats.totalAvailable || 0
+  .row.g-4.mb-4
+    .col-xl-8
+      .admin-panel.admin-hero-card
+        .admin-panel__body
+          .row.g-4.align-items-center
+            .col-lg-4
+              img.admin-detail-cover(src=event.image || '/images/placeholder.jpg' alt=event.name)
+            .col-lg-8
+              .d-flex.flex-wrap.gap-2.mb-3
+                span.admin-status-pill(class=`is-${detailStatus}`)= detailStatusLabel
+                if event.organizer
+                  span.admin-status-pill.is-neutral Organizer: #{event.organizer.name || event.organizer.email}
+              h2.admin-hero-card__title.mb-2= event.name
+              p.admin-hero-card__text.mb-3 Kiểm soát tiến độ bán vé, cấu trúc hạng vé và lịch sử đơn hàng trong cùng một màn hình phân tích.
+              .admin-detail-meta
+                .admin-detail-meta__item
+                  span.admin-detail-meta__label Thời gian
+                  strong= new Date(event.date).toLocaleString('vi-VN')
+                .admin-detail-meta__item
+                  span.admin-detail-meta__label Địa điểm
+                  strong= event.location || 'Chưa xác định'
+                .admin-detail-meta__item
+                  span.admin-detail-meta__label Nhà tổ chức
+                  strong= event.organizer && event.organizer.name ? event.organizer.name : 'Không rõ'
+                .admin-detail-meta__item
+                  span.admin-detail-meta__label Email liên hệ
+                  strong= event.organizer && event.organizer.email ? event.organizer.email : 'Không rõ'
+    .col-xl-4
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Tình trạng đơn hàng
+              p Theo dõi các nhóm đơn phát sinh cho sự kiện này.
+          .admin-list-summary
+            .admin-list-summary__row
+              span Đã thanh toán
+              strong.text-success= stats.paidOrdersCount || 0
+            .admin-list-summary__row
+              span Chờ thanh toán
+              strong.text-warning= stats.pendingOrdersCount || 0
+            .admin-list-summary__row
+              span Đã hủy
+              strong.text-danger= stats.cancelledOrdersCount || 0
+            .admin-list-summary__row
+              span Hết hạn
+              strong.text-muted= stats.expiredOrdersCount || 0
 
-      .row.g-4.mb-4
-        .col-lg-8
-          .card.border-0.shadow-sm.h-100
-            .card-body
-              h5.fw-bold.mb-3 Tốc độ bán vé và doanh thu 14 ngày
-              canvas#lineChart(height='120')
-        .col-lg-4
-          .card.border-0.shadow-sm.h-100
-            .card-body
-              h5.fw-bold.mb-3 Doanh thu theo loại vé
-              canvas#revenueChart(height='220')
+  .row.g-4.mb-4
+    each item in detailStats
+      .col-sm-6.col-xxl
+        .admin-stat-card.admin-panel(class=item.tone)
+          .admin-panel__body
+            .admin-stat-card__head
+              span.admin-stat-card__icon
+                i.fas(class=item.icon)
+              span.admin-stat-card__label= item.label
+            h3.admin-stat-card__value= item.value
+            p.admin-stat-card__hint Chỉ số theo sự kiện hiện tại
 
-      .row.g-4.mb-4
-        .col-lg-7
-          .card.border-0.shadow-sm.h-100
-            .card-body
-              h5.fw-bold.mb-3 Cơ cấu vé theo từng loại
-              canvas#ticketBarChart(height='140')
-        .col-lg-5
-          .card.border-0.shadow-sm.h-100
-            .card-body
-              h5.fw-bold.mb-3 Loại vé
-              .table-responsive
-                table.table.table-hover.align-middle
-                  thead.table-light
+  .row.g-4.mb-4
+    .col-xl-8
+      .admin-panel.admin-chart-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Doanh thu và lượng vé bán 14 ngày
+              p So sánh biến động doanh thu với tốc độ bán vé theo ngày.
+          canvas#lineChart(height='120')
+    .col-xl-4
+      .admin-panel.admin-chart-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Doanh thu theo loại vé
+              p Tỷ trọng doanh thu giữa các nhóm vé.
+          if ticketChart && ticketChart.labels && ticketChart.labels.length
+            canvas#revenueChart(height='220')
+          else
+            .admin-empty-state.py-5
+              i.fas.fa-chart-pie
+              h4 Chưa có dữ liệu loại vé
+              p Dữ liệu sẽ hiển thị khi sự kiện bắt đầu phát sinh doanh số.
+
+  .row.g-4.mb-4
+    .col-xl-7
+      .admin-panel.admin-chart-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Cơ cấu vé theo từng loại
+              p Đã bán, còn lại và phân bổ số lượng giữa các nhóm vé.
+          if ticketChart && ticketChart.labels && ticketChart.labels.length
+            canvas#ticketBarChart(height='140')
+          else
+            .admin-empty-state.py-5
+              i.fas.fa-chart-bar
+              h4 Chưa có loại vé
+              p Hãy kiểm tra lại cấu hình vé của sự kiện.
+    .col-xl-5
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Loại vé
+              p Bảng tóm tắt hiệu quả bán từng nhóm vé.
+          if ticketTypeStats && ticketTypeStats.length > 0
+            .table-responsive
+              table.table.admin-table.align-middle.mb-0
+                thead
+                  tr
+                    th Loại vé
+                    th Giá
+                    th Đã bán
+                    th Còn lại
+                    th Tỷ lệ
+                tbody
+                  each item in ticketTypeStats
+                    - const fillClass = item.fillRate >= 60 ? 'is-success' : item.fillRate >= 30 ? 'is-warning' : 'is-danger';
                     tr
-                      th Loại vé
-                      th Giá
-                      th Đã bán
-                      th Còn lại
-                      th Tỷ lệ
-                  tbody
-                    if ticketTypeStats && ticketTypeStats.length > 0
-                      each item in ticketTypeStats
-                        tr
-                          td.fw-semibold= item.type
-                          td #{Number(item.price || 0).toLocaleString('vi-VN')} đ
-                          td= item.sold
-                          td= item.available
-                          td
-                            span.badge(class=item.fillRate >= 60 ? 'bg-success' : item.fillRate >= 30 ? 'bg-warning text-dark' : 'bg-danger') #{item.fillRate}%
-                    else
-                      tr
-                        td.text-center(colspan='5') Chưa có loại vé nào
+                      td.fw-semibold= item.type
+                      td #{Number(item.price || 0).toLocaleString('vi-VN')} đ
+                      td= item.sold
+                      td= item.available
+                      td
+                        span.admin-status-pill(class=fillClass) #{item.fillRate}%
+          else
+            .admin-empty-state.py-5
+              i.fas.fa-ticket
+              h4 Chưa có loại vé nào
+              p Dữ liệu vé sẽ hiển thị khi sự kiện được cấu hình đầy đủ.
 
-      .row.g-4
-        .col-lg-6
-          .card.border-0.shadow-sm.h-100
-            .card-body
-              h5.fw-bold.mb-3 Đơn hàng thanh toán gần đây
-              .table-responsive
-                table.table.table-sm.align-middle
-                  thead.table-light
+  .row.g-4
+    .col-xl-6
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Đơn hàng thanh toán gần đây
+              p Các giao dịch mới nhất của sự kiện.
+          if recentPaidOrders && recentPaidOrders.length > 0
+            .table-responsive
+              table.table.admin-table.align-middle.mb-0
+                thead
+                  tr
+                    th Mã đơn
+                    th Tổng tiền
+                    th Ngày
+                tbody
+                  each order in recentPaidOrders
                     tr
-                      th Mã đơn
-                      th Tổng tiền
-                      th Ngày
-                  tbody
-                    if recentPaidOrders && recentPaidOrders.length > 0
-                      each order in recentPaidOrders
-                        tr
-                          td= order._id
-                          td.text-success #{Number(order.totalAmount || 0).toLocaleString('vi-VN')} đ
-                          td= new Date(order.createdAt).toLocaleString('vi-VN')
-                    else
-                      tr
-                        td.text-center(colspan='3') Chưa có đơn hàng đã thanh toán
-        .col-lg-6
-          .card.border-0.shadow-sm.h-100
-            .card-body
-              h5.fw-bold.mb-3 Lịch sử thông báo cho organizer
-              if recentNotifications && recentNotifications.length > 0
-                .d-flex.flex-column.gap-3
-                  each item in recentNotifications
-                    .border.rounded-3.p-3(class=item.type === 'low_sales_warning' ? 'border-danger-subtle bg-danger-subtle' : 'border-primary-subtle bg-white')
-                      .d-flex.justify-content-between.align-items-start.gap-2
-                        div
-                          h6.fw-bold.mb-1= item.title
-                          p.mb-1.small= item.message
-                        span.badge(class=item.type === 'low_sales_warning' ? 'bg-danger' : 'bg-primary')= item.type === 'low_sales_warning' ? 'Cảnh báo' : 'Cập nhật'
-                      small.text-muted= new Date(item.createdAt).toLocaleString('vi-VN')
-              else
-                p.text-muted.mb-0 Chưa có thông báo nào được gửi cho nhà tổ chức.
+                      td.font-monospace= order._id
+                      td.text-success.fw-semibold #{Number(order.totalAmount || 0).toLocaleString('vi-VN')} đ
+                      td= new Date(order.createdAt).toLocaleString('vi-VN')
+          else
+            .admin-empty-state.py-5
+              i.fas.fa-receipt
+              h4 Chưa có đơn đã thanh toán
+              p Đơn hàng thanh toán của sự kiện sẽ xuất hiện ở đây.
+    .col-xl-6
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Lịch sử thông báo cho organizer
+              p Theo dõi các cảnh báo và cập nhật đã gửi.
+          if recentNotifications && recentNotifications.length > 0
+            .admin-timeline
+              each item in recentNotifications
+                .admin-timeline__item(class=item.type === 'low_sales_warning' ? 'is-warning' : 'is-info')
+                  .admin-timeline__dot
+                  .admin-timeline__content
+                    .d-flex.justify-content-between.align-items-start.gap-3.flex-wrap
+                      strong= item.title
+                      span.admin-status-pill(class=item.type === 'low_sales_warning' ? 'is-danger' : 'is-primary')= item.type === 'low_sales_warning' ? 'Cảnh báo' : 'Cập nhật'
+                    p.mb-1.small= item.message
+                    small.text-muted= new Date(item.createdAt).toLocaleString('vi-VN')
+          else
+            .admin-empty-state.py-5
+              i.fas.fa-bell-slash
+              h4 Chưa có thông báo nào
+              p Khi admin gửi cảnh báo hoặc cập nhật, lịch sử sẽ xuất hiện tại đây.
 
 block append scripts
   script(src='https://cdn.jsdelivr.net/npm/chart.js')
@@ -190,17 +236,17 @@ block append scripts
               label: 'Doanh thu',
               data: lineRevenue,
               borderColor: '#2563eb',
-              backgroundColor: 'rgba(37, 99, 235, 0.15)',
-              tension: 0.3,
+              backgroundColor: 'rgba(37, 99, 235, 0.14)',
+              tension: 0.35,
               fill: true,
               yAxisID: 'y'
             },
             {
               label: 'Vé bán',
               data: lineTickets,
-              borderColor: '#16a34a',
-              backgroundColor: 'rgba(22, 163, 74, 0.15)',
-              tension: 0.3,
+              borderColor: '#0f9f77',
+              backgroundColor: 'rgba(15, 159, 119, 0.12)',
+              tension: 0.35,
               fill: true,
               yAxisID: 'y1'
             }
@@ -209,10 +255,28 @@ block append scripts
         options: {
           responsive: true,
           interaction: { mode: 'index', intersect: false },
-          plugins: { legend: { position: 'bottom' } },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { usePointStyle: true, boxWidth: 10 }
+            }
+          },
           scales: {
-            y: { beginAtZero: true, position: 'left' },
-            y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+            x: {
+              grid: { display: false },
+              ticks: { color: '#64748b' }
+            },
+            y: {
+              beginAtZero: true,
+              position: 'left',
+              ticks: { color: '#64748b' }
+            },
+            y1: {
+              beginAtZero: true,
+              position: 'right',
+              grid: { drawOnChartArea: false },
+              ticks: { color: '#64748b' }
+            }
           }
         }
       });
@@ -226,14 +290,19 @@ block append scripts
           labels: ticketLabels,
           datasets: [{
             data: ticketRevenue,
-            backgroundColor: ['#2563eb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0f766e'],
+            backgroundColor: ['#2563eb', '#0f9f77', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
             borderWidth: 2,
             borderColor: '#fff'
           }]
         },
         options: {
           responsive: true,
-          plugins: { legend: { position: 'bottom' } }
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { usePointStyle: true, boxWidth: 12 }
+            }
+          }
         }
       });
     }
@@ -248,7 +317,7 @@ block append scripts
             {
               label: 'Đã bán',
               data: ticketSold,
-              backgroundColor: '#16a34a'
+              backgroundColor: '#0f9f77'
             },
             {
               label: 'Còn lại',
@@ -259,8 +328,16 @@ block append scripts
         },
         options: {
           responsive: true,
-          plugins: { legend: { position: 'bottom' } },
-          scales: { y: { beginAtZero: true } }
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { usePointStyle: true, boxWidth: 10 }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: '#64748b' } },
+            y: { beginAtZero: true, ticks: { color: '#64748b' } }
+          }
         }
       });
     }

@@ -42,11 +42,23 @@ export const register = [
       const token = signToken({ id: savedUser._id, role: savedUser.role });
       const refreshToken = signRefreshToken({ id: savedUser._id });
 
+      // ============================================================
+      // BẢO MẬT: Set token vào HTTP-Only Cookie thay vì JSON body
+      // JavaScript phía client KHÔNG THỂ đọc được token
+      // Điều này ngăn chặn XSS attack đánh cắp token
+      // ============================================================
+      res.cookie('token', token, {
+        httpOnly: true,     // JS không đọc được - ngăn XSS
+        sameSite: 'Strict', // Ngăn CSRF attack
+        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+
+      // Trả thông tin user mà KHÔNG trả token trong body
+      // Token chỉ tồn tại trong HTTP-Only Cookie
       return res.status(201).json({
         success: true,
         message: 'Đăng ký thành công',
-        token,
-        refreshToken,
         user: {
           id: savedUser._id,
           name: savedUser.name,
@@ -88,12 +100,24 @@ export const login = [
         role: user.role
       });
 
+      // ============================================================
+      // BẢO MẬT: Set token vào HTTP-Only Cookie
+      // - httpOnly: true → JavaScript không thể đọc token
+      //   → Ngăn chặn XSS (Cross-Site Scripting) đánh cắp token
+      // - sameSite: 'Strict' → Cookie chỉ được gửi trong same-site requests
+      //   → Ngăn chặn CSRF (Cross-Site Request Forgery)
+      // - secure: true → Chỉ gửi qua HTTPS (production)
+      // ============================================================
       res.cookie('token', token, {
-        httpOnly: true,
-        sameSite: 'Lax',
-        maxAge: 24 * 60 * 60 * 1000
+        httpOnly: true,     // JavaScript cannot read this cookie
+        sameSite: 'Strict', // CSRF protection - only send on same-site requests
+        secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
       });
 
+      // KHÔNG trả token trong JSON body
+      // Token chỉ tồn tại trong HTTP-Only Cookie
+      // Browser sẽ tự động gửi cookie này trong các request tiếp theo
       return res.json({
         success: true,
         message: 'Đăng nhập thành công',
@@ -112,9 +136,11 @@ export const login = [
 
 export const logout = async (req, res) => {
   try {
+    // Xóa token cookie
     res.clearCookie('token', {
       httpOnly: true,
-      secure: false,
+      sameSite: 'Strict',
+      secure: process.env.NODE_ENV === 'production',
       path: '/'
     });
 

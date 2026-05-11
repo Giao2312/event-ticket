@@ -1,0 +1,126 @@
+block organizer_config
+- const currentOrganizerPage = typeof organizerPage !== 'undefined' ? organizerPage : 'dashboard';
+- const currentOrganizerHeading = typeof organizerHeading !== 'undefined' ? organizerHeading : (pageTitle || 'Bảng điều khiển nhà tổ chức');
+- const currentOrganizerDescription = typeof organizerDescription !== 'undefined' ? organizerDescription : 'Theo dõi sự kiện, đơn hàng và hiệu suất bán vé trong một không gian làm việc riêng cho nhà tổ chức.';
+- const organizerSearchText = typeof organizerSearchValue !== 'undefined' ? organizerSearchValue : '';
+- const organizerUserName = user && user.name ? user.name : 'Organizer';
+- const organizerUserInitial = organizerUserName.trim().charAt(0).toUpperCase();
+doctype html
+html(lang="vi")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    title= pageTitle || 'EventVé Organizer'
+    link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css")
+    link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css")
+    link(rel="preconnect" href="https://fonts.googleapis.com")
+    link(rel="preconnect" href="https://fonts.gstatic.com" crossorigin)
+    link(href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet")
+    link(rel="stylesheet", href="/css/style.css")
+  body.admin-body.organizer-body(data-user-role=(user && user.role) ? user.role.toLowerCase() : '')
+    .admin-shell
+      aside.admin-sidebar
+        .admin-sidebar__header
+          a.admin-brand(href="/organizer/dashboard")
+            span.admin-brand__icon
+              i.fas.fa-calendar-days
+            span
+              strong EventVé
+              small Organizer console
+          p.admin-sidebar__caption Quản lý danh mục sự kiện, đơn hàng và vòng đời bán vé của riêng bạn trên cùng một shell.
+
+        nav.admin-sidebar__nav
+          a.admin-nav-link(class=currentOrganizerPage === 'dashboard' ? 'is-active' : '' href="/organizer/dashboard")
+            span.admin-nav-link__icon
+              i.fas.fa-chart-line
+            span.admin-nav-link__text Tổng quan
+          a.admin-nav-link(class=currentOrganizerPage === 'events' ? 'is-active' : '' href="/organizer/events")
+            span.admin-nav-link__icon
+              i.fas.fa-calendar-check
+            span.admin-nav-link__text Sự kiện
+          a.admin-nav-link(class=currentOrganizerPage === 'orders' ? 'is-active' : '' href="/organizer/orders")
+            span.admin-nav-link__icon
+              i.fas.fa-receipt
+            span.admin-nav-link__text Đơn hàng
+          a.admin-nav-link(class=currentOrganizerPage === 'finance' ? 'is-active' : '' href="/organizer/finance")
+            span.admin-nav-link__icon
+              i.fas.fa-wallet
+            span.admin-nav-link__text Tài chính
+          a.admin-nav-link(class=currentOrganizerPage === 'withdrawals' ? 'is-active' : '' href="/organizer/withdrawals")
+            span.admin-nav-link__icon
+              i.fas.fa-clock-rotate-left
+            span.admin-nav-link__text Lịch sử rút tiền
+          a.admin-nav-link(class=currentOrganizerPage === 'create' ? 'is-active' : '' href="/organizer/create-event")
+            span.admin-nav-link__icon
+              i.fas.fa-plus
+            span.admin-nav-link__text Tạo sự kiện
+
+        .admin-sidebar__footer
+          a.admin-side-utility(href="/events")
+            i.fas.fa-arrow-up-right-from-square
+            span Xem trang công khai
+          if user
+            a.admin-side-utility(href="/profile")
+              i.fas.fa-user-circle
+              span Hồ sơ cá nhân
+          button.admin-side-utility.admin-side-utility--danger(type="button" onclick="handleOrganizerLogout()")
+            i.fas.fa-right-from-bracket
+            span Đăng xuất
+
+      .admin-main
+        header.admin-topbar
+          .admin-topbar__intro
+            p.admin-eyebrow Nhà tổ chức
+            h1.admin-topbar__title= currentOrganizerHeading
+            if currentOrganizerDescription
+              p.admin-topbar__description= currentOrganizerDescription
+
+          .admin-topbar__tools
+            form.admin-topbar__search(action="/organizer/events" method="GET")
+              i.fas.fa-search
+              input(type="search" name="q" placeholder="Tìm sự kiện của bạn..." value=organizerSearchText)
+
+            block organizer_topbar_actions
+
+            .admin-user-card
+              .admin-user-card__avatar= organizerUserInitial
+              .admin-user-card__meta
+                strong= organizerUserName
+                span= user && user.role ? user.role : 'Nhà tổ chức'
+
+        main.admin-page
+          block content
+
+    block scripts
+      script(src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous")
+      script(src="https://cdn.jsdelivr.net/npm/sweetalert2@11")
+      script.
+        async function handleOrganizerLogout() {
+          const result = await Swal.fire({
+            title: 'Đăng xuất khỏi khu vực nhà tổ chức?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Đăng xuất',
+            cancelButtonText: 'Hủy'
+          });
+
+          if (!result.isConfirmed) return;
+
+          try {
+            const response = await fetch('/api/auth/logout', { method: 'POST' });
+            const data = await response.json();
+
+            if (data.success) {
+              window.location.href = '/';
+              return;
+            }
+
+            throw new Error(data.message || 'Không thể đăng xuất');
+          } catch (error) {
+            Swal.fire({
+              icon: 'error',
+              title: 'Lỗi',
+              text: error.message
+            });
+          }
+        }

@@ -1,0 +1,358 @@
+extends ../layout
+
+block admin_config
+  - var adminPage = 'settlements'
+  - var adminHeading = 'Quản lý Đối soát'
+  - var adminDescription = 'Tạo và duyệt đối soát cho nhà tổ chức.'
+
+block admin_topbar_actions
+  button.btn.admin-primary-btn(data-bs-toggle="modal" data-bs-target="#createSettlementModal")
+    i.fas.fa-plus
+    span Tạo đối soát
+
+block content
+  - const settlementStats = [{ label: 'Chờ duyệt', value: stats.pendingCount || 0, tone: 'is-warning', icon: 'fa-clock' }, { label: 'Đã duyệt', value: stats.approvedCount || 0, tone: 'is-info', icon: 'fa-check' }, { label: 'Hoàn thành', value: stats.completedCount || 0, tone: 'is-success', icon: 'fa-circle-check' }, { label: 'Tổng hoa hồng', value: Number(stats.totalCommission || 0).toLocaleString('vi-VN') + ' đ', tone: 'is-danger', icon: 'fa-percent' }];
+
+  if errorMessage
+    .alert.alert-danger.admin-inline-alert= errorMessage
+
+  .row.g-4.mb-4
+    each item in settlementStats
+      .col-sm-6.col-xl-3
+        .admin-stat-card.admin-panel(class=item.tone)
+          .admin-panel__body
+            .admin-stat-card__head
+              span.admin-stat-card__icon
+                i.fas(class=item.icon)
+              span.admin-stat-card__label= item.label
+            h3.admin-stat-card__value= item.value
+            p.admin-stat-card__hint Đối soát
+
+  // Organizers with earnings
+  if organizers && organizers.length > 0
+    .admin-panel.mb-4
+      .admin-panel__body
+        .admin-section-heading
+          h3 Nhà tổ chức & Doanh thu
+          p Danh sách nhà tổ chức với doanh thu từ vé đã bán.
+        .table-responsive
+          table.table.admin-table.align-middle.mb-0
+            thead
+              tr
+                th Nhà tổ chức
+                th Email
+                th Doanh thu
+                th Hoa hồng (10%)
+                th Thực nhận
+                th Rút tiền chờ
+                th Thao tác
+            tbody
+              each org in organizers
+                tr
+                  td
+                    strong= org.name || 'N/A'
+                  td.small.text-muted= org.email || ''
+                  td.text-primary.fw-semibold #{Number(org.totalRevenue || 0).toLocaleString('vi-VN')} đ
+                  td.text-warning #{Number(org.commissionOwed || 0).toLocaleString('vi-VN')} đ
+                  td.text-success.fw-semibold #{Number(org.netEarning || 0).toLocaleString('vi-VN')} đ
+                  td
+                    if org.pendingWithdrawals > 0
+                      span.badge.bg-warning.text-dark= org.pendingWithdrawals + ' chờ duyệt'
+                    else
+                      span.text-muted -
+                  td
+                    button.btn.btn-sm.btn-outline-primary.create-settlement-btn(
+                      data-organizer-id=org._id
+                      data-organizer-name=org.name
+                    )
+                      i.fas.fa-file-invoice
+                      span Tạo đối soát
+
+  // Filters
+  .admin-panel.mb-4
+    .admin-panel__body
+      form.row.g-3.align-items-end(method="GET" action="/admin/dashboard/settlements")
+        .col-lg-6
+          label.admin-field-label(for="statusFilter") Lọc theo trạng thái
+          select#statusFilter.form-select.admin-select(name="status")
+            option(value="") Tất cả trạng thái
+            option(value="PENDING" selected=filters.status==='PENDING') Chờ duyệt
+            option(value="APPROVED" selected=filters.status==='APPROVED') Đã duyệt
+            option(value="COMPLETED" selected=filters.status==='COMPLETED') Hoàn thành
+            option(value="CANCELLED" selected=filters.status==='CANCELLED') Đã hủy
+        .col-sm-6.col-lg-3
+          .d-flex.gap-2
+            button.btn.admin-primary-btn.w-100(type="submit")
+              i.fas.fa-sliders
+              span Lọc
+            a.btn.admin-secondary-btn(href="/admin/dashboard/settlements")
+              i.fas.fa-rotate-left
+
+  // Settlements list
+  .admin-panel
+    .admin-panel__body
+      .admin-section-heading
+        h3 Danh sách đối soát
+        p Quản lý các phiên đối soát với nhà tổ chức.
+      if settlements && settlements.length > 0
+        .table-responsive
+          table.table.admin-table.align-middle.mb-0
+            thead
+              tr
+                th Mã đối soát
+                th Nhà tổ chức
+                th Sự kiện
+                th Doanh thu
+                th Hoa hồng
+                th Thực nhận
+                th Kỳ đối soát
+                th Trạng thái
+                th Thao tác
+            tbody
+              each s in settlements
+                - const sStatus = String(s.status || '').toUpperCase();
+                - const sStatusLabel = sStatus === 'PENDING' ? 'Chờ duyệt' : sStatus === 'APPROVED' ? 'Đã duyệt' : sStatus === 'COMPLETED' ? 'Hoàn thành' : sStatus === 'CANCELLED' ? 'Đã hủy' : sStatus;
+                - const sStatusClass = sStatus === 'PENDING' ? 'is-pending' : sStatus === 'APPROVED' ? 'is-info' : sStatus === 'COMPLETED' ? 'is-paid' : sStatus === 'CANCELLED' ? 'is-cancelled' : 'is-neutral';
+                tr
+                  td
+                    strong.font-monospace= s._id
+                  td
+                    strong.d-block= (s.organizerId && s.organizerId.name) || 'N/A'
+                    small.text-muted= (s.organizerId && s.organizerId.email) || ''
+                  td.small= (s.eventId && s.eventId.name) || 'Tổng hợp'
+                  td.text-primary.fw-semibold #{Number(s.totalRevenue || 0).toLocaleString('vi-VN')} đ
+                  td.text-warning #{Number(s.commissionAmount || 0).toLocaleString('vi-VN')} đ
+                  td.text-success.fw-semibold #{Number(s.netAmount || 0).toLocaleString('vi-VN')} đ
+                  td.small
+                    = s.periodStart ? new Date(s.periodStart).toLocaleDateString('vi-VN') : '-'
+                    br
+                    small.text-muted ~
+                    br
+                    = s.periodEnd ? new Date(s.periodEnd).toLocaleDateString('vi-VN') : '-'
+                  td
+                    span.admin-status-pill(class=sStatusClass)= sStatusLabel
+                  td
+                    if sStatus === 'PENDING'
+                      .d-flex.gap-1
+                        button.btn.btn-sm.btn-success.w-50.approve-settlement-btn(data-settlement-id=s._id)
+                          i.fas.fa-check
+                          span Duyệt
+                        button.btn.btn-sm.btn-danger.w-50.cancel-settlement-btn(data-settlement-id=s._id)
+                          i.fas.fa-xmark
+                          span Hủy
+                    else if sStatus === 'APPROVED'
+                      button.btn.btn-sm.btn-primary.w-100.complete-settlement-btn(data-settlement-id=s._id)
+                        i.fas.fa-check-double
+                        span Hoàn thành
+                    else if sStatus === 'COMPLETED'
+                      span.text-success
+                        i.fas.fa-check-circle
+                        span Đã chuyển
+                    else
+                      span.text-muted -
+      else
+        .admin-empty-state
+          i.fas.fa-file-invoice-dollar
+          h4 Chưa có đối soát nào
+          p Danh sách đối soát sẽ hiển thị ở đây.
+
+  if pagination && pagination.totalPages > 1
+    nav.mt-4(aria-label="Phân trang")
+      ul.pagination.admin-pagination
+        - const baseQuery = `?status=${encodeURIComponent(filters.status || '')}&page=`;
+        li.page-item(class=pagination.page <= 1 ? 'disabled' : '')
+          a.page-link(href=`/admin/dashboard/settlements${baseQuery}${pagination.page - 1}`) Trước
+        each i in Array.from({ length: pagination.totalPages }, (_, idx) => idx + 1)
+          li.page-item(class=i === pagination.page ? 'active' : '')
+            a.page-link(href=`/admin/dashboard/settlements${baseQuery}${i}`)= i
+        li.page-item(class=pagination.page >= pagination.totalPages ? 'disabled' : '')
+          a.page-link(href=`/admin/dashboard/settlements${baseQuery}${pagination.page + 1}`) Sau
+
+  // Create Settlement Modal
+  #createSettlementModal.modal.fade(tabindex="-1" aria-labelledby="createSettlementModalLabel" aria-hidden="true")
+    .modal-dialog
+      .modal-content
+        .modal-header
+          h5#createSettlementModalLabel.modal-title
+            i.fas.fa-file-invoice.me-2
+            | Tạo đối soát
+          button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+        .modal-body
+          form#createSettlementForm
+            .mb-3
+              label.form-label Nhà tổ chức
+              select.form-select(name="organizerId" id="settlementOrganizerId" required)
+                option(value="") -- Chọn nhà tổ chức --
+                each org in organizers
+                  option(value=org._id)= org.name + ' (' + org.email + ')'
+            .mb-3
+              label.form-label Ngày bắt đầu kỳ
+              input.form-control(type="date" name="periodStart" id="settlementPeriodStart" required)
+            .mb-3
+              label.form-label Ngày kết thúc kỳ
+              input.form-control(type="date" name="periodEnd" id="settlementPeriodEnd" required)
+            .mb-3
+              label.form-label Ghi chú (không bắt buộc)
+              textarea.form-control(name="adminNote" id="settlementAdminNote" rows="2" placeholder="Ghi chú cho đối soát này...")
+            .alert.alert-info
+              i.fas.fa-info-circle.me-2
+              | Hoa hồng Admin: 10%. Số tiền hoa hồng sẽ được tự động tính toán.
+        .modal-footer
+          button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Hủy
+          button.btn.btn-primary(type="submit" form="createSettlementForm")
+            i.fas.fa-check.me-2
+            | Tạo đối soát
+
+append scripts
+  script.
+    document.addEventListener('DOMContentLoaded', function() {
+      // Create settlement - open modal with organizer pre-selected
+      document.querySelectorAll('.create-settlement-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const organizerId = this.getAttribute('data-organizer-id');
+          const organizerName = this.getAttribute('data-organizer-name');
+          document.getElementById('settlementOrganizerId').value = organizerId;
+          // Set default date range to last 30 days
+          const today = new Date();
+          const lastMonth = new Date(today);
+          lastMonth.setDate(lastMonth.getDate() - 30);
+          document.getElementById('settlementPeriodEnd').value = today.toISOString().split('T')[0];
+          document.getElementById('settlementPeriodStart').value = lastMonth.toISOString().split('T')[0];
+          new bootstrap.Modal(document.getElementById('createSettlementModal')).show();
+        });
+      });
+
+      // Create settlement form submit
+      document.getElementById('createSettlementForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = {
+          organizerId: document.getElementById('settlementOrganizerId').value,
+          periodStart: document.getElementById('settlementPeriodStart').value,
+          periodEnd: document.getElementById('settlementPeriodEnd').value,
+          adminNote: document.getElementById('settlementAdminNote').value
+        };
+
+        if (!formData.organizerId || !formData.periodStart || !formData.periodEnd) {
+          alert('Vui lòng điền đầy đủ thông tin');
+          return;
+        }
+
+        try {
+          const res = await fetch('/admin/settlements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+          const data = await res.json();
+          if (data.success) {
+            alert('Đã tạo đối soát thành công!');
+            window.location.reload();
+          } else {
+            alert('Lỗi: ' + (data.message || 'Không thể tạo đối soát'));
+          }
+        } catch (err) {
+          console.error('Create settlement error:', err);
+          alert('Lỗi kết nối server');
+        }
+      });
+
+      // Approve settlement
+      document.querySelectorAll('.approve-settlement-btn').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+          const settlementId = this.getAttribute('data-settlement-id');
+          const adminNote = prompt('Ghi chú (không bắt buộc):');
+          if (adminNote === null) return;
+
+          this.disabled = true;
+          this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+          try {
+            const res = await fetch(`/admin/settlements/${settlementId}/approve`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ adminNote: adminNote || '' })
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert('Đã duyệt đối soát!');
+              window.location.reload();
+            } else {
+              alert('Lỗi: ' + (data.message || 'Không thể duyệt'));
+              this.disabled = false;
+              this.innerHTML = '<i class="fas fa-check"></i><span>Duyệt</span>';
+            }
+          } catch (err) {
+            console.error('Approve settlement error:', err);
+            alert('Lỗi kết nối server');
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-check"></i><span>Duyệt</span>';
+          }
+        });
+      });
+
+      // Complete settlement
+      document.querySelectorAll('.complete-settlement-btn').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+          const settlementId = this.getAttribute('data-settlement-id');
+          if (!confirm('Xác nhận đã chuyển tiền cho nhà tổ chức?')) return;
+
+          this.disabled = true;
+          this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+          try {
+            const res = await fetch(`/admin/settlements/${settlementId}/complete`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert('Đã hoàn thành đối soát!');
+              window.location.reload();
+            } else {
+              alert('Lỗi: ' + (data.message || 'Không thể hoàn thành'));
+              this.disabled = false;
+              this.innerHTML = '<i class="fas fa-check-double"></i><span>Hoàn thành</span>';
+            }
+          } catch (err) {
+            console.error('Complete settlement error:', err);
+            alert('Lỗi kết nối server');
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-check-double"></i><span>Hoàn thành</span>';
+          }
+        });
+      });
+
+      // Cancel settlement
+      document.querySelectorAll('.cancel-settlement-btn').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+          const settlementId = this.getAttribute('data-settlement-id');
+          const reason = prompt('Lý do hủy:');
+          if (reason === null) return;
+
+          this.disabled = true;
+          this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+          try {
+            const res = await fetch(`/admin/settlements/${settlementId}/cancel`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reason })
+            });
+            const data = await res.json();
+            if (data.success) {
+              alert('Đã hủy đối soát!');
+              window.location.reload();
+            } else {
+              alert('Lỗi: ' + (data.message || 'Không thể hủy'));
+              this.disabled = false;
+              this.innerHTML = '<i class="fas fa-xmark"></i><span>Hủy</span>';
+            }
+          } catch (err) {
+            console.error('Cancel settlement error:', err);
+            alert('Lỗi kết nối server');
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-xmark"></i><span>Hủy</span>';
+          }
+        });
+      });
+    });

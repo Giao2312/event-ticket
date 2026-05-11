@@ -34,11 +34,10 @@ router.get(
   roleMiddleware('admin'),
   async (req, res) => {
     const organizers = await User.find({ role: 'Organizer' }).select('_id name email').lean();
-    res.render('organizer/dashboard/events/create', {
+    res.render('admin/dashboard/event-create', {
       pageTitle: 'Admin tạo sự kiện',
       user: req.user,
-      organizers,
-      isAdminCreatingForOrganizer: true
+      organizers
     });
   }
 );
@@ -108,6 +107,78 @@ router.patch(
   authMiddleware,
   roleMiddleware('admin'),
   AdminController.toggleUserStatus
+);
+
+router.post(
+  '/admin/orders/:orderId/approve',
+  authMiddleware,
+  roleMiddleware('admin'),
+  AdminController.approveOrder
+);
+
+// Withdrawal routes
+router.get(
+  '/admin/dashboard/withdrawals',
+  authMiddleware,
+  roleMiddleware('admin'),
+  AdminController.manageWithdrawals
+);
+
+router.get(
+  '/admin/api/withdrawals',
+  authMiddleware,
+  roleMiddleware('admin'),
+  AdminController.getWithdrawalsApi
+);
+
+router.post(
+  '/admin/withdrawals/:withdrawalId/approve',
+  authMiddleware,
+  roleMiddleware('admin'),
+  AdminController.approveWithdrawalApi
+);
+
+router.post(
+  '/admin/withdrawals/:withdrawalId/reject',
+  authMiddleware,
+  roleMiddleware('admin'),
+  AdminController.rejectWithdrawalApi
+);
+
+// Settlement routes
+router.get(
+  '/admin/dashboard/settlements',
+  authMiddleware,
+  roleMiddleware('admin'),
+  AdminController.manageSettlements
+);
+
+router.post(
+  '/admin/settlements',
+  authMiddleware,
+  roleMiddleware('admin'),
+  AdminController.createSettlementApi
+);
+
+router.post(
+  '/admin/settlements/:settlementId/approve',
+  authMiddleware,
+  roleMiddleware('admin'),
+  AdminController.approveSettlementApi
+);
+
+router.post(
+  '/admin/settlements/:settlementId/complete',
+  authMiddleware,
+  roleMiddleware('admin'),
+  AdminController.completeSettlementApi
+);
+
+router.post(
+  '/admin/settlements/:settlementId/cancel',
+  authMiddleware,
+  roleMiddleware('admin'),
+  AdminController.cancelSettlementApi
 );
 
 export default router;

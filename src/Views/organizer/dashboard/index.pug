@@ -1,8 +1,171 @@
-extends ../../layout
+extends ../layout
+
+block organizer_config
+  - var organizerPage = 'dashboard'
+  - var organizerHeading = 'Bảng điều khiển nhà tổ chức'
+  - var organizerDescription = 'Theo dõi tiến độ bán vé, lịch sự kiện và đơn hàng gần đây trong cùng một dashboard.'
+
+block organizer_topbar_actions
+  a.btn.admin-secondary-btn(href="/organizer/events")
+    i.fas.fa-calendar-check
+    span Sự kiện
+  a.btn.admin-primary-btn(href="/organizer/create-event")
+    i.fas.fa-plus
+    span Tạo sự kiện
 
 block content
-  section.py-5
-    div.container
-      h1.fw-bold Dashboard Nhà tổ chức
-      p Chào mừng #{user.name}!
-      pre #{JSON.stringify(stats, null, 2)}  <!-- Debug dữ liệu -->
+  - const dashboardStats = [{ label: 'Doanh thu đã thu', value: `${Number((stats && stats.totalRevenue) || 0).toLocaleString('vi-VN')} đ`, tone: 'is-success', icon: 'fa-sack-dollar', hint: 'Từ đơn hàng đã thanh toán' }, { label: 'Vé đã bán', value: `${(stats && stats.totalTicketsSold) || 0}`, tone: 'is-primary', icon: 'fa-ticket', hint: `${(stats && stats.totalTicketsSold) || 0}/${(stats && stats.totalTickets) || 0} vé toàn bộ` }, { label: 'Tổng sự kiện', value: `${(stats && stats.totalEvents) || 0}`, tone: 'is-info', icon: 'fa-calendar-days', hint: 'Danh mục sự kiện của bạn' }, { label: 'Tổng đơn hàng', value: `${(stats && stats.totalOrders) || 0}`, tone: 'is-warning', icon: 'fa-receipt', hint: `${(stats && stats.paidOrders) || 0} đơn đã thanh toán` }];
+  - const statusItems = [{ label: 'Chờ duyệt', value: (stats && stats.pendingEvents) || 0, tone: 'is-pending', icon: 'fa-hourglass-half', hint: 'Đang chờ admin kiểm tra' }, { label: 'Bị từ chối', value: (stats && stats.rejectedEvents) || 0, tone: 'is-rejected', icon: 'fa-ban', hint: 'Cần bổ sung hoặc chỉnh sửa' }, { label: 'Sắp diễn ra', value: (stats && stats.upcomingEvents) || 0, tone: 'is-upcoming', icon: 'fa-calendar-check', hint: 'Chuẩn bị mở bán hoặc check-in' }, { label: 'Đang diễn ra', value: (stats && stats.ongoingEvents) || 0, tone: 'is-ongoing', icon: 'fa-play-circle', hint: 'Theo dõi doanh số realtime' }, { label: 'Đã kết thúc', value: (stats && stats.endedEvents) || 0, tone: 'is-ended', icon: 'fa-flag-checkered', hint: 'Để đối soát và báo cáo' }];
+
+  .admin-panel.admin-hero-card.mb-4
+    .admin-panel__body
+      .row.g-4.align-items-center
+        .col-xl-7
+          span.admin-kicker Nhịp vận hành
+          h2.admin-hero-card__title Điều phối lịch sự kiện và theo dõi hiệu suất bán vé từ một màn hình làm việc thống nhất.
+          p.admin-hero-card__text Shell organizer mới giữ cấu trúc gần với admin dashboard để thao tác quen tay hơn, nhưng tối ưu cho nhu cầu theo dõi event và đơn hàng của riêng bạn.
+          .admin-hero-card__metrics
+            .admin-hero-card__metric
+              strong #{(stats && stats.fillRate) || 0}%
+              span Tỷ lệ lấp đầy
+            .admin-hero-card__metric
+              strong= (stats && stats.upcomingEvents) || 0
+              span Sự kiện sắp diễn ra
+            .admin-hero-card__metric
+              strong= recentOrders && recentOrders.length ? recentOrders.length : 0
+              span Giao dịch mới
+        .col-xl-5
+          .admin-highlight-card
+            .admin-highlight-card__head
+              span.admin-kicker To do nhanh
+              h3 Quy trình trong ngày
+            .admin-highlight-card__stack
+              .admin-highlight-card__row
+                span Rà soát hàng chờ duyệt
+                strong= (stats && stats.pendingEvents) || 0
+              .admin-highlight-card__row
+                span Kiểm tra đơn đã thanh toán
+                strong= (stats && stats.paidOrders) || 0
+              .admin-highlight-card__row
+                span Sự kiện cần chuẩn bị
+                strong= (stats && stats.upcomingEvents) || 0
+
+  .row.g-4.mb-4
+    each item in dashboardStats
+      .col-sm-6.col-xl-3
+        .admin-stat-card.admin-panel(class=item.tone)
+          .admin-panel__body
+            .admin-stat-card__head
+              span.admin-stat-card__icon
+                i.fas(class=item.icon)
+              span.admin-stat-card__label= item.label
+            h3.admin-stat-card__value= item.value
+            p.admin-stat-card__hint= item.hint
+
+  .row.g-4.mb-4
+    .col-xl-7
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Tình trạng sự kiện
+              p Nhìn nhanh các nhóm sự kiện để ưu tiên xử lý.
+          .admin-status-grid
+            each item in statusItems
+              .admin-status-tile(class=item.tone)
+                .admin-status-tile__icon
+                  i.fas(class=item.icon)
+                strong= item.value
+                span= item.label
+                small= item.hint
+    .col-xl-5
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Thông báo gần đây
+              p Cập nhật hệ thống và cảnh báo doanh số cho nhà tổ chức.
+          if notifications && notifications.length > 0
+            .admin-timeline
+              each item in notifications
+                .admin-timeline__item(class=item.type === 'low_sales_warning' ? 'is-warning' : 'is-info')
+                  .admin-timeline__dot
+                  .admin-timeline__content
+                    .d-flex.justify-content-between.align-items-start.gap-3.flex-wrap
+                      strong= item.title
+                      span.admin-status-pill(class=item.type === 'low_sales_warning' ? 'is-danger' : 'is-primary')= item.type === 'low_sales_warning' ? 'Cảnh báo' : 'Cập nhật'
+                    p.mb-1.small= item.message
+                    if item.eventId && item.eventId.name
+                      small.text-muted Sự kiện: #{item.eventId.name}
+          else
+            .admin-empty-state.py-5
+              i.fas.fa-bell-slash
+              h4 Chưa có thông báo
+              p Các cảnh báo hoặc cập nhật hệ thống sẽ xuất hiện ở đây.
+
+  .row.g-4
+    .col-xl-7
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Sự kiện gần đây
+              p Nhóm sự kiện mới nhất để bạn tiếp tục theo dõi.
+            a.admin-text-link(href="/organizer/events") Xem tất cả
+          if recentEvents && recentEvents.length > 0
+            .table-responsive
+              table.table.admin-table.align-middle.mb-0
+                thead
+                  tr
+                    th Sự kiện
+                    th Trạng thái
+                    th Vé
+                    th Ngày diễn ra
+                    th.text-end Xem
+                tbody
+                  each event in recentEvents
+                    tr
+                      td
+                        .admin-table-entity
+                          img.admin-thumb(src=event.image || '/images/placeholder.jpg' alt=event.name)
+                          .admin-table-entity__meta
+                            strong= event.name
+                            small= event.location || 'Chưa cập nhật địa điểm'
+                      td
+                        span.admin-status-pill(class=`is-${event.displayStatus}`)= event.displayStatus === 'pending' ? 'Chờ duyệt' : event.displayStatus === 'rejected' ? 'Bị từ chối' : event.displayStatus === 'upcoming' ? 'Sắp diễn ra' : event.displayStatus === 'ongoing' ? 'Đang diễn ra' : 'Đã kết thúc'
+                      td #{event.totalSold || 0}/#{event.totalTickets || 0}
+                      td= new Date(event.date).toLocaleDateString('vi-VN')
+                      td.text-end
+                        if event._id
+                          a.btn.admin-table-btn(href=`/events/${event._id}`)
+                            i.fas.fa-eye
+                            span Xem công khai
+          else
+            .admin-empty-state.py-5
+              i.fas.fa-calendar-xmark
+              h4 Chưa có sự kiện nào
+              p Hãy tạo sự kiện đầu tiên để bắt đầu bán vé.
+    .col-xl-5
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Đơn hàng mới
+              p Giao dịch mới phát sinh trên các sự kiện của bạn.
+            a.admin-text-link(href="/organizer/orders") Xem đơn hàng
+          if recentOrders && recentOrders.length > 0
+            .admin-activity-list
+              each order in recentOrders
+                .admin-activity-item
+                  .admin-activity-item__content
+                    strong.font-monospace= String(order._id).slice(-8)
+                    span= order.userId && order.userId.name ? order.userId.name : 'Khách vãng lai'
+                    small= order.eventId && order.eventId.name ? order.eventId.name : 'Sự kiện chưa xác định'
+                  .admin-activity-item__meta
+                    strong.text-success #{Number(order.totalAmount || 0).toLocaleString('vi-VN')} đ
+                    small.text-muted.d-block.mt-1= new Date(order.createdAt).toLocaleString('vi-VN')
+          else
+            .admin-empty-state.py-5
+              i.fas.fa-receipt
+              h4 Chưa có đơn hàng mới
+              p Khi có giao dịch phát sinh, hệ thống sẽ hiển thị tại đây.

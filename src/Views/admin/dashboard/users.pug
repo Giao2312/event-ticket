@@ -1,126 +1,128 @@
-extends ../../layout
+extends ../layout
+
+block admin_config
+  - var adminPage = 'users'
+  - var adminHeading = 'Quản lý người dùng'
+  - var adminDescription = 'Theo dõi tài khoản, vai trò và trạng thái hoạt động toàn hệ thống theo bố cục bảng quản trị mới.'
+
+block admin_topbar_actions
+  a.btn.admin-secondary-btn(href="/admin/dashboard/orders")
+    i.fas.fa-receipt
+    span Đơn hàng
 
 block content
-  section.py-5.bg-light
-    .container
-      .d-flex.justify-content-between.align-items-center.mb-4.flex-wrap.gap-2
-        div
-          h2.fw-bold.mb-1 Quản lý người dùng
-          p.text-muted.mb-0 Theo dõi tài khoản, vai trò và trạng thái hoạt động toàn hệ thống.
-        .d-flex.gap-2
-          a.btn.btn-outline-secondary(href="/admin/dashboard") Quay lại dashboard
-          a.btn.btn-outline-primary(href="/admin/dashboard/orders") Quản lý đơn hàng
+  - const userStats = [{ label: 'Tổng user', value: stats.totalUsers || 0, tone: 'is-neutral', icon: 'fa-users' }, { label: 'Đang hoạt động', value: stats.activeUsers || 0, tone: 'is-success', icon: 'fa-circle-check' }, { label: 'Đã khóa', value: stats.inactiveUsers || 0, tone: 'is-danger', icon: 'fa-user-lock' }, { label: 'Admin', value: stats.adminCount || 0, tone: 'is-primary', icon: 'fa-user-shield' }, { label: 'Organizer', value: stats.organizerCount || 0, tone: 'is-warning', icon: 'fa-building' }, { label: 'User thường', value: stats.userCount || 0, tone: 'is-info', icon: 'fa-user' }];
 
-      .row.g-4.mb-4
-        .col-md-4.col-lg-2
-          .card.border-0.shadow-sm.text-center.h-100
-            .card-body
-              h6.text-muted.mb-1 Tổng user
-              h3.fw-bold= stats.totalUsers || 0
-        .col-md-4.col-lg-2
-          .card.border-0.shadow-sm.text-center.h-100
-            .card-body
-              h6.text-muted.mb-1 Đang hoạt động
-              h3.fw-bold.text-success= stats.activeUsers || 0
-        .col-md-4.col-lg-2
-          .card.border-0.shadow-sm.text-center.h-100
-            .card-body
-              h6.text-muted.mb-1 Đã khóa
-              h3.fw-bold.text-danger= stats.inactiveUsers || 0
-        .col-md-4.col-lg-2
-          .card.border-0.shadow-sm.text-center.h-100
-            .card-body
-              h6.text-muted.mb-1 Admin
-              h3.fw-bold.text-primary= stats.adminCount || 0
-        .col-md-4.col-lg-2
-          .card.border-0.shadow-sm.text-center.h-100
-            .card-body
-              h6.text-muted.mb-1 Organizer
-              h3.fw-bold.text-warning= stats.organizerCount || 0
-        .col-md-4.col-lg-2
-          .card.border-0.shadow-sm.text-center.h-100
-            .card-body
-              h6.text-muted.mb-1 User thường
-              h3.fw-bold.text-secondary= stats.userCount || 0
+  if errorMessage
+    .alert.alert-danger.admin-inline-alert= errorMessage
 
-      form.row.g-3.mb-4(method="GET" action="/admin/dashboard/users")
-        .col-md-6
-          .input-group
-            span.input-group-text
-              i.fas.fa-search
-            input.form-control(type="text" name="q" placeholder="Tìm theo tên, email hoặc số điện thoại" value=filters.q)
-        .col-md-3
-          select.form-select(name="role")
+  .row.g-4.mb-4
+    each item in userStats
+      .col-sm-6.col-xxl-4
+        .admin-stat-card.admin-panel(class=item.tone)
+          .admin-panel__body
+            .admin-stat-card__head
+              span.admin-stat-card__icon
+                i.fas(class=item.icon)
+              span.admin-stat-card__label= item.label
+            h3.admin-stat-card__value= item.value
+            p.admin-stat-card__hint Thống kê người dùng toàn hệ thống
+
+  .admin-panel.mb-4
+    .admin-panel__body
+      form.row.g-3.align-items-end(method="GET" action="/admin/dashboard/users")
+        .col-lg-5
+          label.admin-field-label(for="userQuery") Tìm kiếm người dùng
+          .admin-input-group
+            i.fas.fa-search
+            input#userQuery.form-control.admin-input(type="text" name="q" placeholder="Tên, email hoặc số điện thoại..." value=filters.q)
+        .col-sm-6.col-lg-3
+          label.admin-field-label(for="userRole") Vai trò
+          select#userRole.form-select.admin-select(name="role")
             option(value="") Tất cả vai trò
             option(value="admin" selected=filters.role==='admin') Admin
-            option(value="Organizer" selected=filters.role==='Organizer') Organizer
+            option(value="organizer" selected=filters.role==='organizer') Organizer
             option(value="user" selected=filters.role==='user') User
-        .col-md-2
-          select.form-select(name="status")
+        .col-sm-6.col-lg-2
+          label.admin-field-label(for="userStatus") Trạng thái
+          select#userStatus.form-select.admin-select(name="status")
             option(value="") Tất cả trạng thái
             option(value="active" selected=filters.status==='active') Đang hoạt động
             option(value="inactive" selected=filters.status==='inactive') Đã khóa
-        .col-md-1
-          button.btn.btn-primary.w-100(type="submit") Lọc
+        .col-sm-6.col-lg-2
+          .d-flex.gap-2
+            button.btn.admin-primary-btn.w-100(type="submit")
+              i.fas.fa-sliders
+              span Lọc
+            a.btn.admin-secondary-btn(href="/admin/dashboard/users")
+              i.fas.fa-rotate-left
 
-      if errorMessage
-        .alert.alert-danger= errorMessage
-
-      .table-responsive
-        table.table.table-hover.align-middle
-          thead.table-light
-            tr
-              th Tên
-              th Email
-              th Điện thoại
-              th Vai trò
-              th Trạng thái
-              th Ngày tạo
-              th.text-end Thao tác
-          tbody
-            if users && users.length > 0
+  .admin-panel
+    .admin-panel__body
+      .admin-section-heading
+        div
+          h3 Danh sách người dùng
+          p Hàng dữ liệu nén gọn để kiểm tra vai trò, trạng thái và thao tác khóa hoặc mở khóa nhanh.
+      if users && users.length > 0
+        .table-responsive
+          table.table.admin-table.align-middle.mb-0
+            thead
+              tr
+                th Người dùng
+                th Điện thoại
+                th Vai trò
+                th Trạng thái
+                th Ngày tạo
+                th.text-end Thao tác
+            tbody
               each u in users
+                - const roleValue = String(u.role || '').toLowerCase();
+                - const roleLabel = roleValue === 'admin' ? 'Admin' : roleValue === 'organizer' ? 'Organizer' : 'User';
+                - const roleClass = roleValue === 'admin' ? 'is-primary' : roleValue === 'organizer' ? 'is-warning' : 'is-neutral';
                 tr
-                  td.fw-semibold= u.name || 'Chưa cập nhật'
-                  td= u.email || 'N/A'
+                  td
+                    .admin-user-cell
+                      .admin-user-cell__avatar= (u.name || 'U').trim().charAt(0).toUpperCase()
+                      .admin-user-cell__meta
+                        strong= u.name || 'Chưa cập nhật'
+                        small= u.email || 'N/A'
                   td= u.phone || 'Chưa cập nhật'
                   td
-                    if u.role === 'admin'
-                      span.badge.bg-primary Admin
-                    else if u.role === 'Organizer'
-                      span.badge.bg-warning.text-dark Organizer
-                    else
-                      span.badge.bg-secondary User
+                    span.admin-status-pill(class=roleClass)= roleLabel
                   td
                     if u.isActive
-                      span.badge.bg-success Đang hoạt động
+                      span.admin-status-pill.is-active Đang hoạt động
                     else
-                      span.badge.bg-danger Đã khóa
+                      span.admin-status-pill.is-inactive Đã khóa
                   td= new Date(u.createdAt).toLocaleString('vi-VN')
                   td.text-end
                     if user && String(user._id) === String(u._id)
                       span.text-muted.small Tài khoản hiện tại
                     else
-                      button.btn.btn-sm(class=u.isActive ? 'btn-outline-danger' : 'btn-outline-success' onclick=`toggleUserStatus('${u._id}')`)
+                      button.btn.admin-table-btn(type="button" class=u.isActive ? 'is-danger' : 'is-success' onclick=`toggleUserStatus('${u._id}')`)
                         if u.isActive
-                          | Khóa
+                          i.fas.fa-lock
+                          span Khóa
                         else
-                          | Mở khóa
-            else
-              tr
-                td.text-center(colspan="7") Không có người dùng phù hợp
+                          i.fas.fa-lock-open
+                          span Mở khóa
+      else
+        .admin-empty-state
+          i.fas.fa-users-slash
+          h4 Không có người dùng phù hợp
+          p Hãy điều chỉnh bộ lọc để xem thêm tài khoản trong hệ thống.
 
-      if pagination && pagination.totalPages > 1
-        nav.mt-4
-          ul.pagination
-            - const baseQuery = `?q=${encodeURIComponent(filters.q || '')}&role=${encodeURIComponent(filters.role || '')}&status=${encodeURIComponent(filters.status || '')}&page=`;
-            li.page-item(class=pagination.page <= 1 ? 'disabled' : '')
-              a.page-link(href=`/admin/dashboard/users${baseQuery}${pagination.page - 1}`) Trước
-            each i in Array.from({ length: pagination.totalPages }, (_, idx) => idx + 1)
-              li.page-item(class=i === pagination.page ? 'active' : '')
-                a.page-link(href=`/admin/dashboard/users${baseQuery}${i}`)= i
-            li.page-item(class=pagination.page >= pagination.totalPages ? 'disabled' : '')
-              a.page-link(href=`/admin/dashboard/users${baseQuery}${pagination.page + 1}`) Sau
+  if pagination && pagination.totalPages > 1
+    nav.mt-4(aria-label="Phân trang người dùng")
+      ul.pagination.admin-pagination
+        - const baseQuery = `?q=${encodeURIComponent(filters.q || '')}&role=${encodeURIComponent(filters.role || '')}&status=${encodeURIComponent(filters.status || '')}&page=`;
+        li.page-item(class=pagination.page <= 1 ? 'disabled' : '')
+          a.page-link(href=`/admin/dashboard/users${baseQuery}${pagination.page - 1}`) Trước
+        each i in Array.from({ length: pagination.totalPages }, (_, idx) => idx + 1)
+          li.page-item(class=i === pagination.page ? 'active' : '')
+            a.page-link(href=`/admin/dashboard/users${baseQuery}${i}`)= i
+        li.page-item(class=pagination.page >= pagination.totalPages ? 'disabled' : '')
+          a.page-link(href=`/admin/dashboard/users${baseQuery}${pagination.page + 1}`) Sau
 
 block append scripts
   script.

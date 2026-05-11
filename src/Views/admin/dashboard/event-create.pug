@@ -1,0 +1,378 @@
+extends ../layout
+
+block admin_config
+  - var adminPage = 'events'
+  - var adminHeading = 'Tạo sự kiện cho nhà tổ chức'
+  - var adminDescription = 'Admin có thể khởi tạo sự kiện thay nhà tổ chức nhưng vẫn dùng shell quản trị thống nhất.'
+
+block admin_topbar_actions
+  a.btn.admin-secondary-btn(href="/admin/dashboard/events")
+    i.fas.fa-arrow-left
+    span Quay lại danh sách
+
+block content
+  form#eventForm.needs-validation(novalidate action="/admin/dashboard/events/create" method="POST" enctype="multipart/form-data")
+    .row.g-4
+      .col-lg-8
+        .admin-panel.admin-hero-card.mb-4
+          .admin-panel__body
+            span.admin-kicker Thiết lập quản trị
+            h2.admin-hero-card__title Khởi tạo sự kiện với đầy đủ cấu hình trước khi đẩy vào hàng chờ duyệt hoặc xuất bản.
+            p.admin-hero-card__text Dùng khi admin cần tạo sự kiện thay cho nhà tổ chức hoặc chuẩn bị dữ liệu demo trong hệ thống.
+
+        .admin-panel.mb-4
+          .admin-panel__body
+            .admin-section-heading
+              div
+                h3 Nhà tổ chức phụ trách
+                p Bắt buộc chọn đúng organizer nhận quyền quản lý sự kiện này.
+            .mb-0
+              label.form-label.fw-medium Organizer *
+              select.form-select.form-select-lg(name="organizer" required)
+                option(value="") Chọn nhà tổ chức
+                each organizer in organizers
+                  option(value=organizer._id)= `${organizer.name} (${organizer.email})`
+
+        .admin-panel.mb-4
+          .admin-panel__body
+            .admin-section-heading
+              div
+                h3 Thông tin cơ bản
+                p Tên, mô tả, danh mục và ảnh đại diện.
+            .mb-4
+              label.form-label.fw-medium Tên sự kiện *
+              input.form-control.form-control-lg(type="text" name="name" placeholder="Ví dụ: Đại nhạc hội Sai Gon 2026" required)
+            .mb-4
+              label.form-label.fw-medium Mô tả sự kiện *
+              textarea.form-control.form-control-lg(rows="6" name="description" placeholder="Mô tả chi tiết về sự kiện, nghệ sĩ, chương trình..." required)
+            .mb-4
+              label.form-label.fw-medium Danh mục sự kiện
+              select.form-select.form-select-lg(name="category")
+                option(value="khac") Chọn danh mục
+                option(value="am-nhac") Âm nhạc
+                option(value="the-thao") Thể thao
+                option(value="workshop") Workshop
+                option(value="nghe-thuat") Nghệ thuật
+                option(value="cong-nghe") Công nghệ
+                option(value="giai-tri") Giải trí
+                option(value="kinh-doanh") Kinh doanh
+                option(value="am-thuc") Ẩm thực
+            .row.g-3
+              .col-md-6
+                label.form-label.fw-medium Ảnh nền sự kiện
+                input.form-control(type="file" name="coverImage" accept="image/*")
+              .col-md-6
+                label.form-label.fw-medium Ảnh bổ sung
+                input.form-control(type="file" name="galleryImages" accept="image/*" multiple)
+            .row.g-3.mt-1
+              .col-md-6#offlineProof
+                label.form-label.fw-medium Ảnh xác thực địa điểm
+                input.form-control(type="file" name="venueProofImage" accept="image/*")
+              .col-md-6#onlineProof(style="display: none;")
+                label.form-label.fw-medium Ảnh xác thực online
+                input.form-control(type="file" name="onlineProofImage" accept="image/*")
+
+        .admin-panel.mb-4
+          .admin-panel__body
+            .admin-section-heading
+              div
+                h3 Thời gian và địa điểm
+                p Cấu hình lịch và hình thức tổ chức.
+            .row.g-3
+              .col-md-6
+                label.form-label.fw-medium Ngày bắt đầu *
+                input.form-control.form-control-lg(type="date" name="dateStart" required)
+              .col-md-6
+                label.form-label.fw-medium Ngày kết thúc
+                input.form-control.form-control-lg(type="date" name="dateEnd")
+            .row.g-3.mt-1
+              .col-md-6
+                label.form-label.fw-medium Giờ bắt đầu
+                input.form-control.form-control-lg(type="time" name="timeStart")
+              .col-md-6
+                label.form-label.fw-medium Giờ kết thúc
+                input.form-control.form-control-lg(type="time" name="timeEnd")
+            .mt-4
+              label.form-label.fw-medium Hình thức tổ chức *
+              .d-flex.flex-wrap.gap-4
+                .form-check
+                  input.form-check-input(type="radio" name="eventMode" id="modeOffline" value="offline" checked)
+                  label.form-check-label(for="modeOffline") Offline
+                .form-check
+                  input.form-check-input(type="radio" name="eventMode" id="modeOnline" value="online")
+                  label.form-check-label(for="modeOnline") Online
+            .mt-3#offlineFields
+              label.form-label.fw-medium Địa điểm tổ chức (Offline)
+              .row.g-3
+                .col-md-6
+                  input.form-control.form-control-lg(type="text" name="venueName" placeholder="Tên địa điểm")
+                .col-md-6
+                  input.form-control.form-control-lg(type="text" name="city" placeholder="Tỉnh / thành phố")
+                .col-md-6
+                  input.form-control.form-control-lg(type="text" name="ward" placeholder="Phường / xã")
+                .col-md-6
+                  input.form-control.form-control-lg(type="text" name="street" placeholder="Số nhà, đường")
+            .mt-3#onlineFields(style="display: none;")
+              label.form-label.fw-medium Link sự kiện online
+              input.form-control.form-control-lg(type="url" name="onlineLink" placeholder="https://zoom.us/... hoặc link livestream")
+
+      .col-lg-4
+        .admin-panel.mb-4
+          .admin-panel__body
+            .admin-section-heading
+              div
+                h3 Loại vé và giá
+                p Thiết lập hạng vé trước khi cấu hình ghế.
+            #ticketTypes
+              .ticket-type.mb-4(data-ticket-index="0")
+                .row.g-3
+                  .col-12
+                    label.form-label.fw-medium Tên loại vé *
+                    input.form-control.ticket-type-name(type="text" name="tickets[0][type]" placeholder="VIP" required)
+                  .col-6
+                    label.form-label.fw-medium Giá vé *
+                    input.form-control(type="number" name="tickets[0][price]" placeholder="500000" min="0" required)
+                  .col-6
+                    label.form-label.fw-medium Số lượng *
+                    input.form-control.ticket-type-quantity(type="number" name="tickets[0][quantity]" placeholder="100" min="1" required)
+            button.btn.admin-secondary-btn.w-100.mt-3(type="button" onclick="addTicketType()")
+              i.fas.fa-plus
+              span Thêm loại vé mới
+
+        .admin-panel.mb-4
+          .admin-panel__body
+            .admin-section-heading
+              div
+                h3 Sơ đồ ghế và phân khu
+                p Hệ thống sẽ tự sinh ghế nếu bật chế độ ghế ngồi.
+            .mb-3
+              label.form-label.fw-medium Hình thức bán vé
+              select.form-select.form-select-lg(name="ticketingMode" id="ticketingMode")
+                option(value="general_admission") Không có ghế cố định
+                option(value="reserved_seating") Sự kiện có ghế ngồi
+            #seatingConfig(style="display: none;")
+              .d-flex.justify-content-between.align-items-center.mb-3
+                h6.fw-bold.mb-0 Các phân khu ghế
+                button.btn.admin-secondary-btn(type="button" onclick="addSeatSection()")
+                  i.fas.fa-plus
+                  span Thêm phân khu
+              #seatSections
+              .small.text-muted.mt-2#seatingSummary Chưa bật sự kiện có ghế ngồi.
+
+        .admin-panel.mb-4
+          .admin-panel__body
+            .admin-section-heading
+              div
+                h3 Cài đặt khác
+                p Cấu hình công khai và thời điểm mở bán.
+            .form-check.mb-3
+              input.form-check-input(type="checkbox" name="isPublic" id="isPublic" checked)
+              label.form-check-label(for="isPublic") Sự kiện công khai
+            .form-check.mb-3
+              input.form-check-input(type="checkbox" name="requireApproval" id="requireApproval")
+              label.form-check-label(for="requireApproval") Yêu cầu duyệt đăng ký tham gia
+            .mb-3
+              label.form-label.fw-medium Thời gian mở bán vé
+              input.form-control(type="datetime-local" name="saleStart")
+
+        button.btn.admin-primary-btn.w-100.py-3(type="submit")
+          i.fas.fa-save
+          span Tạo sự kiện
+
+block append scripts
+  script.
+    let ticketCount = 1;
+    let seatSectionCount = 0;
+
+    function getTicketTypeOptions() {
+      const options = [];
+      document.querySelectorAll('.ticket-type-name').forEach((input) => {
+        const value = (input.value || '').trim();
+        if (value && !options.includes(value)) options.push(value);
+      });
+      return options;
+    }
+
+    function buildTicketOptionsHtml(selectedValue = '') {
+      const options = getTicketTypeOptions();
+      if (!options.length) {
+        return '<option value="">Tạo hạng vé trước</option>';
+      }
+
+      return options
+        .map((option) => `<option value="${option}" ${option === selectedValue ? 'selected' : ''}>${option}</option>`)
+        .join('');
+    }
+
+    function refreshSeatSectionTicketOptions() {
+      document.querySelectorAll('.seat-ticket-type').forEach((select) => {
+        const currentValue = select.value;
+        select.innerHTML = buildTicketOptionsHtml(currentValue);
+      });
+      updateSeatingSummary();
+    }
+
+    function addTicketType() {
+      const html = `
+        <div class="ticket-type mb-4 border-top pt-4" data-ticket-index="${ticketCount}">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-medium">Tên loại vé *</label>
+              <input class="form-control ticket-type-name" type="text" name="tickets[${ticketCount}][type]" placeholder="VIP / Standard / Balcony" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-medium">Giá vé *</label>
+              <input class="form-control" type="number" name="tickets[${ticketCount}][price]" placeholder="500000" min="0" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-medium">Số lượng *</label>
+              <input class="form-control ticket-type-quantity" type="number" name="tickets[${ticketCount}][quantity]" placeholder="100" min="1" required>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('ticketTypes').insertAdjacentHTML('beforeend', html);
+      ticketCount += 1;
+      refreshSeatSectionTicketOptions();
+    }
+
+    function addSeatSection() {
+      const html = `
+        <div class="seat-section border rounded-4 p-3 mb-3" data-seat-section-index="${seatSectionCount}">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-medium">Tên phân khu *</label>
+              <input class="form-control" type="text" name="seatSections[${seatSectionCount}][name]" placeholder="VIP A" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-medium">Mã phân khu</label>
+              <input class="form-control" type="text" name="seatSections[${seatSectionCount}][code]" placeholder="VIPA">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-medium">Gắn với hạng vé *</label>
+              <select class="form-select seat-ticket-type" name="seatSections[${seatSectionCount}][ticketTypeName]" required>
+                ${buildTicketOptionsHtml()}
+              </select>
+            </div>
+            <div class="col-3">
+              <label class="form-label fw-medium">Số hàng *</label>
+              <input class="form-control seat-rows" type="number" name="seatSections[${seatSectionCount}][rows]" min="1" value="5" required>
+            </div>
+            <div class="col-3">
+              <label class="form-label fw-medium">Ghế / hàng *</label>
+              <input class="form-control seat-per-row" type="number" name="seatSections[${seatSectionCount}][seatsPerRow]" min="1" value="10" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-medium">Kiểu đánh hàng</label>
+              <select class="form-select" name="seatSections[${seatSectionCount}][rowLabelType]">
+                <option value="letters">A, B, C...</option>
+                <option value="numbers">1, 2, 3...</option>
+              </select>
+            </div>
+            <div class="col-6 d-flex align-items-end">
+              <button class="btn btn-outline-danger w-100" type="button" onclick="this.closest('.seat-section').remove(); updateSeatingSummary();">Xóa phân khu</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.getElementById('seatSections').insertAdjacentHTML('beforeend', html);
+      seatSectionCount += 1;
+      refreshSeatSectionTicketOptions();
+    }
+
+    const form = document.getElementById('eventForm');
+    const ticketingModeSelect = document.getElementById('ticketingMode');
+    const seatingConfig = document.getElementById('seatingConfig');
+    const seatingSummary = document.getElementById('seatingSummary');
+    const offlineFields = document.getElementById('offlineFields');
+    const onlineFields = document.getElementById('onlineFields');
+    const offlineProof = document.getElementById('offlineProof');
+    const onlineProof = document.getElementById('onlineProof');
+    const venueProofInput = document.querySelector('input[name="venueProofImage"]');
+    const modeOffline = document.getElementById('modeOffline');
+    const modeOnline = document.getElementById('modeOnline');
+
+    function updateMode() {
+      const isOnline = modeOnline.checked;
+      offlineFields.style.display = isOnline ? 'none' : '';
+      onlineFields.style.display = isOnline ? '' : 'none';
+      offlineProof.style.display = isOnline ? 'none' : '';
+      onlineProof.style.display = isOnline ? '' : 'none';
+      if (venueProofInput) venueProofInput.required = !isOnline;
+    }
+
+    function updateTicketingMode() {
+      const isReserved = ticketingModeSelect.value === 'reserved_seating';
+      seatingConfig.style.display = isReserved ? '' : 'none';
+      if (isReserved && !document.querySelector('.seat-section')) {
+        addSeatSection();
+      }
+      updateSeatingSummary();
+    }
+
+    function updateSeatingSummary() {
+      const isReserved = ticketingModeSelect.value === 'reserved_seating';
+      if (!isReserved) {
+        seatingSummary.textContent = 'Sự kiện này đang ở chế độ không có ghế cố định.';
+        return;
+      }
+
+      const ticketTotals = {};
+      document.querySelectorAll('.ticket-type').forEach((card) => {
+        const type = card.querySelector('.ticket-type-name')?.value?.trim();
+        const quantity = Number.parseInt(card.querySelector('.ticket-type-quantity')?.value || '0', 10) || 0;
+        if (type) ticketTotals[type] = quantity;
+      });
+
+      const seatTotals = {};
+      document.querySelectorAll('.seat-section').forEach((card) => {
+        const type = card.querySelector('.seat-ticket-type')?.value?.trim();
+        const rows = Number.parseInt(card.querySelector('.seat-rows')?.value || '0', 10) || 0;
+        const seatsPerRow = Number.parseInt(card.querySelector('.seat-per-row')?.value || '0', 10) || 0;
+        if (type) seatTotals[type] = (seatTotals[type] || 0) + rows * seatsPerRow;
+      });
+
+      const parts = Object.keys(ticketTotals).map((type) => `${type}: vé ${ticketTotals[type]} / ghế ${seatTotals[type] || 0}`);
+      seatingSummary.textContent = parts.length
+        ? `Đối chiếu hiện tại: ${parts.join(' | ')}`
+        : 'Hãy khai báo ít nhất một hạng vé và một phân khu ghế.';
+    }
+
+    form.addEventListener('submit', (e) => {
+      if (!form.checkValidity()) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      if (ticketingModeSelect.value === 'reserved_seating' && !document.querySelector('.seat-section')) {
+        e.preventDefault();
+        alert('Sự kiện có ghế ngồi cần ít nhất một phân khu ghế.');
+      }
+
+      form.classList.add('was-validated');
+    });
+
+    document.addEventListener('input', (event) => {
+      if (
+        event.target.classList.contains('ticket-type-name') ||
+        event.target.classList.contains('ticket-type-quantity') ||
+        event.target.classList.contains('seat-rows') ||
+        event.target.classList.contains('seat-per-row')
+      ) {
+        refreshSeatSectionTicketOptions();
+      }
+    });
+
+    document.addEventListener('change', (event) => {
+      if (event.target.classList.contains('seat-ticket-type')) {
+        updateSeatingSummary();
+      }
+    });
+
+    modeOffline.addEventListener('change', updateMode);
+    modeOnline.addEventListener('change', updateMode);
+    ticketingModeSelect.addEventListener('change', updateTicketingMode);
+
+    updateMode();
+    updateTicketingMode();
+    refreshSeatSectionTicketOptions();

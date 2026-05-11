@@ -1,108 +1,154 @@
-extends ../../../layout
+extends ../../layout
+
+block organizer_config
+  - var organizerPage = 'events'
+  - var organizerHeading = 'Sự kiện của tôi'
+  - var organizerDescription = 'Theo dõi danh mục sự kiện theo trạng thái, tìm kiếm nhanh và kiểm tra mức bán vé hiện tại.'
+  - var organizerSearchValue = filters && filters.q ? filters.q : ''
+
+block organizer_topbar_actions
+  a.btn.admin-secondary-btn(href="/organizer/dashboard")
+    i.fas.fa-chart-line
+    span Tổng quan
+  a.btn.admin-primary-btn(href="/organizer/create-event")
+    i.fas.fa-plus
+    span Tạo sự kiện
 
 block content
-  section.py-5.bg-light.min-vh-100
-    div.container-fluid
-      div.row
-        //- Sidebar (giống dashboard)
-        aside.col-auto.col-md-3.col-xl-2.px-sm-2.px-0.bg-white.border-end.shadow-sm
-          div.d-flex.flex-column.align-items-center.align-items-sm-start.px-3.pt-2.text-dark.min-vh-100
-            a.d-flex.align-items-center.pb-3.mb-md-0.me-md-auto.text-dark.text-decoration-none
-              span.fs-5.fw-bold EventVé Organizer
-            hr
-            ul.nav.nav-pills.flex-column.mb-sm-auto.mb-0.align-items-center.align-items-sm-start
-              li.nav-item
-                a.nav-link.px-0.align-middle(href="/organizer/dashboard")
-                  i.fas.fa-home.fs-4.me-2
-                  span.ms-1 Tổng quan
-              li.nav-item
-                a.nav-link.px-0.align-middle.active(href="/organizer/events")
-                  i.fas.fa-calendar-alt.fs-4.me-2
-                  span.ms-1 Sự kiện
-              li.nav-item
-                a.nav-link.px-0.align-middle(href="/organizer/orders")
-                  i.fas.fa-shopping-cart.fs-4.me-2
-                  span.ms-1 Đơn hàng
+  - const eventCounters = [{ label: 'Chờ duyệt', value: counts && counts.pending || 0, status: 'pending' }, { label: 'Bị từ chối', value: counts && counts.rejected || 0, status: 'rejected' }, { label: 'Sắp diễn ra', value: counts && counts.upcoming || 0, status: 'upcoming' }, { label: 'Đang diễn ra', value: counts && counts.ongoing || 0, status: 'ongoing' }, { label: 'Đã kết thúc', value: counts && counts.ended || 0, status: 'ended' }];
+  - const buildFilterLink = (status) => { const params = []; if (filters && filters.q) params.push(`q=${encodeURIComponent(filters.q)}`); if (status) params.push(`status=${encodeURIComponent(status)}`); return `/organizer/events${params.length ? `?${params.join('&')}` : ''}`; };
 
+  if created
+    .alert.alert-success.admin-inline-alert
+      strong Đã gửi sự kiện thành công.
+      |  Sự kiện mới của bạn đang ở trạng thái chờ admin duyệt.
 
-        //- Nội dung chính
-        main.col.py-5.px-4
-          div.d-flex.justify-content-between.align-items-center.mb-4
-            h2.fw-bold Quản lý sự kiện
-            a.btn.btn-gradient.px-5.py-3.rounded-pill.shadow-sm(href="/organizer/create-event")
-              i.fas.fa-plus.me-2
-              | Tạo sự kiện
+  if notifications && notifications.length > 0
+    .admin-panel.mb-4
+      .admin-panel__body
+        .admin-section-heading
+          div
+            h3 Thông báo gần đây
+            p Cập nhật hệ thống, cảnh báo doanh số và phản hồi từ admin.
+        .admin-timeline
+          each item in notifications
+            .admin-timeline__item(class=item.type === 'low_sales_warning' ? 'is-warning' : 'is-info')
+              .admin-timeline__dot
+              .admin-timeline__content
+                .d-flex.justify-content-between.align-items-start.gap-3.flex-wrap
+                  strong= item.title
+                  span.admin-status-pill(class=item.type === 'low_sales_warning' ? 'is-danger' : 'is-primary')= item.type === 'low_sales_warning' ? 'Cảnh báo' : 'Cập nhật'
+                p.mb-1.small= item.message
+                if item.eventId && item.eventId.name
+                  small.text-muted Sự kiện: #{item.eventId.name}
 
-          //- Tìm kiếm + Filter
-          div.row.align-items-center.g-4.mb-5
-            div.col-md-8
-              div.input-group
-                span.input-group-text
-                  i.fas.fa-search
-                input.form-control#searchEvent(type="text" placeholder="Tìm kiếm sự kiện...")
-            div.col-md-4
-              select.form-select#filterStatus
-                option(value="all") Tất cả trạng thái
-                option(value="upcoming") Sắp diễn ra
-                option(value="ongoing") Đang diễn ra
-                option(value="ended") Đã kết thúc
+  .row.g-4.mb-4
+    each item in eventCounters
+      .col-sm-6.col-xl
+        a.admin-mini-stat.admin-panel.text-decoration-none(class=(filters && filters.status) === item.status ? 'is-active' : '' href=buildFilterLink(item.status))
+          .admin-panel__body
+            span.admin-mini-stat__label= item.label
+            strong.admin-mini-stat__value= item.value
+    .col-sm-6.col-xl
+      a.admin-mini-stat.admin-panel.text-decoration-none(class=!(filters && filters.status) ? 'is-active' : '' href=buildFilterLink(''))
+        .admin-panel__body
+          span.admin-mini-stat__label Tất cả
+          strong.admin-mini-stat__value= events && events.length ? events.length : 0
 
-          //- Bảng sự kiện
-          div.card.border-0.shadow-sm.overflow-hidden
-            div.table-responsive
-              table.table.table-hover.align-middle.mb-0
-                thead.bg-light
-                  tr
-                    th Ảnh
-                    th Tên sự kiện
-                    th Ngày diễn ra
-                    th Trạng thái
-                    th Vé đã bán
-                    th Hành động
+  .admin-panel.mb-4
+    .admin-panel__body
+      form.row.g-3.align-items-end(method="GET" action="/organizer/events")
+        .col-lg-6
+          label.admin-field-label(for="eventQuery") Tìm kiếm sự kiện
+          .admin-input-group
+            i.fas.fa-search
+            input#eventQuery.form-control.admin-input(type="text" name="q" placeholder="Tên sự kiện hoặc địa điểm..." value=(filters && filters.q) || '')
+        .col-sm-6.col-lg-3
+          label.admin-field-label(for="eventStatus") Trạng thái
+          select#eventStatus.form-select.admin-select(name="status")
+            option(value="" selected=!(filters && filters.status)) Tất cả trạng thái
+            option(value="pending" selected=(filters && filters.status) === 'pending') Chờ duyệt
+            option(value="rejected" selected=(filters && filters.status) === 'rejected') Bị từ chối
+            option(value="upcoming" selected=(filters && filters.status) === 'upcoming') Sắp diễn ra
+            option(value="ongoing" selected=(filters && filters.status) === 'ongoing') Đang diễn ra
+            option(value="ended" selected=(filters && filters.status) === 'ended') Đã kết thúc
+        .col-sm-6.col-lg-3
+          .d-flex.gap-2
+            button.btn.admin-primary-btn.w-100(type="submit")
+              i.fas.fa-sliders
+              span Lọc
+            a.btn.admin-secondary-btn(href="/organizer/events")
+              i.fas.fa-rotate-left
 
-                tbody
-                  if events && events.length > 0
-                    each event in events
-                      tr
-                        td
-                          img.rounded(src=event.image || '/images/placeholder.jpg' alt=event.name width="80" height="50" style="object-fit: cover;")
-                        td.fw-medium= event.name
-                        td.text-muted.small= new Date(event.date).toLocaleDateString('vi-VN') + ' • ' + (event.time || 'TBC')
-                        td
-                          span.badge(class=event.status === 'upcoming' ? 'bg-success' : event.status === 'ongoing' ? 'bg-warning' : 'bg-secondary')
-                            = event.status === 'upcoming' ? 'Sắp diễn ra' : event.status === 'ongoing' ? 'Đang diễn ra' : 'Đã kết thúc'
-                        td.text-center
-                          span.fw-bold= event.ticketsSold || '0' 
-                          small.text-muted / #{event.totalTickets || '∞'}
-                        td
-                          div.btn-group.btn-group-sm
-                            a.btn.btn-outline-primary(href=`/organizer/event/${event._id}`) Quản lý
-                            a.btn.btn-outline-warning(href=`/organizer/event/${event._id}/edit`) Chỉnh sửa
-                            button.btn.btn-outline-danger(type="button" onclick=`deleteEvent('${event._id}')`) Xóa
-
-                  else
-                    tr
-                      td(colspan="6").text-center.py-5
-                        i.fas.fa-calendar-alt.fs-1.text-muted.mb-3.d-block
-                        h5.text-muted Chưa có sự kiện nào
-                        p.text-muted Hãy tạo sự kiện đầu tiên để bắt đầu bán vé!
-                        a.btn.btn-gradient.mt-3(href="/organizer/events/create") + Tạo sự kiện ngay
+  .admin-panel
+    .admin-panel__body
+      .admin-section-heading
+        div
+          h3 Danh sách sự kiện
+          p Bảng quản lý bám theo shell admin mới nhưng tối ưu cho dữ liệu của nhà tổ chức.
+      if events && events.length > 0
+        .table-responsive
+          table.table.admin-table.align-middle.mb-0
+            thead
+              tr
+                th Sự kiện
+                th Lịch
+                th Trạng thái
+                th Vé
+                th.text-end Thao tác
+            tbody
+              each event in events
+                tr
+                  td
+                    .admin-table-entity
+                      img.admin-thumb(src=event.image || '/images/placeholder.jpg' alt=event.name)
+                      .admin-table-entity__meta
+                        strong= event.name
+                        small= event.location || 'Chưa cập nhật địa điểm'
+                        if event.rejectionReason
+                          small.text-danger Lý do từ chối: #{event.rejectionReason}
+                  td
+                    strong.d-block= new Date(event.date).toLocaleDateString('vi-VN')
+                    small.text-muted #{event.totalSold || 0}/#{event.totalTickets || 0} vé • Fill rate #{event.fillRate || 0}%
+                  td
+                    span.admin-status-pill(class=`is-${event.displayStatus}`)= event.displayStatus === 'pending' ? 'Chờ duyệt' : event.displayStatus === 'rejected' ? 'Bị từ chối' : event.displayStatus === 'upcoming' ? 'Sắp diễn ra' : event.displayStatus === 'ongoing' ? 'Đang diễn ra' : 'Đã kết thúc'
+                  td
+                    strong= event.totalSold || 0
+                    small.text-muted / #{event.totalTickets || 0}
+                  td.text-end
+                    .admin-action-group
+                      a.btn.admin-table-btn(href=`/events/${event._id}`)
+                        i.fas.fa-eye
+                        span Xem công khai
+                      button.btn.admin-table-btn(type="button" data-copy-event-id=event._id)
+                        i.fas.fa-copy
+                        span Sao chép ID
+      else
+        .admin-empty-state
+          i.fas.fa-calendar-xmark
+          h4 Chưa có sự kiện phù hợp
+          p Hãy tạo thêm sự kiện mới hoặc đổi bộ lọc để hiển thị dữ liệu.
+          a.btn.admin-primary-btn.mt-2(href="/organizer/create-event")
+            i.fas.fa-plus
+            span Tạo sự kiện
 
 block append scripts
   script.
-    // Tìm kiếm realtime
-    document.getElementById('searchEvent')?.addEventListener('keyup', function() {
-      const filter = this.value.toLowerCase();
-      document.querySelectorAll('tbody tr').forEach(row => {
-        const text = row.innerText.toLowerCase();
-        row.style.display = text.includes(filter) ? '' : 'none';
+    document.querySelectorAll('[data-copy-event-id]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const eventId = button.getAttribute('data-copy-event-id');
+
+        try {
+          await navigator.clipboard.writeText(eventId);
+          button.classList.add('is-success');
+          const textNode = button.querySelector('span');
+          if (textNode) textNode.textContent = 'Đã sao chép';
+          setTimeout(() => {
+            button.classList.remove('is-success');
+            if (textNode) textNode.textContent = 'Sao chép ID';
+          }, 1200);
+        } catch (error) {
+          alert('Không thể sao chép ID sự kiện');
+        }
       });
     });
-
-    // Xác nhận xóa sự kiện (tùy chọn)
-    function deleteEvent(id) {
-      if (confirm('Bạn có chắc chắn muốn xóa sự kiện này?')) {
-        // Gọi API xóa (sau này thêm fetch)
-        alert('Đã xóa sự kiện ID: ' + id);
-      }
-    }

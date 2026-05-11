@@ -12,9 +12,11 @@ const orderSchema = new mongoose.Schema({
   totalAmount: { type: Number, required: true },
   status: {
     type: String,
-    enum: ['PENDING', 'PAID', 'CANCELLED', 'EXPIRED', 'PAYMENT_FAILED'],
+    enum: ['PENDING', 'PAID', 'PROCESSING', 'APPROVED', 'CANCELLED', 'EXPIRED', 'PAYMENT_FAILED', 'REFUNDED', 'REFUND_FAILED'],
     default: 'PENDING'
   },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  approvedAt: { type: Date, default: null },
   paymentMethod: {
     type: String,
     enum: ['cash', 'credit_card', 'momo', 'vnpay', 'paypal'], 
@@ -22,6 +24,9 @@ const orderSchema = new mongoose.Schema({
     set: (v) => v ? v.toLowerCase() : v
   },
   momoOrderId: { type: String, index: true, sparse: true },
+  momoTransId: { type: String, sparse: true },
+  vnpayTransactionId: { type: String, index: true, sparse: true },
+  vnpayTransDate: { type: Date },
   paypalOrderId: { type: String },
   paymentError: { type: String, default: null },
   holdUntil: { type: Date, default: () => new Date(Date.now() + 15 * 60 * 1000) },

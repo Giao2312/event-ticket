@@ -40,6 +40,9 @@ router.get("/checkout", authMiddleware, async (req, res) => {
 // Route khác (nếu có)
 router.get("/checkout/:orderId", OrderController.renderCheckoutPage);
 router.get("/payment/momo-return", PaymentController.momoReturn);
+router.post("/payment/momo-ipn", PaymentController.momoIpn);
+router.get("/payment/vnpay_return", PaymentController.vnpayReturn);
+router.post("/payment/vnpay_return", PaymentController.vnpayIpn);
 router.get("/payment/success", (req, res) => res.render("clients/success"));
 router.get("/payment", OrderController.getAllOrders);
 

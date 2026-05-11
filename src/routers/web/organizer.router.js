@@ -7,6 +7,13 @@ import { upload } from "../../middlewares/upload.middlewares.js";
 
 const router = express.Router();
 
+const createEventUpload = upload.fields([
+  { name: "coverImage", maxCount: 1 },
+  { name: "galleryImages", maxCount: 5 },
+  { name: "venueProofImage", maxCount: 1 },
+  { name: "onlineProofImage", maxCount: 1 }
+]);
+
 // API / views cho organizer
 router.get(
   "/organizer/orders",
@@ -19,9 +26,7 @@ router.get(
   "/organizer/dashboard",
   authMiddleware,
   roleMiddleware("Organizer"),
-  (req, res) => {
-    res.render("organizer/dashboard/events/index", { pageTitle: "Bảng điều khiển" });
-  }
+  OrganizerOrderController.getDashboard
 );
 
 router.get(
@@ -35,21 +40,22 @@ router.get(
   "/organizer/create-event",
   authMiddleware,
   roleMiddleware("Organizer"),
-  (req, res) => {
-    res.render("organizer/dashboard/events/create", { pageTitle: "Tạo sự kiện" });
-  }
+  OrganizerOrderController.getCreateEventPage
 );
 
 router.post(
   "/organizer/create-event",
   authMiddleware,
   roleMiddleware("Organizer"),
-  upload.fields([
-    { name: "coverImage", maxCount: 1 },
-    { name: "galleryImages", maxCount: 5 },
-    { name: "venueProofImage", maxCount: 1 },
-    { name: "onlineProofImage", maxCount: 1 }
-  ]),
+  (req, res, next) => {
+    createEventUpload(req, res, (err) => {
+      if (err) {
+        return OrganizerOrderController.handleCreateEventUploadError(err, req, res, next);
+      }
+
+      return next();
+    });
+  },
   OrganizerOrderController.createEvent
 );
 
@@ -61,5 +67,34 @@ router.get(
 );
 
 router.post("/checkout", authMiddleware, OrderController.createOrder);
+
+// Withdrawal routes
+router.get(
+  "/organizer/finance",
+  authMiddleware,
+  roleMiddleware("Organizer"),
+  OrganizerOrderController.getFinancialOverview
+);
+
+router.get(
+  "/organizer/withdrawals",
+  authMiddleware,
+  roleMiddleware("Organizer"),
+  OrganizerOrderController.getWithdrawalHistory
+);
+
+router.post(
+  "/organizer/withdrawals/request",
+  authMiddleware,
+  roleMiddleware("Organizer"),
+  OrganizerOrderController.requestWithdrawal
+);
+
+router.patch(
+  "/organizer/bank-info",
+  authMiddleware,
+  roleMiddleware("Organizer"),
+  OrganizerOrderController.updateBankInfo
+);
 
 export default router;

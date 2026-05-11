@@ -1,0 +1,120 @@
+extends ../layout
+
+block admin_config
+  - var adminPage = 'withdrawals'
+  - var adminHeading = 'Quan ly rut tien'
+  - var adminDescription = 'Xem va duyet cac yeu cau rut tien tu nha to chuc.'
+
+block admin_topbar_actions
+  a.btn.admin-secondary-btn(href="/admin/dashboard")
+    i.fas.fa-chart-line
+    span Tong quan
+
+block content
+  - const withdrawalStats = [{ label: 'Cho duyet', value: stats.pendingCount || 0, tone: 'is-warning', icon: 'fa-clock' }, { label: 'Da duyet', value: stats.approvedCount || 0, tone: 'is-info', icon: 'fa-check' }, { label: 'Da tu choi', value: stats.rejectedCount || 0, tone: 'is-danger', icon: 'fa-ban' }, { label: 'Hoan thanh', value: stats.completedCount || 0, tone: 'is-success', icon: 'fa-circle-check' }];
+
+  if errorMessage
+    .alert.alert-danger.admin-inline-alert= errorMessage
+
+  .row.g-4.mb-4
+    each item in withdrawalStats
+      .col-sm-6.col-xl-3
+        .admin-stat-card.admin-panel(class=item.tone)
+          .admin-panel__body
+            .admin-stat-card__head
+              span.admin-stat-card__icon
+                i.fas(class=item.icon)
+              span.admin-stat-card__label= item.label
+            h3.admin-stat-card__value= item.value
+            p.admin-stat-card__hint Yeu cau rut tien
+
+  .admin-panel.mb-4
+    .admin-panel__body
+      form.row.g-3.align-items-end(method="GET" action="/admin/dashboard/withdrawals")
+        .col-lg-6
+          label.admin-field-label(for="statusFilter") Loc theo trang thai
+          select#statusFilter.form-select.admin-select(name="status")
+            option(value="") Tat ca trang thai
+            option(value="PENDING" selected=filters.status === 'PENDING') Cho duyet
+            option(value="APPROVED" selected=filters.status === 'APPROVED') Da duyet
+            option(value="REJECTED" selected=filters.status === 'REJECTED') Da tu choi
+            option(value="COMPLETED" selected=filters.status === 'COMPLETED') Hoan thanh
+        .col-sm-6.col-lg-3
+          .d-flex.gap-2
+            button.btn.admin-primary-btn.w-100(type="submit")
+              i.fas.fa-sliders
+              span Loc
+            a.btn.admin-secondary-btn(href="/admin/dashboard/withdrawals")
+              i.fas.fa-rotate-left
+
+  .admin-panel
+    .admin-panel__body
+      .admin-section-heading
+        div
+          h3 Danh sach yeu cau rut tien
+          p Quan ly cac yeu cau rut tien tu nha to chuc.
+      if withdrawals && withdrawals.length > 0
+        .table-responsive
+          table.table.admin-table.align-middle.mb-0
+            thead
+              tr
+                th Ma yeu cau
+                th Nha to chuc
+                th So tien rut
+                th Khau tru
+                th Thuc nhan
+                th Phuong thuc
+                th Trang thai
+                th Ngay yeu cau
+                th Thao tac
+            tbody
+              each w in withdrawals
+                - const wdStatus = String(w.status || '').toUpperCase();
+                - const wdStatusLabel = wdStatus === 'PENDING' ? 'Cho duyet' : wdStatus === 'APPROVED' ? 'Da duyet' : wdStatus === 'REJECTED' ? 'Da tu choi' : wdStatus === 'COMPLETED' ? 'Hoan thanh' : wdStatus;
+                - const wdStatusClass = wdStatus === 'PENDING' ? 'is-pending' : wdStatus === 'APPROVED' ? 'is-info' : wdStatus === 'REJECTED' ? 'is-cancelled' : wdStatus === 'COMPLETED' ? 'is-paid' : 'is-neutral';
+                - const methodLabel = w.paymentMethod === 'bank_transfer' ? 'Chuyen khoan' : w.paymentMethod === 'momo' ? 'MoMo' : w.paymentMethod === 'vnpay' ? 'VNPay' : (w.paymentMethod || 'N/A');
+                tr
+                  td
+                    strong.font-monospace= w._id
+                  td
+                    strong.d-block= (w.organizerId && w.organizerId.name) || 'N/A'
+                    small.text-muted= (w.organizerId && w.organizerId.email) || ''
+                  td.text-danger.fw-semibold #{Number(w.amount || 0).toLocaleString('vi-VN')} đ
+                  td.text-warning #{Number(w.commissionAmount || 0).toLocaleString('vi-VN')} đ
+                  td.text-success.fw-semibold #{Number(w.netAmount || 0).toLocaleString('vi-VN')} đ
+                  td= methodLabel
+                  td
+                    span.admin-status-pill(class=wdStatusClass)= wdStatusLabel
+                  td= new Date(w.createdAt).toLocaleString('vi-VN')
+                  td
+                    if wdStatus === 'PENDING'
+                      .d-flex.gap-1
+                        button.btn.btn-sm.btn-success.w-50.approve-withdrawal-btn(type="button" data-withdrawal-id=w._id)
+                          i.fas.fa-check
+                          span Duyet
+                        button.btn.btn-sm.btn-danger.w-50.reject-withdrawal-btn(type="button" data-withdrawal-id=w._id)
+                          i.fas.fa-xmark
+                          span Tu choi
+                    else if wdStatus === 'COMPLETED'
+                      span.text-success
+                        i.fas.fa-check-circle
+                        span Da chuyen
+                    else
+                      span.text-muted -
+      else
+        .admin-empty-state
+          i.fas.fa-money-bill-transfer
+          h4 Chua co yeu cau rut tien
+          p Danh sach yeu cau rut tien se hien thi o day.
+
+  if pagination && pagination.totalPages > 1
+    nav.mt-4(aria-label="Phan trang")
+      ul.pagination.admin-pagination
+        - const baseQuery = `?status=${encodeURIComponent(filters.status || '')}&page=`;
+        li.page-item(class=pagination.page <= 1 ? 'disabled' : '')
+          a.page-link(href=`/admin/dashboard/withdrawals${baseQuery}${pagination.page - 1}`) Truoc
+        each i in Array.from({ length: pagination.totalPages }, (_, idx) => idx + 1)
+          li.page-item(class=i === pagination.page ? 'active' : '')
+            a.page-link(href=`/admin/dashboard/withdrawals${baseQuery}${i}`)= i
+        li.page-item(class=pagination.page >= pagination.totalPages ? 'disabled' : '')
+          a.page-link(href=`/admin/dashboard/withdrawals${baseQuery}${pagination.page + 1}`) Sau

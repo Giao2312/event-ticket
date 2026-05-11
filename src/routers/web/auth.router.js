@@ -1,5 +1,6 @@
 import express from "express";
 import { register, login, logout } from "../../controllers/auth.controller.js";
+import { loginRateLimiter, registerRateLimiter } from "../../middlewares/rateLimit.middleware.js";
 
 
 const router = express.Router();
@@ -26,8 +27,8 @@ router.get("/register", (req, res) => {
 });
 
 // API endpoints
-router.post("/api/auth/login", login);
-router.post("/api/auth/register", register);
+router.post("/api/auth/login", loginRateLimiter, login);
+router.post("/api/auth/register", registerRateLimiter, register);
 router.post("/api/auth/logout", logout);
 
 export default router;

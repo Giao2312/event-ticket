@@ -1,180 +1,201 @@
-extends ../../layout
+extends ../layout
+
+block admin_config
+  - var adminPage = 'dashboard'
+  - var adminHeading = 'Bảng điều khiển quản trị'
+  - var adminDescription = 'Theo dõi doanh thu, luồng bán vé và hàng chờ duyệt trên một giao diện tập trung.'
+
+block admin_topbar_actions
+  a.btn.admin-secondary-btn(href="/admin/dashboard/orders")
+    i.fas.fa-receipt
+    span Đơn hàng
+  a.btn.admin-primary-btn(href="/admin/dashboard/events/create")
+    i.fas.fa-plus
+    span Tạo sự kiện
 
 block content
-  section.py-5.admin-dashboard
-    .container
-      .d-flex.justify-content-between.align-items-center.mb-4.flex-wrap.gap-2
+  - const overviewStats = [{ label: 'Tổng doanh thu', value: `${Number((stats && stats.totalRevenue) || 0).toLocaleString('vi-VN')} đ`, hint: 'Đơn đã thanh toán', icon: 'fa-sack-dollar', tone: 'is-success' }, { label: 'Vé đã bán', value: `${(stats && stats.ticketsSold) || 0}`, hint: `${(stats && stats.ticketsSold) || 0}/${(stats && stats.totalCapacity) || 0} vé`, icon: 'fa-ticket', tone: 'is-primary' }, { label: 'Lưu lượng truy cập', value: `${(stats && stats.traffic) || 0}`, hint: 'Tổng lượt xem sự kiện', icon: 'fa-chart-column', tone: 'is-info' }, { label: 'Tỷ lệ chuyển đổi', value: `${(stats && stats.conversionRate) || 0}%`, hint: 'Đơn hàng trên traffic', icon: 'fa-bolt', tone: 'is-warning' }, { label: 'Tổng sự kiện', value: `${(stats && stats.totalEvents) || 0}`, hint: 'Toàn hệ thống', icon: 'fa-calendar-days', tone: 'is-neutral' }, { label: 'Người dùng', value: `${(stats && stats.totalUsers) || 0}`, hint: 'Tài khoản đã đăng ký', icon: 'fa-users', tone: 'is-primary' }];
+  - const statusItems = [{ label: 'Chờ duyệt', value: pendingCount || 0, hint: 'Cần admin kiểm tra', icon: 'fa-hourglass-half', tone: 'is-pending' }, { label: 'Bị từ chối', value: rejectedCount || 0, hint: 'Cần theo dõi lại', icon: 'fa-ban', tone: 'is-rejected' }, { label: 'Sắp diễn ra', value: upcomingCount || 0, hint: 'Chuẩn bị mở bán', icon: 'fa-calendar-check', tone: 'is-upcoming' }, { label: 'Đang diễn ra', value: ongoingCount || 0, hint: 'Theo dõi realtime', icon: 'fa-play-circle', tone: 'is-ongoing' }, { label: 'Đã kết thúc', value: endedCount || 0, hint: 'Lưu trữ & phân tích', icon: 'fa-flag-checkered', tone: 'is-ended' }];
+  - const dashboardFilters = [{ key: 'all', label: 'Tất cả' }, { key: 'pending', label: 'Chờ duyệt' }, { key: 'rejected', label: 'Bị từ chối' }, { key: 'upcoming', label: 'Sắp diễn ra' }, { key: 'ongoing', label: 'Đang diễn ra' }, { key: 'ended', label: 'Đã kết thúc' }];
+
+  if errorMessage
+    .alert.alert-danger.admin-inline-alert= errorMessage
+
+  section.admin-hero-card.admin-panel.mb-4
+    .admin-panel__body
+      .row.g-4.align-items-center
+        .col-xl-7
+          span.admin-kicker Toàn cảnh vận hành
+          h2.admin-hero-card__title Điều phối sự kiện, doanh thu và kiểm duyệt từ một nhịp giao diện thống nhất.
+          p.admin-hero-card__text Khung quản trị mới giữ nguyên dữ liệu và workflow hiện có, nhưng tái tổ chức theo kiểu sidebar, topbar và thẻ sáng gọn hơn để thao tác nhanh.
+          .admin-hero-card__metrics
+            .admin-hero-card__metric
+              strong= pendingCount || 0
+              span Sự kiện chờ duyệt
+            .admin-hero-card__metric
+              strong #{stats && stats.fillRate || 0}%
+              span Tỷ lệ lấp đầy
+            .admin-hero-card__metric
+              strong= recentOrders && recentOrders.length ? recentOrders.length : 0
+              span Đơn gần đây
+        .col-xl-5
+          .admin-highlight-card
+            .admin-highlight-card__head
+              span.admin-kicker Nhịp độ 14 ngày
+              h3 Theo dõi tăng trưởng
+            p.mb-3.text-muted Admin có thể quan sát doanh thu, lượt bán và chuyển nhanh sang hàng chờ duyệt ở ngay bên dưới.
+            .admin-highlight-card__stack
+              .admin-highlight-card__row
+                span Doanh thu hiện tại
+                strong #{Number((stats && stats.totalRevenue) || 0).toLocaleString('vi-VN')} đ
+              .admin-highlight-card__row
+                span Vé đã bán
+                strong= (stats && stats.ticketsSold) || 0
+              .admin-highlight-card__row
+                span Tài khoản hệ thống
+                strong= (stats && stats.totalUsers) || 0
+
+  .row.g-4.mb-4
+    each item in overviewStats
+      .col-sm-6.col-xxl-4
+        .admin-stat-card.admin-panel(class=item.tone)
+          .admin-panel__body
+            .admin-stat-card__head
+              span.admin-stat-card__icon
+                i.fas(class=item.icon)
+              span.admin-stat-card__label= item.label
+            h3.admin-stat-card__value= item.value
+            p.admin-stat-card__hint= item.hint
+
+  .row.g-4.mb-4
+    .col-xl-8
+      .admin-panel.admin-chart-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Doanh thu và lượng vé bán
+              p So sánh xu hướng doanh thu với tốc độ bán vé trong 14 ngày gần nhất.
+            span.admin-section-badge Cập nhật tự động
+          canvas#lineChart(height="120")
+    .col-xl-4
+      .admin-panel.admin-chart-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Doanh thu theo thanh toán
+              p Tỷ trọng các phương thức thanh toán đang đóng góp.
+          if pieChart && pieChart.labels && pieChart.labels.length
+            canvas#pieChart(height="180")
+          else
+            .admin-empty-state.py-5
+              i.fas.fa-chart-pie
+              h4 Chưa có dữ liệu
+              p Chưa phát sinh đơn hàng thanh toán để hiển thị tỷ trọng doanh thu.
+
+  .row.g-4.mb-4
+    .col-xl-7
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Tình trạng sự kiện
+              p Nhìn nhanh các nhóm cần xử lý hoặc theo dõi sát trong ngày.
+          .admin-status-grid
+            each item in statusItems
+              .admin-status-tile(class=item.tone)
+                .admin-status-tile__icon
+                  i.fas(class=item.icon)
+                strong= item.value
+                span= item.label
+                small= item.hint
+    .col-xl-5
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Đơn hàng gần đây
+              p Luồng thanh toán mới nhất để admin kiểm tra nhanh.
+            a.admin-text-link(href="/admin/dashboard/orders") Xem tất cả
+          if recentOrders && recentOrders.length > 0
+            .admin-activity-list
+              each order in recentOrders
+                .admin-activity-item
+                  .admin-activity-item__content
+                    strong.font-monospace= String(order._id).slice(-8)
+                    span= order.userId && order.userId.name ? order.userId.name : 'Khách vãng lai'
+                    small= new Date(order.createdAt).toLocaleString('vi-VN')
+                  .admin-activity-item__meta
+                    strong.text-success #{Number(order.totalAmount || 0).toLocaleString('vi-VN')} đ
+          else
+            .admin-empty-state.py-5
+              i.fas.fa-receipt
+              h4 Chưa có đơn hàng gần đây
+              p Dữ liệu đơn hàng mới sẽ xuất hiện tại đây.
+
+  .admin-panel
+    .admin-panel__body
+      .admin-section-heading
         div
-          h2.app-section-title.mb-1 Quản lý sự kiện toàn hệ thống
-          p.app-section-subtitle.mb-0 Theo dõi doanh thu, trạng thái và duyệt sự kiện tập trung.
-        .d-flex.gap-2
-          a.btn.btn-brand-secondary.px-4.py-2(href="/admin/dashboard/orders")
-            i.fas.fa-receipt.me-2
-            | Quản lý đơn hàng
-          a.btn.btn-brand-primary.px-4.py-2(href="/admin/events/create")
-            i.fas.fa-plus.me-2
-            | Tạo sự kiện mới
-
-      .row.g-4.mb-4
-        .col-md-3
-          .card.app-card.h-100
-            .card-body
-              h6.card-title-muted.mb-1 Tổng doanh thu
-              h3.fw-bold.text-success #{(stats && stats.totalRevenue || 0).toLocaleString('vi-VN')} đ
-              small.text-muted Doanh thu sau chiết khấu
-
-        .col-md-3
-          .card.app-card.h-100
-            .card-body
-              h6.card-title-muted.mb-1 Vé đã bán
-              h3.fw-bold #{stats && stats.ticketsSold || 0}
-              small.text-muted #{stats && stats.ticketsSold || 0}/#{stats && stats.totalCapacity || 0} vé (#{stats && stats.fillRate || 0}%)
-
-        .col-md-3
-          .card.app-card.h-100
-            .card-body
-              h6.card-title-muted.mb-1 Lưu lượng truy cập
-              h3.fw-bold.text-primary #{stats && stats.traffic || 0}
-              small.text-muted Tổng lượt xem
-
-        .col-md-3
-          .card.app-card.h-100
-            .card-body
-              h6.card-title-muted.mb-1 Tỷ lệ chuyển đổi
-              h3.fw-bold.text-warning #{stats && stats.conversionRate || 0}%
-              small.text-muted Đơn hàng/traffic
-
-      .row.g-4.mb-5
-        .col-lg-8
-          .card.app-card.h-100
-            .card-body
-              h5.fw-bold.mb-3 Tốc độ bán vé (14 ngày)
-              canvas#lineChart(height="120")
-        .col-lg-4
-          .card.app-card.h-100
-            .card-body
-              h5.fw-bold.mb-3 Doanh thu theo phương thức
-              canvas#pieChart(height="140")
-
-      .row.g-4.mb-5
-        .col-md-3
-          .card.app-card.status-card.text-center.h-100
-            .card-body
-              .status-icon.pending.mx-auto
-                i.fas.fa-hourglass-half
-              h5.text-primary Chờ duyệt
-              h2.fw-bold.text-warning #{pendingCount || 0}
-              small.text-muted Sự kiện mới cần kiểm tra
-
-        .col-md-3
-          .card.app-card.status-card.text-center.h-100
-            .card-body
-              .status-icon.upcoming.mx-auto
-                i.fas.fa-calendar-check
-              h5.text-success Sắp diễn ra
-              h2.fw-bold #{upcomingCount || 0}
-
-        .col-md-3
-          .card.app-card.status-card.text-center.h-100
-            .card-body
-              .status-icon.ongoing.mx-auto
-                i.fas.fa-play-circle
-              h5.text-info Đang diễn ra
-              h2.fw-bold #{ongoingCount || 0}
-
-        .col-md-3
-          .card.app-card.status-card.text-center.h-100
-            .card-body
-              .status-icon.ended.mx-auto
-                i.fas.fa-check-circle
-              h5.text-danger Đã kết thúc
-              h2.fw-bold #{endedCount || 0}
-
-      ul.nav.nav-tabs.mb-4#eventTabs
-        li.nav-item
-          a.nav-link.active(data-bs-toggle="tab" href="#tab-pending") Chờ duyệt (#{pendingCount + rejectedCount})
-        li.nav-item
-          a.nav-link(data-bs-toggle="tab" href="#tab-upcoming") Sắp diễn ra
-        li.nav-item
-          a.nav-link(data-bs-toggle="tab" href="#tab-ongoing") Đang diễn ra
-        li.nav-item
-          a.nav-link(data-bs-toggle="tab" href="#tab-ended") Đã kết thúc
-
-      .tab-content
-        .tab-pane.fade.show.active#tab-pending
-          if events && events.length > 0
-            .row.g-4
+          h3 Hàng chờ duyệt và sự kiện mới cập nhật
+          p Bám theo ảnh tham chiếu bằng cấu trúc bảng thoáng, nhưng vẫn giữ dữ liệu và thao tác admin hiện có.
+        .admin-filter-row
+          each item in dashboardFilters
+            button.admin-filter-chip(type="button" class=item.key === 'all' ? 'is-active' : '' data-dashboard-filter=item.key)= item.label
+      if events && events.length > 0
+        .table-responsive
+          table.table.admin-table.align-middle.mb-0
+            thead
+              tr
+                th Sự kiện
+                th Nhà tổ chức
+                th Thời gian
+                th Trạng thái
+                th.text-end Xử lý
+            tbody
               each event in events
-                if event.status === 'pending' || event.status === 'rejected'
-                  .col-12.col-md-6.col-lg-4
-                    .card.app-card.h-100
-                      img.card-img-top(src=event.image || 'events/images/placeholder.jpg' style="height: 180px; object-fit: cover;")
-                      .card-body
-                        h5.card-title.fw-bold= event.name
-                        p.text-muted.small
-                          i.fas.fa-calendar-alt.me-1
-                          = new Date(event.date).toLocaleDateString('vi-VN')
-                        if event.status === 'rejected'
-                          .alert.alert-danger.py-2.small
-                            strong Lý do từ chối:
-                            = event.rejectionReason || 'Không rõ'
-                        .mt-3
-                          if event.status === 'pending'
-                            button.btn.btn-sm.btn-success.me-2(onclick=`approveEvent('${event._id}')`) Duyệt
-                            button.btn.btn-sm.btn-brand-danger(onclick=`rejectEvent('${event._id}')`) Từ chối
-                          else
-                            button.btn.btn-sm.btn-primary.me-2(onclick=`approveEvent('${event._id}')`) Duyệt lại
-                            button.btn.btn-sm.btn-brand-danger(onclick=`deleteEvent('${event._id}')`) Xóa
-                        .mt-2
-                          a.btn.btn-sm.btn-outline-primary(href=`/admin/dashboard/events/${event._id}`) Xem phân tích
-
-        .tab-pane.fade#tab-upcoming
-          if events && events.length > 0
-            .row.g-4
-              each event in events
-                if event.status === 'upcoming'
-                  .col-12.col-md-6.col-lg-4
-                    .card.app-card.h-100
-                      img.card-img-top(src=event.image || 'events/images/placeholder.jpg' style="height: 180px; object-fit: cover;")
-                      .card-body
-                        h5.card-title.fw-bold= event.name
-                        p.text-muted.small
-                          i.fas.fa-calendar-alt.me-1
-                          = new Date(event.date).toLocaleDateString('vi-VN')
-                        .mt-2
-                          a.btn.btn-sm.btn-outline-primary(href=`/admin/dashboard/events/${event._id}`) Xem phân tích
-
-        .tab-pane.fade#tab-ongoing
-          if events && events.length > 0
-            .row.g-4
-              each event in events
-                if event.status === 'ongoing'
-                  .col-12.col-md-6.col-lg-4
-                    .card.app-card.h-100
-                      img.card-img-top(src=event.image || 'events/images/placeholder.jpg' style="height: 180px; object-fit: cover;")
-                      .card-body
-                        h5.card-title.fw-bold= event.name
-                        p.text-muted.small
-                          i.fas.fa-calendar-alt.me-1
-                          = new Date(event.date).toLocaleDateString('vi-VN')
-                        .mt-2
-                          a.btn.btn-sm.btn-outline-primary(href=`/admin/dashboard/events/${event._id}`) Xem phân tích
-
-        .tab-pane.fade#tab-ended
-          if events && events.length > 0
-            .row.g-4
-              each event in events
-                if event.status === 'ended'
-                  .col-12.col-md-6.col-lg-4
-                    .card.app-card.h-100
-                      img.card-img-top(src=event.image || 'events/images/placeholder.jpg' style="height: 180px; object-fit: cover;")
-                      .card-body
-                        h5.card-title.fw-bold= event.name
-                        p.text-muted.small
-                          i.fas.fa-calendar-alt.me-1
-                          = new Date(event.date).toLocaleDateString('vi-VN')
-                        .mt-2
-                          a.btn.btn-sm.btn-outline-primary(href=`/admin/dashboard/events/${event._id}`) Xem phân tích
+                - const dashboardStatus = String(event.status || '').toLowerCase();
+                - const dashboardStatusLabel = dashboardStatus === 'pending' ? 'Chờ duyệt' : dashboardStatus === 'rejected' ? 'Bị từ chối' : dashboardStatus === 'upcoming' ? 'Sắp diễn ra' : dashboardStatus === 'ongoing' ? 'Đang diễn ra' : dashboardStatus === 'ended' ? 'Đã kết thúc' : 'Khác';
+                tr(data-dashboard-row data-status=dashboardStatus)
+                  td
+                    .admin-table-entity
+                      img.admin-thumb(src=event.image || '/images/placeholder.jpg' alt=event.name)
+                      .admin-table-entity__meta
+                        strong= event.name
+                        small= event.location || 'Chưa cập nhật địa điểm'
+                        if dashboardStatus === 'rejected' && event.rejectionReason
+                          small.text-danger Lý do từ chối: #{event.rejectionReason}
+                  td
+                    strong.d-block= event.organizer && event.organizer.name ? event.organizer.name : 'Chưa có organizer'
+                    small.text-muted= event.organizer && event.organizer.email ? event.organizer.email : 'Không có email'
+                  td
+                    strong.d-block= new Date(event.date).toLocaleDateString('vi-VN')
+                    small.text-muted Tạo lúc #{new Date(event.createdAt).toLocaleDateString('vi-VN')}
+                  td
+                    span.admin-status-pill(class=`is-${dashboardStatus}`)= dashboardStatusLabel
+                  td.text-end
+                    .admin-action-group
+                      a.btn.admin-table-btn(href=`/admin/dashboard/events/${event._id}`)
+                        i.fas.fa-chart-area
+                        span Phân tích
+                      if dashboardStatus === 'pending'
+                        button.btn.admin-table-btn.is-success(type="button" onclick=`approveEvent('${event._id}')`)
+                          i.fas.fa-check
+                          span Duyệt
+                        button.btn.admin-table-btn.is-danger(type="button" onclick=`rejectEvent('${event._id}')`)
+                          i.fas.fa-xmark
+                          span Từ chối
+                      else if dashboardStatus === 'rejected'
+                        button.btn.admin-table-btn.is-primary(type="button" onclick=`approveEvent('${event._id}')`)
+                          i.fas.fa-rotate-left
+                          span Duyệt lại
+                        button.btn.admin-table-btn.is-danger(type="button" onclick=`deleteEvent('${event._id}')`)
+                          i.fas.fa-trash
+                          span Xóa
+      else
+        .admin-empty-state
+          i.fas.fa-calendar-xmark
+          h4 Chưa có sự kiện nào để hiển thị
+          p Hàng chờ duyệt và sự kiện mới sẽ xuất hiện tại đây khi dữ liệu được cập nhật.
 
 block append scripts
   script(src="https://cdn.jsdelivr.net/npm/chart.js")
@@ -196,26 +217,40 @@ block append scripts
               label: 'Doanh thu',
               data: lineRevenue,
               borderColor: '#2563eb',
-              backgroundColor: 'rgba(37, 99, 235, 0.15)',
-              tension: 0.3,
+              backgroundColor: 'rgba(37, 99, 235, 0.14)',
+              tension: 0.35,
               fill: true
             },
             {
               label: 'Vé bán',
               data: lineTickets,
-              borderColor: '#16a34a',
-              backgroundColor: 'rgba(22, 163, 74, 0.15)',
-              tension: 0.3,
+              borderColor: '#0f9f77',
+              backgroundColor: 'rgba(15, 159, 119, 0.12)',
+              tension: 0.35,
               fill: true
             }
           ]
         },
         options: {
           responsive: true,
-          plugins: { legend: { position: 'bottom' } },
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                usePointStyle: true,
+                boxWidth: 10
+              }
+            }
+          },
           scales: {
-            x: { ticks: { maxTicksLimit: 7 } },
-            y: { beginAtZero: true }
+            x: {
+              grid: { display: false },
+              ticks: { maxTicksLimit: 7, color: '#64748b' }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { color: '#64748b' }
+            }
           }
         }
       });
@@ -229,7 +264,7 @@ block append scripts
           labels: pieLabels,
           datasets: [{
             data: pieValues,
-            backgroundColor: ['#8b5cf6', '#ec4899', '#2563eb', '#16a34a', '#f59e0b', '#dc2626'],
+            backgroundColor: ['#2563eb', '#0f9f77', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'],
             borderColor: '#ffffff',
             borderWidth: 2
           }]
@@ -237,11 +272,34 @@ block append scripts
         options: {
           responsive: true,
           plugins: {
-            legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 12 } }
+            legend: {
+              position: 'bottom',
+              labels: {
+                usePointStyle: true,
+                boxWidth: 12
+              }
+            }
           }
         }
       });
     }
+
+    const dashboardFilters = document.querySelectorAll('[data-dashboard-filter]');
+    const dashboardRows = document.querySelectorAll('[data-dashboard-row]');
+
+    dashboardFilters.forEach((button) => {
+      button.addEventListener('click', () => {
+        const status = button.dataset.dashboardFilter;
+
+        dashboardFilters.forEach((item) => item.classList.remove('is-active'));
+        button.classList.add('is-active');
+
+        dashboardRows.forEach((row) => {
+          const rowStatus = row.dataset.status;
+          row.style.display = status === 'all' || rowStatus === status ? '' : 'none';
+        });
+      });
+    });
 
     window.approveEvent = async (id) => {
       if (!confirm('Bạn chắc chắn muốn duyệt sự kiện này?')) return;

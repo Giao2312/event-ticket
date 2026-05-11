@@ -1,101 +1,114 @@
-extends ../../layout
+extends ../layout
+
+block admin_config
+  - var adminPage = 'orders'
+  - var adminHeading = 'Quản lý đơn hàng'
+  - var adminDescription = 'Theo dõi trạng thái thanh toán, tìm kiếm đơn nhanh và rà soát luồng giao dịch toàn hệ thống.'
+
+block admin_topbar_actions
+  a.btn.admin-secondary-btn(href="/admin/dashboard")
+    i.fas.fa-chart-line
+    span Tổng quan
 
 block content
-  section.py-5.bg-light
-    div.container
-      div.d-flex.justify-content-between.align-items-center.mb-4
-        h2.fw-bold Quản lý đơn hàng
-        a.btn.btn-outline-secondary(href="/admin/dashboard") Quay lại dashboard
+  - const orderStats = [{ label: 'Thành công', value: stats.paidCount || 0, tone: 'is-success', icon: 'fa-circle-check' }, { label: 'Chờ duyệt', value: stats.processingCount || 0, tone: 'is-info', icon: 'fa-hourglass-half' }, { label: 'Chờ thanh toán', value: stats.pendingCount || 0, tone: 'is-warning', icon: 'fa-clock' }, { label: 'Đã hủy', value: stats.cancelledCount || 0, tone: 'is-danger', icon: 'fa-ban' }];
 
-      //- KPI trạng thái
-      div.row.g-4.mb-4
-        div.col-md-3
-          div.card.border-0.shadow-sm.text-center
-            div.card-body
-              h6.text-muted.mb-1 Thành công
-              h3.fw-bold.text-success #{stats.paidCount || 0}
-        div.col-md-3
-          div.card.border-0.shadow-sm.text-center
-            div.card-body
-              h6.text-muted.mb-1 Chờ thanh toán
-              h3.fw-bold.text-warning #{stats.pendingCount || 0}
-        div.col-md-3
-          div.card.border-0.shadow-sm.text-center
-            div.card-body
-              h6.text-muted.mb-1 Đã hủy
-              h3.fw-bold.text-danger #{stats.cancelledCount || 0}
-        div.col-md-3
-          div.card.border-0.shadow-sm.text-center
-            div.card-body
-              h6.text-muted.mb-1 Hết hạn
-              h3.fw-bold.text-secondary #{stats.expiredCount || 0}
+  if errorMessage
+    .alert.alert-danger.admin-inline-alert= errorMessage
 
-      //- Bộ lọc
-      form.row.g-3.mb-4(method="GET" action="/admin/dashboard/orders")
-        div.col-md-6
-          div.input-group
-            span.input-group-text
-              i.fas.fa-search
-            input.form-control(type="text" name="q" placeholder="Tìm theo mã đơn / tên / email / sự kiện" value=filters.q)
-        div.col-md-3
-          select.form-select(name="status")
+  .row.g-4.mb-4
+    each item in orderStats
+      .col-sm-6.col-xl-3
+        .admin-stat-card.admin-panel(class=item.tone)
+          .admin-panel__body
+            .admin-stat-card__head
+              span.admin-stat-card__icon
+                i.fas(class=item.icon)
+              span.admin-stat-card__label= item.label
+            h3.admin-stat-card__value= item.value
+            p.admin-stat-card__hint Tình trạng đơn hàng hiện tại
+
+  .admin-panel.mb-4
+    .admin-panel__body
+      form.row.g-3.align-items-end(method="GET" action="/admin/dashboard/orders")
+        .col-lg-6
+          label.admin-field-label(for="orderQuery") Tìm kiếm đơn hàng
+          .admin-input-group
+            i.fas.fa-search
+            input#orderQuery.form-control.admin-input(type="text" name="q" placeholder="Mã đơn, tên khách, email hoặc sự kiện..." value=filters.q)
+        .col-sm-6.col-lg-3
+          label.admin-field-label(for="orderStatus") Trạng thái
+          select#orderStatus.form-select.admin-select(name="status")
             option(value="") Tất cả trạng thái
             option(value="PAID" selected=filters.status==='PAID') Thành công
+            option(value="PROCESSING" selected=filters.status==='PROCESSING') Chờ duyệt
             option(value="PENDING" selected=filters.status==='PENDING') Chờ thanh toán
             option(value="CANCELLED" selected=filters.status==='CANCELLED') Đã hủy
-            option(value="EXPIRED" selected=filters.status==='EXPIRED') Hết hạn
-        div.col-md-3
-          button.btn.btn-primary.w-100(type="submit") Lọc
+        .col-sm-6.col-lg-3
+          .d-flex.gap-2
+            button.btn.admin-primary-btn.w-100(type="submit")
+              i.fas.fa-sliders
+              span Lọc
+            a.btn.admin-secondary-btn(href="/admin/dashboard/orders")
+              i.fas.fa-rotate-left
 
-      if errorMessage
-        div.alert.alert-danger= errorMessage
-
-      //- Bảng đơn hàng
-      div.table-responsive
-        table.table.table-hover.align-middle
-          thead.table-light
-            tr
-              th Mã đơn
-              th Khách hàng
-              th Sự kiện
-              th Vé
-              th Tổng tiền
-              th Trạng thái
-              th Thanh toán
-              th Ngày tạo
-          tbody
-            if orders && orders.length > 0
-              each o in orders
-                tr
-                  td= o._id
-                  td= (o.user && o.user.name) || 'Ẩn danh'
-                  td= (o.event && o.event.name) || 'N/A'
-                  td= o.totalItems || 0
-                  td.text-success #{Number(o.totalAmount || 0).toLocaleString('vi-VN')} đ
-                  td
-                    if o.status === 'PAID'
-                      span.badge.bg-success Thành công
-                    else if o.status === 'PENDING'
-                      span.badge.bg-warning.text-dark Chờ
-                    else if o.status === 'CANCELLED'
-                      span.badge.bg-danger Đã hủy
-                    else
-                      span.badge.bg-secondary Hết hạn
-                  td= (o.paymentMethod || '').toUpperCase()
-                  td= new Date(o.createdAt).toLocaleString('vi-VN')
-            else
+  .admin-panel
+    .admin-panel__body
+      .admin-section-heading
+        div
+          h3 Danh sách đơn hàng
+          p Bảng dữ liệu được nén gọn hơn để quét trạng thái thanh toán và tổng tiền nhanh.
+      if orders && orders.length > 0
+        .table-responsive
+          table.table.admin-table.align-middle.mb-0
+            thead
               tr
-                td.text-center(colspan="8") Không có đơn hàng phù hợp
+                th Mã đơn
+                th Khách hàng
+                th Sự kiện
+                th Vé
+                th Tổng tiền
+                th Trạng thái
+                th Thanh toán
+                th Ngày tạo
+            tbody
+              each o in orders
+                - const orderStatus = String(o.status || '').toUpperCase();
+                - const orderStatusLabel = orderStatus === 'PAID' ? 'Thành công' : orderStatus === 'PROCESSING' ? 'Chờ duyệt' : orderStatus === 'PENDING' ? 'Chờ thanh toán' : orderStatus === 'CANCELLED' ? 'Đã hủy' : orderStatus === 'EXPIRED' ? 'Hết hạn' : orderStatus === 'REFUNDED' ? 'Đã hoàn tiền' : orderStatus;
+                - const orderStatusClass = orderStatus === 'PAID' ? 'is-paid' : orderStatus === 'PROCESSING' ? 'is-info' : orderStatus === 'PENDING' ? 'is-pending' : orderStatus === 'CANCELLED' ? 'is-cancelled' : orderStatus === 'REFUNDED' ? 'is-refunded' : 'is-ended';
+                tr
+                  td
+                    strong.font-monospace= o._id
+                  td
+                    strong.d-block= (o.user && o.user.name) || 'Ẩn danh'
+                    small.text-muted= (o.user && o.user.email) || 'Không có email'
+                  td
+                    strong.d-block= (o.event && o.event.name) || 'N/A'
+                  td= o.totalItems || 0
+                  td.text-success.fw-semibold #{Number(o.totalAmount || 0).toLocaleString('vi-VN')} đ
+                  td
+                    span.admin-status-pill(class=orderStatusClass)= orderStatusLabel
+                  td= (o.paymentMethod || 'N/A').toUpperCase()
+                  td= new Date(o.createdAt).toLocaleString('vi-VN')
+                  td
+                    if orderStatus === 'PROCESSING'
+                      button.btn.btn-sm.btn-success.w-100.mb-1.approve-order-btn(data-order-id=o._id)
+                        i.fas.fa-check
+                        span Duyệt & cấp vé
+      else
+        .admin-empty-state
+          i.fas.fa-receipt
+          h4 Không có đơn hàng phù hợp
+          p Điều chỉnh bộ lọc để xem thêm dữ liệu thanh toán.
 
-      //- Phân trang
-      if pagination && pagination.totalPages > 1
-        nav.mt-4
-          ul.pagination
-            - const baseQuery = `?q=${encodeURIComponent(filters.q || '')}&status=${encodeURIComponent(filters.status || '')}&page=`;
-            li.page-item(class=pagination.page <= 1 ? 'disabled' : '')
-              a.page-link(href=`/admin/dashboard/orders${baseQuery}${pagination.page - 1}`) Trước
-            each i in Array.from({length: pagination.totalPages}, (_, idx) => idx + 1)
-              li.page-item(class=i === pagination.page ? 'active' : '')
-                a.page-link(href=`/admin/dashboard/orders${baseQuery}${i}`)= i
-            li.page-item(class=pagination.page >= pagination.totalPages ? 'disabled' : '')
-              a.page-link(href=`/admin/dashboard/orders${baseQuery}${pagination.page + 1}`) Sau
+  if pagination && pagination.totalPages > 1
+    nav.mt-4(aria-label="Phân trang đơn hàng")
+      ul.pagination.admin-pagination
+        - const baseQuery = `?q=${encodeURIComponent(filters.q || '')}&status=${encodeURIComponent(filters.status || '')}&page=`;
+        li.page-item(class=pagination.page <= 1 ? 'disabled' : '')
+          a.page-link(href=`/admin/dashboard/orders${baseQuery}${pagination.page - 1}`) Trước
+        each i in Array.from({ length: pagination.totalPages }, (_, idx) => idx + 1)
+          li.page-item(class=i === pagination.page ? 'active' : '')
+            a.page-link(href=`/admin/dashboard/orders${baseQuery}${i}`)= i
+        li.page-item(class=pagination.page >= pagination.totalPages ? 'disabled' : '')
+          a.page-link(href=`/admin/dashboard/orders${baseQuery}${pagination.page + 1}`) Sau

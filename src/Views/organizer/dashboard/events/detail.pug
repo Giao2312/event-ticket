@@ -1,187 +1,97 @@
-extends ../../../layout
+extends ../../layout
+
+block organizer_config
+  - var organizerPage = 'events'
+  - var organizerHeading = 'Bảng sự kiện theo trạng thái'
+  - var organizerDescription = 'Phiên bản board giúp rà nhanh tiến độ từng nhóm sự kiện trong shell organizer mới.'
+
+block organizer_topbar_actions
+  a.btn.admin-secondary-btn(href="/organizer/events")
+    i.fas.fa-table
+    span Xem dạng bảng
+  a.btn.admin-primary-btn(href="/organizer/create-event")
+    i.fas.fa-plus
+    span Tạo sự kiện
 
 block content
-  - 
+  -
     const now = new Date();
     const eventsList = events || [];
     const getStatus = (ev) => {
-      if (ev && ev.status) return ev.status;
+      if (ev && ev.displayStatus) return ev.displayStatus;
+      if (ev && ev.status && ['pending', 'rejected', 'upcoming', 'ongoing', 'ended'].includes(String(ev.status).toLowerCase())) return String(ev.status).toLowerCase();
       if (!ev || !ev.date) return 'upcoming';
       const d = new Date(ev.date);
-      const sameDay = d.toDateString() === now.toDateString();
-      if (d < now && !sameDay) return 'ended';
-      if (sameDay) return 'ongoing';
-      return 'upcoming';
+      if (Number.isNaN(d.getTime())) return 'upcoming';
+      if (d < now) return 'ended';
+      const threshold = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      return d <= threshold ? 'ongoing' : 'upcoming';
     };
-    const calcTotalTickets = (ev) => {
-      if (ev && ev.totalTickets != null) return ev.totalTickets;
-      return (ev.ticketTypes || []).reduce((sum, t) => sum + (t.quantity || 0), 0);
-    };
-    const calcSoldTickets = (ev) => {
-      if (ev && ev.totalSold != null) return ev.totalSold;
-      return (ev.ticketTypes || []).reduce((sum, t) => sum + (t.sold || 0), 0);
-    };
+    const calcTotalTickets = (ev) => ev && ev.totalTickets != null ? ev.totalTickets : (ev.ticketTypes || []).reduce((sum, t) => sum + (t.quantity || 0), 0);
+    const calcSoldTickets = (ev) => ev && ev.totalSold != null ? ev.totalSold : (ev.ticketTypes || []).reduce((sum, t) => sum + (t.sold || 0), 0);
     const pendingEvents = eventsList.filter(e => getStatus(e) === 'pending');
+    const rejectedEvents = eventsList.filter(e => getStatus(e) === 'rejected');
     const ongoingEvents = eventsList.filter(e => getStatus(e) === 'ongoing');
     const upcomingEvents = eventsList.filter(e => getStatus(e) === 'upcoming');
     const endedEvents = eventsList.filter(e => getStatus(e) === 'ended');
 
-  section.py-5.bg-light.min-vh-100
-    div.container-fluid
-      div.row
-        //- Sidebar
-        aside.col-auto.col-md-3.col-xl-2.px-sm-2.px-0.bg-white.border-end.shadow-sm
-          div.d-flex.flex-column.align-items-center.align-items-sm-start.px-3.pt-2.text-dark.min-vh-100
-            a.d-flex.align-items-center.pb-3.mb-md-0.me-md-auto.text-dark.text-decoration-none
-              span.fs-5.fw-bold EventVé Organizer
-            hr
-            ul.nav.nav-pills.flex-column.mb-sm-auto.mb-0.align-items-center.align-items-sm-start
-              li.nav-item
-                a.nav-link.px-0.align-middle(href="/organizer/dashboard")
-                  i.fas.fa-home.fs-4.me-2
-                  span.ms-1 Tổng quan
-              li.nav-item
-                a.nav-link.px-0.align-middle.active(href="/organizer/events")
-                  i.fas.fa-calendar-alt.fs-4.me-2
-                  span.ms-1 Sự kiện
-              li.nav-item
-                a.nav-link.px-0.align-middle(href="/organizer/orders")
-                  i.fas.fa-shopping-cart.fs-4.me-2
-                  span.ms-1 Đơn hàng
+  if created
+    .alert.alert-success.admin-inline-alert
+      strong Đã tạo sự kiện thành công.
+      |  Yêu cầu của bạn đã được gửi sang admin để chờ duyệt.
 
-        //- Main
-        main.col.py-5.px-4
-          if created
-            div.alert.alert-success.d-flex.align-items-center(role="alert")
-              i.fas.fa-check-circle.me-2
-              | Đã gửi yêu cầu tạo sự kiện cho admin duyệt. Sự kiện của bạn đang ở trạng thái chờ duyệt.
+  if notifications && notifications.length > 0
+    .admin-panel.mb-4
+      .admin-panel__body
+        .admin-section-heading
+          div
+            h3 Thông báo hệ thống
+            p Những cập nhật mới nhất ảnh hưởng tới các sự kiện của bạn.
+        .admin-timeline
+          each item in notifications
+            .admin-timeline__item(class=item.type === 'low_sales_warning' ? 'is-warning' : 'is-info')
+              .admin-timeline__dot
+              .admin-timeline__content
+                strong= item.title
+                p.mb-1.small= item.message
 
-          if notifications && notifications.length > 0
-            .card.border-0.shadow-sm.mb-4
-              .card-body
-                h5.fw-bold.mb-3 Thông báo từ hệ thống / admin
-                .d-flex.flex-column.gap-3
-                  each item in notifications
-                    .border.rounded-3.p-3(class=item.type === 'low_sales_warning' ? 'border-danger-subtle bg-danger-subtle' : 'border-primary-subtle bg-light')
-                      .d-flex.justify-content-between.align-items-start.gap-2
-                        div
-                          h6.fw-bold.mb-1= item.title
-                          p.mb-1.small= item.message
-                          if item.eventId && item.eventId.name
-                            small.text-muted Sự kiện: #{item.eventId.name}
-                        span.badge(class=item.type === 'low_sales_warning' ? 'bg-danger' : 'bg-primary')= item.type === 'low_sales_warning' ? 'Cảnh báo' : 'Cập nhật'
-                      small.text-muted= new Date(item.createdAt).toLocaleString('vi-VN')
-
-          div.d-flex.justify-content-between.align-items-center.mb-4
-            h2.fw-bold Sự kiện của tôi
-            a.btn.btn-gradient.px-4.py-2.rounded-pill.shadow-sm(href="/organizer/create-event")
-              i.fas.fa-plus.me-2
-              | Tạo sự kiện
-
-          //- Pending
-          h4.fw-bold.mb-3 Chờ duyệt
-          if pendingEvents.length > 0
-            div.row.g-4.mb-5
-              each ev in pendingEvents
-                div.col-12.col-md-6.col-lg-4
-                  div.card.border-0.shadow-sm.h-100
-                    img.card-img-top(src=ev.image || '/images/placeholder.jpg' alt=ev.name style="height: 180px; object-fit: cover;")
-                    div.card-body.d-flex.flex-column
-                      span.badge.bg-info.mb-2 Chờ duyệt
-                      h5.fw-bold= ev.name
-                      p.text-muted.small.mb-1
+  each group in [{ title: 'Chờ duyệt', tone: 'is-pending', icon: 'fa-hourglass-half', list: pendingEvents }, { title: 'Bị từ chối', tone: 'is-rejected', icon: 'fa-ban', list: rejectedEvents }, { title: 'Đang diễn ra', tone: 'is-ongoing', icon: 'fa-play-circle', list: ongoingEvents }, { title: 'Sắp diễn ra', tone: 'is-upcoming', icon: 'fa-calendar-check', list: upcomingEvents }, { title: 'Đã kết thúc', tone: 'is-ended', icon: 'fa-flag-checkered', list: endedEvents }]
+    .admin-panel.mb-4
+      .admin-panel__body
+        .admin-section-heading
+          div
+            h3
+              i.fas.me-2(class=group.icon)
+              = group.title
+            p #{group.list.length} sự kiện trong nhóm này.
+        if group.list.length > 0
+          .row.g-4
+            each ev in group.list
+              .col-12.col-md-6.col-xl-4
+                .admin-panel.organizer-event-card.h-100
+                  .admin-panel__body
+                    .d-flex.align-items-start.justify-content-between.gap-3.mb-3
+                      .admin-table-entity
+                        img.admin-thumb(src=ev.image || '/images/placeholder.jpg' alt=ev.name)
+                        .admin-table-entity__meta
+                          strong= ev.name
+                          small= ev.location || 'Chưa xác định địa điểm'
+                      span.admin-status-pill(class=group.tone)= group.title
+                    .organizer-event-card__meta
+                      span
                         i.fas.fa-calendar-alt.me-2
                         | #{new Date(ev.date).toLocaleDateString('vi-VN')}
-                      p.text-muted.small.mb-2
-                        i.fas.fa-map-marker-alt.me-2
-                        | #{ev.location || 'Chưa xác định'}
-                      div.d-flex.justify-content-between.align-items-center.mt-auto
-                        span.text-primary.fw-bold= `${calcSoldTickets(ev)}/${calcTotalTickets(ev)} vé`
-                        a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${ev._id}`) Xem chi tiết
-                      if ev.ticketTypes && ev.ticketTypes.length > 0
-                        ul.list-unstyled.mt-2.mb-0.small.text-muted
-                          each tt in ev.ticketTypes
-                            li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
-          else
-            p.text-muted.mb-5 Chưa có sự kiện nào đang chờ duyệt.
-
-          //- Ongoing
-          h4.fw-bold.mb-3 Đang diễn ra
-          if ongoingEvents.length > 0
-            div.row.g-4.mb-5
-              each ev in ongoingEvents
-                div.col-12.col-md-6.col-lg-4
-                  div.card.border-0.shadow-sm.h-100
-                    img.card-img-top(src=ev.image || '/images/placeholder.jpg' alt=ev.name style="height: 180px; object-fit: cover;")
-                    div.card-body.d-flex.flex-column
-                      span.badge.bg-warning.text-dark.mb-2 Đang diễn ra
-                      h5.fw-bold= ev.name
-                      p.text-muted.small.mb-1
-                        i.fas.fa-calendar-alt.me-2
-                        | #{new Date(ev.date).toLocaleDateString('vi-VN')}
-                      p.text-muted.small.mb-2
-                        i.fas.fa-map-marker-alt.me-2
-                        | #{ev.location || 'Chưa xác định'}
-                      div.d-flex.justify-content-between.align-items-center.mt-auto
-                        span.text-primary.fw-bold= `${calcSoldTickets(ev)}/${calcTotalTickets(ev)} vé`
-                        a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${ev._id}`) Quản lý
-                      if ev.ticketTypes && ev.ticketTypes.length > 0
-                        ul.list-unstyled.mt-2.mb-0.small.text-muted
-                          each tt in ev.ticketTypes
-                            li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
-          else
-            p.text-muted.mb-5 Chưa có sự kiện nào đang diễn ra.
-
-          //- Upcoming
-          h4.fw-bold.mb-3 Sắp diễn ra
-          if upcomingEvents.length > 0
-            div.row.g-4.mb-5
-              each ev in upcomingEvents
-                div.col-12.col-md-6.col-lg-4
-                  div.card.border-0.shadow-sm.h-100
-                    img.card-img-top(src=ev.image || '/images/placeholder.jpg' alt=ev.name style="height: 180px; object-fit: cover;")
-                    div.card-body.d-flex.flex-column
-                      span.badge.bg-success.mb-2 Sắp diễn ra
-                      h5.fw-bold= ev.name
-                      p.text-muted.small.mb-1
-                        i.fas.fa-calendar-alt.me-2
-                        | #{new Date(ev.date).toLocaleDateString('vi-VN')}
-                      p.text-muted.small.mb-2
-                        i.fas.fa-map-marker-alt.me-2
-                        | #{ev.location || 'Chưa xác định'}
-                      div.d-flex.justify-content-between.align-items-center.mt-auto
-                        span.text-primary.fw-bold= `${calcSoldTickets(ev)}/${calcTotalTickets(ev)} vé`
-                        a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${ev._id}`) Quản lý
-                      if ev.ticketTypes && ev.ticketTypes.length > 0
-                        ul.list-unstyled.mt-2.mb-0.small.text-muted
-                          each tt in ev.ticketTypes
-                            li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
-          else
-            p.text-muted.mb-5 Chưa có sự kiện nào sắp diễn ra.
-
-          //- Ended
-          h4.fw-bold.mb-3 Đã kết thúc
-          if endedEvents.length > 0
-            div.row.g-4
-              each ev in endedEvents
-                div.col-12.col-md-6.col-lg-4
-                  div.card.border-0.shadow-sm.h-100
-                    img.card-img-top(src=ev.image || '/images/placeholder.jpg' alt=ev.name style="height: 180px; object-fit: cover;")
-                    div.card-body.d-flex.flex-column
-                      span.badge.bg-secondary.mb-2 Đã kết thúc
-                      h5.fw-bold= ev.name
-                      p.text-muted.small.mb-1
-                        i.fas.fa-calendar-alt.me-2
-                        | #{new Date(ev.date).toLocaleDateString('vi-VN')}
-                      p.text-muted.small.mb-2
-                        i.fas.fa-map-marker-alt.me-2
-                        | #{ev.location || 'Chưa xác định'}
-                      div.d-flex.justify-content-between.align-items-center.mt-auto
-                        span.text-primary.fw-bold= `${calcSoldTickets(ev)}/${calcTotalTickets(ev)} vé`
-                        a.btn.btn-sm.btn-outline-primary(href=`/organizer/event/${ev._id}`) Xem chi tiết
-                      if ev.ticketTypes && ev.ticketTypes.length > 0
-                        ul.list-unstyled.mt-2.mb-0.small.text-muted
-                          each tt in ev.ticketTypes
-                            li= `${tt.type}: ${Number(tt.price || 0).toLocaleString('vi-VN')} VNĐ`
-          else
-            p.text-muted Chưa có sự kiện nào đã kết thúc.
+                      span
+                        i.fas.fa-ticket.me-2
+                        | #{calcSoldTickets(ev)}/#{calcTotalTickets(ev)} vé
+                    if ev.rejectionReason
+                      p.text-danger.small.mb-3 Lý do từ chối: #{ev.rejectionReason}
+                    .admin-action-group.mt-3
+                      a.btn.admin-table-btn(href=`/events/${ev._id}`)
+                        i.fas.fa-eye
+                        span Xem công khai
+        else
+          .admin-empty-state.py-5
+            i.fas.fa-calendar-xmark
+            h4 Không có sự kiện
+            p Không có bản ghi nào trong nhóm #{group.title.toLowerCase()}.

@@ -1,10 +1,11 @@
 import express from "express";
 import OrderController from "../../controllers/order.controller.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
+import { createOrderRateLimiter } from "../../middlewares/rateLimit.middleware.js";
 
 const router = express.Router();
 
-router.post('/create', authMiddleware, OrderController.createOrder);
+router.post('/create', authMiddleware, createOrderRateLimiter, OrderController.createOrder);
 router.post('/:id/abandon', authMiddleware, OrderController.abandonCheckout);
 router.delete('/:id/cancel', authMiddleware, OrderController.cancelOrder);
 router.get('/my-orders', authMiddleware, OrderController.getMyOrders);

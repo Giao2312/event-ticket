@@ -1,0 +1,158 @@
+extends ../layout
+
+block organizer_config
+  - var organizerPage = 'withdrawals'
+  - var organizerHeading = 'Lịch sử rút tiền'
+  - var organizerDescription = 'Theo dõi toàn bộ payout request, trạng thái duyệt và tài khoản nhận tiền của từng lần rút.'
+
+block organizer_topbar_actions
+  a.btn.admin-secondary-btn(href="/organizer/dashboard")
+    i.fas.fa-chart-line
+    span Tổng quan
+  a.btn.admin-primary-btn(href="/organizer/finance")
+    i.fas.fa-plus
+    span Yêu cầu rút tiền
+
+block content
+  - const formatMoney = (value) => `${Number(value || 0).toLocaleString('vi-VN')} đ`;
+  - const activeStatus = filters && filters.status ? filters.status : 'all';
+  - const inFlightCount = Number((stats && stats.pendingCount) || 0) + Number((stats && stats.approvedCount) || 0);
+  - const filterItems = [{ key: 'all', label: 'Tất cả', count: (stats && stats.totalRequests) || 0 }, { key: 'pending', label: 'Chờ duyệt', count: (stats && stats.pendingCount) || 0 }, { key: 'approved', label: 'Đã duyệt', count: (stats && stats.approvedCount) || 0 }, { key: 'completed', label: 'Hoàn thành', count: (stats && stats.completedCount) || 0 }, { key: 'rejected', label: 'Từ chối', count: (stats && stats.rejectedCount) || 0 }];
+  - const summaryCards = [{ label: 'Số dư khả dụng', value: formatMoney(balance.available), tone: 'is-success', icon: 'fa-wallet', hint: 'Có thể tạo payout request mới' }, { label: 'Đang xử lý', value: `${inFlightCount}`, tone: 'is-warning', icon: 'fa-hourglass-half', hint: inFlightCount > 0 ? `${formatMoney((stats && stats.pendingNetAmount) || 0)} đang chờ duyệt` : 'Không có yêu cầu treo' }, { label: 'Hoàn thành', value: `${(stats && stats.completedCount) || 0}`, tone: 'is-info', icon: 'fa-circle-check', hint: `${formatMoney(balance.totalNetReceived)} đã nhận` }, { label: 'Từ chối', value: `${(stats && stats.rejectedCount) || 0}`, tone: 'is-danger', icon: 'fa-ban', hint: 'Cần kiểm tra lại ghi chú admin' }];
+
+  .admin-panel.admin-hero-card.mb-4
+    .admin-panel__body
+      .row.g-4.align-items-center
+        .col-xl-8
+          span.admin-kicker Withdrawal Ledger
+          h2.admin-hero-card__title Mọi payout request đều được theo dõi theo từng trạng thái, từ lúc gửi yêu cầu cho tới khi hoàn tất giải ngân.
+          p.admin-hero-card__text Dùng lịch sử này để đối soát tài khoản nhận tiền, kiểm tra ghi chú từ admin và nắm rõ yêu cầu nào đang chờ xử lý.
+          .admin-hero-card__metrics
+            .admin-hero-card__metric
+              strong= `${(stats && stats.totalRequests) || 0}`
+              span Tổng yêu cầu đã gửi
+            .admin-hero-card__metric
+              strong= stats && stats.latestRequestAt ? new Date(stats.latestRequestAt).toLocaleDateString('vi-VN') : 'Chưa có'
+              span Yêu cầu gần nhất
+            .admin-hero-card__metric
+              strong= formatMoney(balance.totalWithdrawn)
+              span Đã giải ngân khỏi số dư
+        .col-xl-4
+          .admin-highlight-card
+            .admin-highlight-card__head
+              span.admin-kicker Nhanh
+              h3 Điều hướng payout
+              p Chuyển nhanh sang màn hình gửi yêu cầu mới hoặc quay lại dashboard tổng quan.
+            .admin-highlight-card__stack
+              .admin-highlight-card__row
+                span Có thể rút thêm
+                strong= formatMoney(balance.available)
+              .admin-highlight-card__row
+                span Thực nhận đã cộng dồn
+                strong= formatMoney(balance.totalNetReceived)
+              .admin-highlight-card__row
+                span Trạng thái đang mở
+                strong= inFlightCount > 0 ? `${inFlightCount} yêu cầu` : 'Không có'
+
+  .row.g-4.mb-4
+    each item in summaryCards
+      .col-sm-6.col-xl-3
+        .admin-stat-card.admin-panel(class=item.tone)
+          .admin-panel__body
+            .admin-stat-card__head
+              span.admin-stat-card__icon
+                i.fas(class=item.icon)
+              span.admin-stat-card__label= item.label
+            h3.admin-stat-card__value= item.value
+            p.admin-stat-card__hint= item.hint
+
+  if inFlightCount > 0
+    .admin-insight-banner.is-warning.mb-4
+      i.fas.fa-hourglass-half
+      div
+        strong Có payout request đang chờ duyệt
+        p.mb-0 Kiểm tra bảng bên dưới để biết rõ tài khoản nhận tiền và trạng thái xử lý của từng yêu cầu đang mở.
+
+  .admin-panel.mb-4
+    .admin-panel__body
+      .row.align-items-center.g-4
+        .col-lg-8
+          .d-flex.flex-wrap.gap-2
+            each item in filterItems
+              - const filterHref = item.key === 'all' ? '/organizer/withdrawals' : `/organizer/withdrawals?status=${item.key}`;
+              a.admin-filter-chip(class=activeStatus === item.key ? 'is-active' : '' href=filterHref)= `${item.label} (${item.count})`
+        .col-lg-4
+          .d-flex.gap-2
+            a.btn.admin-secondary-btn.w-100(href="/organizer/withdrawals")
+              i.fas.fa-rotate-left
+              span Xóa lọc
+            a.btn.admin-primary-btn.w-100(href="/organizer/finance")
+              i.fas.fa-paper-plane
+              span Tạo yêu cầu mới
+
+  .admin-panel
+    .admin-panel__body
+      .admin-section-heading
+        div
+          h3 Danh sách yêu cầu rút tiền
+          p Nhật ký payout request đầy đủ với tài khoản nhận tiền, phương thức nhận và phản hồi từ admin.
+        span.admin-section-badge= `Trang ${(pagination && pagination.page) || 1}/${(pagination && pagination.totalPages) || 1}`
+      if withdrawals && withdrawals.length > 0
+        .table-responsive
+          table.table.admin-table.align-middle.mb-0
+            thead
+              tr
+                th Mã yêu cầu
+                th Ngày gửi
+                th Số tiền
+                th Thực nhận
+                th Phương thức
+                th Tài khoản nhận
+                th Trạng thái
+                th Ghi chú
+            tbody
+              each w in withdrawals
+                - const payoutStatus = String(w.status || '').toUpperCase();
+                - const payoutLabel = payoutStatus === 'PENDING' ? 'Chờ duyệt' : payoutStatus === 'APPROVED' ? 'Đã duyệt' : payoutStatus === 'COMPLETED' ? 'Hoàn thành' : payoutStatus === 'REJECTED' ? 'Từ chối' : payoutStatus === 'FAILED' ? 'Thất bại' : payoutStatus;
+                - const payoutClass = payoutStatus === 'PENDING' ? 'is-pending' : payoutStatus === 'APPROVED' ? 'is-info' : payoutStatus === 'COMPLETED' ? 'is-success' : payoutStatus === 'REJECTED' ? 'is-danger' : 'is-neutral';
+                - const methodLabel = w.paymentMethod === 'bank_transfer' ? 'Chuyển khoản' : w.paymentMethod === 'momo' ? 'MoMo' : w.paymentMethod === 'vnpay' ? 'VNPay' : (w.paymentMethod || '-');
+                - const accountSummary = [w.bankAccount && w.bankAccount.bankName, w.bankAccount && w.bankAccount.accountNumber].filter(Boolean).join(' • ');
+                tr
+                  td.font-monospace ##{String(w._id).slice(-8)}
+                  td.text-muted.small= new Date(w.createdAt).toLocaleString('vi-VN')
+                  td.text-success.fw-semibold= formatMoney(w.amount)
+                  td= formatMoney(w.netAmount)
+                  td= methodLabel
+                  td
+                    strong.d-block= w.bankAccount && w.bankAccount.accountName ? w.bankAccount.accountName : 'Chưa có thông tin'
+                    small.text-muted= accountSummary || 'Chưa có tài khoản nhận'
+                  td
+                    span.admin-status-pill(class=payoutClass)= payoutLabel
+                  td.small.text-muted= w.adminNote || 'Không có ghi chú'
+      else
+        .admin-empty-state
+          i.fas.fa-money-bill-transfer
+          if activeStatus !== 'all'
+            h4 Không có yêu cầu phù hợp với bộ lọc
+            p Hãy đổi trạng thái lọc hoặc quay lại màn hình tài chính để gửi payout request mới.
+            a.btn.admin-primary-btn.mt-2(href="/organizer/withdrawals")
+              i.fas.fa-rotate-left
+              span Xem tất cả yêu cầu
+          else
+            h4 Chưa có yêu cầu rút tiền nào
+            p Lần payout request đầu tiên của bạn sẽ xuất hiện tại đây sau khi gửi từ màn hình tài chính.
+            a.btn.admin-primary-btn.mt-2(href="/organizer/finance")
+              i.fas.fa-plus
+              span Tạo yêu cầu đầu tiên
+
+  if pagination && pagination.totalPages > 1
+    nav.mt-4(aria-label="Phân trang lịch sử rút tiền")
+      ul.pagination.admin-pagination.justify-content-center
+        - const baseQuery = activeStatus !== 'all' ? `?status=${encodeURIComponent(activeStatus)}&page=` : '?page=';
+        li.page-item(class=((pagination.page || 1) <= 1 ? 'disabled' : ''))
+          a.page-link(href=`/organizer/withdrawals${baseQuery}${pagination.page - 1}`) Trước
+        each i in Array.from({ length: pagination.totalPages }, (_, idx) => idx + 1)
+          li.page-item(class=(i === pagination.page ? 'active' : ''))
+            a.page-link(href=`/organizer/withdrawals${baseQuery}${i}`)= i
+        li.page-item(class=((pagination.page || 1) >= pagination.totalPages ? 'disabled' : ''))
+          a.page-link(href=`/organizer/withdrawals${baseQuery}${pagination.page + 1}`) Sau

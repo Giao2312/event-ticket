@@ -1,0 +1,415 @@
+extends ../layout
+
+block organizer_config
+  - var organizerPage = 'finance'
+  - var organizerHeading = 'Tài chính'
+  - var organizerDescription = 'Theo dõi doanh thu đã thu, số dư khả dụng và gửi yêu cầu rút tiền từ cùng một màn hình điều phối.'
+
+block organizer_topbar_actions
+  a.btn.admin-secondary-btn(href="/organizer/withdrawals")
+    i.fas.fa-clock-rotate-left
+    span Lịch sử rút tiền
+  a.btn.admin-primary-btn(href="/organizer/events")
+    i.fas.fa-calendar-check
+    span Xem sự kiện
+
+block content
+  - const formatMoney = (value) => `${Number(value || 0).toLocaleString('vi-VN')} đ`;
+  - const bankInfo = user && user.bankInfo ? user.bankInfo : {};
+  - const hasBankInfo = Boolean(bankInfo.bankName && bankInfo.accountNumber && bankInfo.accountName);
+  - const inFlightCount = Number((withdrawalStats && withdrawalStats.pendingCount) || 0) + Number((withdrawalStats && withdrawalStats.approvedCount) || 0);
+  - const financeStats = [{ label: 'Số dư khả dụng', value: formatMoney(balance.available), tone: 'is-success', icon: 'fa-wallet', hint: 'Đã trừ hoa hồng nền tảng' }, { label: 'Doanh thu gộp', value: formatMoney(balance.totalRevenue), tone: 'is-primary', icon: 'fa-sack-dollar', hint: 'Từ các đơn hàng PAID' }, { label: 'Đã giải ngân', value: formatMoney(balance.totalWithdrawn), tone: 'is-info', icon: 'fa-money-bill-transfer', hint: `${(withdrawalStats && withdrawalStats.completedCount) || 0} yêu cầu hoàn thành` }, { label: 'Đang chờ xử lý', value: `${inFlightCount}`, tone: 'is-warning', icon: 'fa-hourglass-half', hint: inFlightCount > 0 ? `${formatMoney((withdrawalStats && withdrawalStats.pendingNetAmount) || 0)} đang chờ duyệt` : 'Chưa có yêu cầu chờ' }];
+
+  .admin-panel.admin-hero-card.mb-4
+    .admin-panel__body
+      .row.g-4.align-items-center
+        .col-xl-7
+          span.admin-kicker Payout Desk
+          h2.admin-hero-card__title Điều phối dòng tiền sau bán vé, theo dõi số dư thực nhận và gửi payout request ngay khi sẵn sàng.
+          p.admin-hero-card__text Số dư khả dụng bên dưới đã là phần doanh thu còn lại sau khi trừ hoa hồng nền tảng. Khi tạo yêu cầu rút tiền, hệ thống không khấu trừ thêm.
+          .admin-hero-card__metrics
+            .admin-hero-card__metric
+              strong= formatMoney(balance.available)
+              span Có thể rút ngay
+            .admin-hero-card__metric
+              strong= `${(withdrawalStats && withdrawalStats.totalRequests) || 0}`
+              span Tổng yêu cầu đã gửi
+            .admin-hero-card__metric
+              strong= withdrawalStats && withdrawalStats.latestRequestAt ? new Date(withdrawalStats.latestRequestAt).toLocaleDateString('vi-VN') : 'Chưa có'
+              span Yêu cầu gần nhất
+        .col-xl-5
+          .admin-highlight-card
+            .admin-highlight-card__head
+              span.admin-kicker Hồ sơ nhận tiền
+              h3= hasBankInfo ? 'Đã sẵn sàng nhận payout' : 'Thiếu thông tin nhận tiền'
+              p= hasBankInfo ? 'Thông tin này sẽ được tái sử dụng mỗi khi bạn gửi yêu cầu rút tiền mới.' : 'Điền hồ sơ nhận tiền trước khi tạo payout request để tránh bị trả lại yêu cầu.'
+            .admin-highlight-card__stack
+              .admin-highlight-card__row
+                span Ngân hàng / ví
+                strong= bankInfo.bankName || 'Chưa cập nhật'
+              .admin-highlight-card__row
+                span Tài khoản nhận
+                strong= bankInfo.accountNumber || 'Chưa cập nhật'
+              .admin-highlight-card__row
+                span Chủ tài khoản
+                strong= bankInfo.accountName || 'Chưa cập nhật'
+
+  .row.g-4.mb-4
+    each item in financeStats
+      .col-sm-6.col-xl-3
+        .admin-stat-card.admin-panel(class=item.tone)
+          .admin-panel__body
+            .admin-stat-card__head
+              span.admin-stat-card__icon
+                i.fas(class=item.icon)
+              span.admin-stat-card__label= item.label
+            h3.admin-stat-card__value= item.value
+            p.admin-stat-card__hint= item.hint
+
+  if inFlightCount > 0
+    .admin-insight-banner.is-warning.mb-4
+      i.fas.fa-hourglass-half
+      div
+        strong= `${inFlightCount} yêu cầu đang chờ xử lý`
+        p.mb-0 Hệ thống đang giữ #{formatMoney((withdrawalStats && withdrawalStats.pendingNetAmount) || 0)} ở trạng thái chờ duyệt. Bạn vẫn có thể theo dõi chi tiết ở lịch sử rút tiền.
+  else if Number(balance.available || 0) > 0
+    .admin-insight-banner.is-success.mb-4
+      i.fas.fa-circle-check
+      div
+        strong Số dư của bạn đã sẵn sàng để tạo payout request
+        p.mb-0 Nếu cần đối soát lại từng sự kiện trước khi rút, hãy xem bảng doanh thu theo sự kiện phía dưới.
+
+  .row.g-4
+    .col-xl-5
+      .admin-panel.organizer-sticky-column#withdrawal-request
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Gửi yêu cầu rút tiền
+              p Điền số tiền muốn rút và hồ sơ tài khoản nhận tiền cho lần payout tiếp theo.
+            span.admin-section-badge Tối đa #{formatMoney(balance.available)}
+
+          form#withdrawalForm(data-available=Number(balance.available || 0))
+            .mb-3
+              label.admin-field-label(for="withdrawAmount") Số tiền muốn rút
+              .admin-input-group
+                i.fas.fa-sack-dollar
+                input#withdrawAmount.form-control.admin-input(type="number" name="amount" min="10000" max=Number(balance.available || 0) step="1000" placeholder="Nhập số tiền muốn rút")
+              .form-text.mt-2 Số dư khả dụng hiện tại: #{formatMoney(balance.available)}
+
+            .d-flex.flex-wrap.gap-2.mb-3
+              button.btn.admin-filter-chip(type="button" data-fill-percent="25") 25%
+              button.btn.admin-filter-chip(type="button" data-fill-percent="50") 50%
+              button.btn.admin-filter-chip(type="button" data-fill-percent="100") Toàn bộ
+
+            .mb-3
+              label.admin-field-label(for="paymentMethod") Phương thức nhận tiền
+              select#paymentMethod.form-select.admin-select(name="paymentMethod")
+                option(value="bank_transfer" selected=true) Chuyển khoản ngân hàng
+                option(value="momo") Ví MoMo
+                option(value="vnpay") VNPay
+
+            .row.g-3
+              .col-12
+                label.admin-field-label(for="bankName") Ngân hàng / ví nhận tiền
+                input#bankName.form-control.admin-select(type="text" name="bankName" placeholder="VD: Vietcombank hoặc MoMo" value=bankInfo.bankName || '')
+              .col-md-6
+                label.admin-field-label(for="accountNumber") Số tài khoản / số ví
+                input#accountNumber.form-control.admin-select(type="text" name="accountNumber" placeholder="Nhập số tài khoản hoặc số ví" value=bankInfo.accountNumber || '')
+              .col-md-6
+                label.admin-field-label(for="accountName") Tên chủ tài khoản
+                input#accountName.form-control.admin-select(type="text" name="accountName" placeholder="Tên người nhận tiền" value=bankInfo.accountName || '')
+
+            .admin-insight-banner.is-success.mt-4#withdrawalPreview
+              i.fas.fa-wallet
+              div
+                strong#withdrawalPreviewAmount= formatMoney(0)
+                p.mb-0#withdrawalPreviewText Số dư khả dụng đã là khoản tiền sau hoa hồng nền tảng. Tạo yêu cầu rút tiền không khấu trừ thêm.
+
+            .d-flex.flex-column.flex-sm-row.gap-2.mt-4
+              button#saveBankInfoBtn.btn.admin-secondary-btn.w-100(type="button")
+                i.fas.fa-floppy-disk
+                span Lưu hồ sơ nhận tiền
+              button#submitWithdrawalBtn.btn.admin-primary-btn.w-100(type="submit")
+                i.fas.fa-paper-plane
+                span Gửi yêu cầu rút tiền
+
+    .col-xl-7
+      .admin-panel.mb-4
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Cân đối doanh thu
+              p Theo dõi nhanh dòng tiền từ đơn hàng cho tới phần có thể giải ngân.
+          .admin-list-summary
+            .admin-list-summary__row
+              span Doanh thu gộp từ vé đã bán
+              strong= formatMoney(balance.totalRevenue)
+            .admin-list-summary__row
+              span Hoa hồng nền tảng
+              strong= formatMoney(balance.commissionOwed)
+            .admin-list-summary__row
+              span Đã giải ngân khỏi số dư
+              strong= formatMoney(balance.totalWithdrawn)
+            .admin-list-summary__row
+              span Thực nhận vào tài khoản
+              strong= formatMoney(balance.totalNetReceived)
+            .admin-list-summary__row
+              span Số dư còn lại có thể rút
+              strong= formatMoney(balance.available)
+
+      .admin-panel.mb-4
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Yêu cầu gần đây
+              p Xem nhanh các payout request mới nhất trước khi chuyển sang lịch sử đầy đủ.
+            a.admin-text-link(href="/organizer/withdrawals") Xem toàn bộ
+          if balance.recentWithdrawals && balance.recentWithdrawals.length > 0
+            .table-responsive
+              table.table.admin-table.align-middle.mb-0
+                thead
+                  tr
+                    th Mã yêu cầu
+                    th Ngày gửi
+                    th Số tiền
+                    th Thực nhận
+                    th Trạng thái
+                tbody
+                  each w in balance.recentWithdrawals
+                    - const payoutStatus = String(w.status || '').toUpperCase();
+                    - const payoutLabel = payoutStatus === 'PENDING' ? 'Chờ duyệt' : payoutStatus === 'APPROVED' ? 'Đã duyệt' : payoutStatus === 'COMPLETED' ? 'Hoàn thành' : payoutStatus === 'REJECTED' ? 'Từ chối' : payoutStatus === 'FAILED' ? 'Thất bại' : payoutStatus;
+                    - const payoutClass = payoutStatus === 'PENDING' ? 'is-pending' : payoutStatus === 'APPROVED' ? 'is-info' : payoutStatus === 'COMPLETED' ? 'is-success' : payoutStatus === 'REJECTED' ? 'is-danger' : 'is-neutral';
+                    tr
+                      td.font-monospace ##{String(w._id).slice(-8)}
+                      td.text-muted.small= new Date(w.createdAt).toLocaleString('vi-VN')
+                      td.text-success.fw-semibold= formatMoney(w.amount)
+                      td= formatMoney(w.netAmount)
+                      td
+                        span.admin-status-pill(class=payoutClass)= payoutLabel
+          else
+            .admin-empty-state
+              i.fas.fa-money-bill-transfer
+              h4 Chưa có payout request
+              p Lần rút tiền đầu tiên của bạn sẽ xuất hiện tại đây ngay sau khi gửi yêu cầu.
+
+      .admin-panel
+        .admin-panel__body
+          .admin-section-heading
+            div
+              h3 Doanh thu theo sự kiện
+              p Ưu tiên các sự kiện mang lại doanh thu cao nhất trước khi quyết định rút tiền.
+            span.admin-section-badge= `${topEventRevenues && topEventRevenues.length ? topEventRevenues.length : 0} sự kiện`
+          if topEventRevenues && topEventRevenues.length > 0
+            .table-responsive
+              table.table.admin-table.align-middle.mb-0
+                thead
+                  tr
+                    th Sự kiện
+                    th Ngày diễn ra
+                    th Vé đã bán
+                    th.text-end Doanh thu
+                tbody
+                  each eventItem in topEventRevenues
+                    tr
+                      td
+                        strong.d-block= eventItem.name
+                        small.text-muted= eventItem.eventId ? `ID ${String(eventItem.eventId).slice(-8)}` : 'Chưa có ID'
+                      td.text-muted.small= eventItem.date ? new Date(eventItem.date).toLocaleDateString('vi-VN') : 'Chưa cập nhật'
+                      td= `${Number(eventItem.ticketsSold || 0).toLocaleString('vi-VN')} vé`
+                      td.text-end.text-success.fw-semibold= formatMoney(eventItem.revenue)
+          else
+            .admin-empty-state
+              i.fas.fa-chart-column
+              h4 Chưa có dữ liệu doanh thu
+              p Các sự kiện phát sinh đơn hàng PAID sẽ tự động xuất hiện trong bảng này.
+
+block append scripts
+  script.
+    (() => {
+      const moneyFormatter = new Intl.NumberFormat('vi-VN');
+      const formatMoney = (value) => `${moneyFormatter.format(Math.max(0, Math.round(Number(value) || 0)))} đ`;
+
+      const form = document.getElementById('withdrawalForm');
+      const amountInput = document.getElementById('withdrawAmount');
+      const paymentMethodInput = document.getElementById('paymentMethod');
+      const bankNameInput = document.getElementById('bankName');
+      const accountNumberInput = document.getElementById('accountNumber');
+      const accountNameInput = document.getElementById('accountName');
+      const saveBankInfoBtn = document.getElementById('saveBankInfoBtn');
+      const submitWithdrawalBtn = document.getElementById('submitWithdrawalBtn');
+      const preview = document.getElementById('withdrawalPreview');
+      const previewAmount = document.getElementById('withdrawalPreviewAmount');
+      const previewText = document.getElementById('withdrawalPreviewText');
+      const available = Number(form?.dataset.available || 0);
+
+      const setButtonBusy = (button, isBusy, idleText, busyText) => {
+        if (!button) return;
+        button.disabled = isBusy;
+        const textNode = button.querySelector('span');
+        if (textNode) {
+          textNode.textContent = isBusy ? busyText : idleText;
+        }
+      };
+
+      const collectBankInfo = () => ({
+        bankName: bankNameInput?.value.trim() || '',
+        accountNumber: accountNumberInput?.value.trim() || '',
+        accountName: accountNameInput?.value.trim() || ''
+      });
+
+      const updatePreview = () => {
+        const amount = Number(amountInput?.value || 0);
+        const remaining = available - amount;
+
+        if (previewAmount) {
+          previewAmount.textContent = formatMoney(amount);
+        }
+
+        if (!previewText || !preview) return;
+
+        if (amount <= 0) {
+          preview.classList.remove('is-warning');
+          preview.classList.add('is-success');
+          previewText.textContent = 'Số dư khả dụng đã là khoản tiền sau hoa hồng nền tảng. Tạo yêu cầu rút tiền không khấu trừ thêm.';
+          return;
+        }
+
+        if (remaining < 0) {
+          preview.classList.remove('is-success');
+          preview.classList.add('is-warning');
+          previewText.textContent = `Số tiền nhập vào đang vượt quá số dư khả dụng ${formatMoney(available)}.`;
+          return;
+        }
+
+        preview.classList.remove('is-warning');
+        preview.classList.add('is-success');
+        previewText.textContent = `Sau khi gửi yêu cầu, số dư còn lại dự kiến là ${formatMoney(remaining)}.`;
+      };
+
+      document.querySelectorAll('[data-fill-percent]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const percent = Number(button.getAttribute('data-fill-percent') || 0);
+          if (!amountInput) return;
+
+          const value = percent >= 100 ? available : Math.floor((available * percent) / 100 / 1000) * 1000;
+          amountInput.value = value > 0 ? value : '';
+          updatePreview();
+        });
+      });
+
+      amountInput?.addEventListener('input', updatePreview);
+      updatePreview();
+
+      saveBankInfoBtn?.addEventListener('click', async () => {
+        const bankInfo = collectBankInfo();
+
+        if (!bankInfo.bankName || !bankInfo.accountNumber || !bankInfo.accountName) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Thiếu thông tin',
+            text: 'Vui lòng điền đủ ngân hàng/ví, số tài khoản và tên chủ tài khoản.'
+          });
+          return;
+        }
+
+        try {
+          setButtonBusy(saveBankInfoBtn, true, 'Lưu hồ sơ nhận tiền', 'Đang lưu...');
+          const response = await fetch('/organizer/bank-info', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bankInfo)
+          });
+
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Không thể lưu thông tin nhận tiền');
+          }
+
+          await Swal.fire({
+            icon: 'success',
+            title: 'Đã lưu thông tin',
+            text: 'Hồ sơ nhận tiền của bạn đã được cập nhật.'
+          });
+        } catch (error) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Lỗi',
+            text: error.message
+          });
+        } finally {
+          setButtonBusy(saveBankInfoBtn, false, 'Lưu hồ sơ nhận tiền', 'Đang lưu...');
+        }
+      });
+
+      form?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const amount = Number(amountInput?.value || 0);
+        const paymentMethod = paymentMethodInput?.value || 'bank_transfer';
+        const bankInfo = collectBankInfo();
+
+        if (!amount || amount <= 0) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Số tiền chưa hợp lệ',
+            text: 'Vui lòng nhập số tiền muốn rút lớn hơn 0.'
+          });
+          return;
+        }
+
+        if (amount > available) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Vượt số dư khả dụng',
+            text: `Bạn chỉ có thể rút tối đa ${formatMoney(available)} ở thời điểm hiện tại.`
+          });
+          return;
+        }
+
+        if (paymentMethod === 'bank_transfer' && (!bankInfo.bankName || !bankInfo.accountNumber || !bankInfo.accountName)) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Thiếu thông tin nhận tiền',
+            text: 'Vui lòng điền đủ hồ sơ tài khoản ngân hàng trước khi gửi yêu cầu.'
+          });
+          return;
+        }
+
+        try {
+          setButtonBusy(submitWithdrawalBtn, true, 'Gửi yêu cầu rút tiền', 'Đang gửi...');
+          const response = await fetch('/organizer/withdrawals/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount,
+              paymentMethod,
+              bankAccount: bankInfo
+            })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Không thể gửi yêu cầu rút tiền');
+          }
+
+          await Swal.fire({
+            icon: 'success',
+            title: 'Đã gửi yêu cầu',
+            text: 'Yêu cầu rút tiền mới đã được ghi nhận và chuyển sang bước duyệt.'
+          });
+
+          window.location.href = '/organizer/withdrawals?status=pending';
+        } catch (error) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Lỗi',
+            text: error.message
+          });
+        } finally {
+          setButtonBusy(submitWithdrawalBtn, false, 'Gửi yêu cầu rút tiền', 'Đang gửi...');
+        }
+      });
+    })();

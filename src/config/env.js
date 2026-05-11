@@ -1,11 +1,13 @@
 import dotenv from 'dotenv';
+
 dotenv.config();
 const env = {
   PORT: process.env.PORT || 5000,
   DB_URL: process.env.DB_URL,
   JWT_SECRET: process.env.JWT_SECRET,
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
-  
+  QR_SECRET: process.env.QR_SECRET || process.env.JWT_SECRET, // Fallback to JWT_SECRET if not set
+
   tmnCode: process.env.VNPAY_TMN_CODE,
   secureSecret: process.env.VNPAY_SECRET,
   vnpayHost: process.env.VNPAY_HOST,
